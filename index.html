@@ -76,6 +76,10 @@
   .composer textarea{flex:1;resize:none;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:9px 12px;font-size:14px;font-family:inherit;line-height:1.5;max-height:96px}
   .composer textarea:focus{outline:none;border-color:var(--gold)}.composer textarea:disabled{opacity:.5}
   .banner{background:#2a1414;border:1px solid #5a2c2c;color:#ffd3d3;padding:8px 14px;font-size:13px;text-align:center;display:none}.banner.on{display:block}
+  .aicall{display:flex;gap:6px;flex-wrap:wrap;padding:7px 12px;border-top:1px solid var(--line);background:var(--bg2);align-items:center}
+  .aicall .lb{font-size:11px;color:var(--muted)}
+  .aichip{display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:4px 10px;cursor:pointer;font-size:12px}
+  .aichip:hover{border-color:var(--sc)}.aichip .d{width:8px;height:8px;border-radius:50%;background:var(--sc)}
 
   /* 오프닝/토론 패널 */
   .intro{white-space:pre-line;font-size:15px;line-height:1.95;color:#ded8ea;border-left:2px solid var(--ember);padding-left:14px}
@@ -160,6 +164,7 @@
   <div class="pbanner" id="pbanner"></div>
   <div class="ppanel" id="ppanel"></div>
   <div class="chat" id="chat"></div>
+  <div class="aicall" id="aicall"></div>
   <div class="composer">
     <span class="melab" id="melab">관전 중</span>
     <textarea id="input" rows="1" placeholder="배역을 골라야 말할 수 있어요"></textarea>
@@ -218,8 +223,26 @@ function applyState(){
     // 채팅
     if(STATE.rev!==lastRev){ renderChat(); lastRev=STATE.rev; }
     $("advBtn").style.display=(STATE.seq>=9)?"none":"";
+    renderAiCall();
   }
 }
+
+/* AI 배역 진행 (서버 Claude API가 연기) — GM이 눌러 AI 턴 진행 */
+let aiBusy=false;
+function renderAiCall(){
+  const bar=$("aicall"); const ph=STATE.phase||{};
+  const ais=SCEN.characters.filter(c=>STATE.roles[c.id]&&STATE.roles[c.id].mode==="ai");
+  if(!ais.length){ bar.style.display="none"; return; }
+  bar.style.display="flex";
+  let h=`<span class="lb">AI 배역</span>`;
+  ais.forEach(c=>{ h+=`<span class="aichip" style="--sc:${c.color}" onclick="aiSay('${c.id}')"><span class="d"></span>${esc(c.name)} 발언</span>`; });
+  if(ais.length>1) h+=`<span class="aichip" style="--sc:var(--gold)" onclick="aiAll()"><span class="d" style="background:var(--gold)"></span>전원</span>`;
+  if(ph.key==="final") ais.forEach(c=>{ if(!(STATE.grades||{})[c.id]) h+=`<span class="aichip" style="--sc:${c.color}" onclick="aiFinal('${c.id}')"><span class="d"></span>${esc(c.name)} 최종답변</span>`; });
+  bar.innerHTML=h;
+}
+async function aiSay(id){ if(aiBusy)return; aiBusy=true; const r=await post("/api/ai-say",{roleId:id}); if(r&&r.error){ if(String(r.error).indexOf("말하는 중")<0) banner("AI 오류: "+r.error);} else banner(""); aiBusy=false; await poll(); }
+async function aiAll(){ const ais=SCEN.characters.filter(c=>STATE.roles[c.id].mode==="ai"); for(const c of ais){ await aiSay(c.id); } }
+async function aiFinal(id){ banner("AI 최종답변 채점 중…"); const r=await post("/api/ai-final",{roleId:id}); if(r&&r.error)banner("AI 채점 오류: "+r.error); else banner(""); await poll(); }
 
 /* 로비 */
 function renderLobby(){
