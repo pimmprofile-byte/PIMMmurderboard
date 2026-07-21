@@ -39,7 +39,9 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5")
 HOST = os.getenv("REUNION_HOST", "0.0.0.0")
-PORT = int(os.getenv("REUNION_PORT", "8790"))
+# 호스팅(Render 등)은 PORT를 주입 → 그걸 우선 사용, 로컬은 REUNION_PORT/기본값
+PORT = int(os.getenv("PORT") or os.getenv("REUNION_PORT", "8790"))
+AGENT_KEY = os.getenv("AGENT_KEY", "")  # 에이전트(코드 세션) 원격 조종 키(설정 시 그 키 필요, 미설정 시 개방)
 
 try:
     import anthropic
@@ -202,6 +204,28 @@ class ClientOnly(BaseModel):
     clientId: str
 
 
+class Investigate(BaseModel):
+    cardId: str
+    roleId: str
+    clientId: str
+
+
+class AgentSay(BaseModel):
+    roleId: str
+    text: str
+    key: str = ""
+
+
+class AgentCard(BaseModel):
+    cardId: str
+    roleId: str = ""
+    key: str = ""
+
+
+class KeyOnly(BaseModel):
+    key: str = ""
+
+
 class FinalAnswers(BaseModel):
     roleId: str
     clientId: str
@@ -315,6 +339,127 @@ def reveal_card(b: CardOnly):
             ROOM["revealed"].append(b.cardId)
             bump()
     return {"card": SC.public_card(b.cardId)}
+
+
+def _agent_ok(key: str) -> bool:
+    return (not AGENT_KEY) or key == AGENT_KEY
+
+
+def _try_investigate(role_id: str, card_id: str) -> str | None:
+    c = SC.get_card(card_id)
+    if not c:
+        return "없는 카드"
+    if c["round"] > current_round(ROOM["seq"]):
+        return f"아직 조사할 수 없습니다 (조사 R{c['round']}에 열림)"
+    req = c.get("requires")
+    seen = set(ROOM["revealed"]) | set(ROOM["hands"].get(role_id, []))
+    if req and req not in seen:
+        rq = SC.get_card(req)
+        return f"먼저 '{rq['title'] if rq else req}'가 필요합니다"
+    if card_id in ROOM["revealed"]:
+        return None
+    h = ROOM["hands"].setdefault(role_id, [])
+    if card_id not in h:
+        h.append(card_id)
+        bump()
+    return None
+
+
+def _publish(card_id: str) -> None:
+    for hl in ROOM["hands"].values():
+        if card_id in hl:
+            hl.remove(card_id)
+    if card_id not in ROOM["revealed"]:
+        ROOM["revealed"].append(card_id)
+        bump()
+
+
+@app.post("/api/investigate")
+def investigate(b: Investigate):
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId:
+            return JSONResponse({"error": "그 배역으로 조사할 수 없습니다"}, status_code=403)
+        err = _try_investigate(b.roleId, b.cardId)
+        if err:
+            return JSONResponse({"error": err}, status_code=409)
+    return {"card": SC.public_card(b.cardId)}
+
+
+@app.post("/api/publish")
+def publish_card(b: Investigate):
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId:
+            return JSONResponse({"error": "권한 없음"}, status_code=403)
+        _publish(b.cardId)
+    return {"ok": True}
+
+
+@app.get("/api/hand/{role_id}")
+def get_hand(role_id: str, clientId: str = ""):
+    with LOCK:
+        r = ROOM["roles"].get(role_id)
+        if not r or (r["clientId"] and r["clientId"] != clientId):
+            return JSONResponse({"error": "권한 없음"}, status_code=403)
+        return {"hand": [SC.public_card(c) for c in ROOM["hands"].get(role_id, [])]}
+
+
+# ── 에이전트(코드 세션) 원격 조종: GM 읽기 + AI 배역 대리 행동 ──
+@app.get("/api/gm")
+def gm(key: str = ""):
+    if not _agent_ok(key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    with LOCK:
+        return {
+            "seq": ROOM["seq"], "round": current_round(ROOM["seq"]),
+            "phase": SC.phase_by_seq(ROOM["seq"]),
+            "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
+            "table": ROOM["table"],
+            "revealed": [SC.public_card(c) for c in ROOM["revealed"]],
+            "hands": {rid: [SC.public_card(c) for c in cs] for rid, cs in ROOM["hands"].items()},
+            "grades": ROOM["grades"],
+        }
+
+
+@app.post("/api/agent/say")
+def agent_say(b: AgentSay):
+    if not _agent_ok(b.key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    with LOCK:
+        c = SC.get_character(b.roleId)
+        if not c:
+            return JSONResponse({"error": "없는 배역"}, status_code=404)
+        ROOM["table"].append({"kind": "ai", "roleId": b.roleId, "speaker": c["name"], "text": b.text.strip()})
+        bump()
+    return {"ok": True}
+
+
+@app.post("/api/agent/investigate")
+def agent_investigate(b: AgentCard):
+    if not _agent_ok(b.key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    with LOCK:
+        err = _try_investigate(b.roleId, b.cardId)
+        if err:
+            return JSONResponse({"error": err}, status_code=409)
+    return {"card": SC.public_card(b.cardId)}
+
+
+@app.post("/api/agent/reveal")
+def agent_reveal(b: AgentCard):
+    if not _agent_ok(b.key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    with LOCK:
+        _publish(b.cardId)
+    return {"ok": True}
+
+
+@app.post("/api/agent/advance")
+def agent_advance(b: KeyOnly):
+    if not _agent_ok(b.key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    return advance()
 
 
 @app.post("/api/advance")
