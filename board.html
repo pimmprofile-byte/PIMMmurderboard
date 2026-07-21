@@ -227,13 +227,18 @@ function renderRun(r){
   ${boardMarkup()}`;
 }
 function renderCast(r){
-  r.innerHTML=`<div class="card"><h2>배역 배정 &amp; 선택</h2><div class="lead" style="margin-bottom:12px">각 배역을 <b>사람</b>이 맡을지 <b>AI(이 세션)</b>가 맡을지 고르세요 — 지금은 <b>사람 2 · AI 2</b> 구조. '사람'으로 고른 배역만 <b>시트(비밀 대본)</b>를 열 수 있습니다. 오세원은 스포일러라 보통 AI를 권장합니다.</div><div id="rl"></div></div>`;
+  r.innerHTML=`<div class="card"><h2>🎲 랜덤 배역 배정</h2><div class="lead" style="margin-bottom:10px">사람 수를 정하고 <b>랜덤 배정</b>을 누르면 배역이 무작위로 정해집니다. 각 사람은 아래 <b>개인 링크</b>를 <b>자기 기기</b>에서 열어 <b>자기 배역만</b> 확인하세요(AI 배역은 이 세션이 연기).</div>
+      <div class="row"><span style="font-size:13px;color:var(--sub)">사람 수</span><select id="nHuman"><option>1</option><option selected>2</option><option>3</option><option>4</option></select><button class="btn gold sm" onclick="randomAssign()">🎲 랜덤 배정</button></div>
+      <div class="lead" style="margin-top:9px">※ 개인 링크를 <b>다른 기기</b>에서 열려면 이 보드가 접속 가능한 주소여야 합니다 — 같은 와이파이면 이 폴더에서 <code>python3 -m http.server</code> 후 <code>http://(내IP):8000/board.html</code>. 파일을 바로 연 경우 개인 링크는 같은 기기에서만 열립니다.</div></div>
+    <div class="card"><h2>배역 배정 & 시트</h2><div class="lead" style="margin-bottom:10px">'사람' 배역만 시트를 열 수 있습니다. 셀렉트로 직접 바꿔도 됩니다.</div><div id="rl"></div></div>`;
   const rl=r.querySelector("#rl");
   D.roles.forEach(c=>{ const mode=S.assign[c.id]||"ai"; const d=document.createElement("div"); d.className="role-card"; d.style.setProperty("--rc",c.color);
     d.innerHTML=`<div class="av">${c.avatar}</div>
-      <div style="flex:1;min-width:0"><div class="nm" style="color:${c.color}">${esc(c.name)}${c.hidden?' <span class="pill">스포일러</span>':''}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div><div class="tg">${esc(c.tagline)}</div></div>
+      <div style="flex:1;min-width:0"><div class="nm" style="color:${c.color}">${esc(c.name)}${c.hidden?' <span class="pill">스포일러</span>':''}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div>
+        ${mode==="human"?`<div class="tg" style="color:var(--gold-b);word-break:break-all;font-size:11px">🔗 ${esc(privLink(c.id))}</div>`:`<div class="tg">${esc(c.tagline)}</div>`}</div>
       <div class="row" style="flex:0 0 auto;gap:6px">
         <select onchange="setAssign('${c.id}',this.value)"><option value="ai"${mode==="ai"?" selected":""}>AI가 연기</option><option value="human"${mode==="human"?" selected":""}>사람이 플레이</option></select>
+        ${mode==="human"?`<button class="btn sm" onclick="copyLink('${c.id}')">링크</button>`:""}
         <button class="btn sm ${mode==="human"?"gold":""}" ${mode==="human"?"":"disabled"} onclick="openSheet('${c.id}')">시트</button>
       </div>`;
     rl.appendChild(d); });
@@ -284,6 +289,36 @@ function closeM(){ $("modal").classList.remove("on"); }
 
 function setSeq(n){ n=Math.max(1,Math.min(9,n)); const changed=n!==S.seq; S.seq=n; autoReveal(); save(); render(); if(changed) pushState(true); }
 function setAssign(id,v){ S.assign[id]=v; save(); render(); }
+function privLink(id){ return location.origin+location.pathname+"?sheet="+id; }
+function copyLink(id){ copy(privLink(id)); toast("개인 링크 복사됨 — 그 사람 기기에서 여세요"); }
+function randomAssign(){ const el=document.getElementById("nHuman"); const n=el?+el.value:2;
+  const ids=D.roles.map(r=>r.id); for(let i=ids.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); const t=ids[i];ids[i]=ids[j];ids[j]=t;}
+  const a={}; ids.forEach((id,i)=>a[id]=i<n?"human":"ai"); S.assign=a; save(); render(); toast("🎲 랜덤 배정 완료 — 각 개인 링크를 해당 기기에서 여세요"); }
+function renderSolo(id){
+  const c=D.roles.find(x=>x.id===id);
+  const tabsEl=document.getElementById("tabs"); if(tabsEl)tabsEl.style.display="none";
+  const brand=document.querySelector("header .b"); if(brand)brand.innerHTML='<span class="mk">◈</span> 내 배역 카드';
+  const hp=document.getElementById("hPhase"); if(hp)hp.textContent="";
+  const rb=document.querySelector('header span[style]'); if(rb)rb.style.display="none";
+  function draw(){
+    const sseq=+(localStorage.getItem("solo.seq."+id)||1);
+    const frags=Object.entries(D.memory[id]||{}).filter(([k,v])=>v&&((k==="t1"&&sseq>=3)||(k==="t2"&&sseq>=5)||(k==="t3"&&sseq>=7)))
+      .map(([k,v])=>`<div class="frag"><div class="w">기억의 파편 · ${k==="t1"?"토론1":k==="t2"?"토론2":"최종토론"}</div>${esc(v)}</div>`).join("");
+    const steps=D.phases.map(p=>`<div class="step${p.seq===sseq?' on':''}${p.seq<sseq?' done':''}" onclick="soloSeq('${id}',${p.seq})">${p.seq}</div>`).join("");
+    document.getElementById("root").innerHTML=`<div class="card">
+      <div style="text-align:center;color:var(--muted);font-size:12px;margin-bottom:8px">이 화면은 <b style="color:var(--gold)">당신만</b> 보세요 🙈</div>
+      <h2 style="color:${c.color};font-size:19px">${c.avatar} ${esc(c.name)} <span style="font-size:13px;color:var(--muted)">· ${esc(c.job)}</span></h2>
+      <div class="lead" style="margin-bottom:8px">${esc(c.tagline)}</div>
+      ${c.hidden?'<div class="hb">⚑ 스포일러 배역 — 정체를 숨기세요</div>':""}
+      ${c.sheet.map(x=>`<div class="sec"><div class="h">${esc(x.h)}</div><div class="b">${esc(x.b)}</div></div>`).join("")}
+      ${frags?`<div class="sec"><div class="h">떠오른 기억</div>${frags}</div>`:""}
+      <div class="sec"><div class="h">나의 목표</div>${c.goals.map(g=>`<div class="goal"><span>${esc(g.t)}</span><span class="pt">+${g.p}</span></div>`).join("")}</div>
+      <div class="sec"><div class="h">현재 단계 <span style="color:var(--muted);font-weight:400;font-size:12px">— GM 안내에 맞춰 넘기면 기억이 떠오릅니다</span></div><div class="stepper" style="margin-top:6px">${steps}</div></div>
+    </div>`;
+  }
+  window.soloSeq=function(rid,n){ localStorage.setItem("solo.seq."+rid,n); draw(); };
+  draw();
+}
 function has(id){ return S.revealed.includes(id)||S.hand.includes(id); }
 function investigate(id){ const c=card(id); const cr=roundOf(S.seq);
   if(c.r>cr){toast("아직 조사할 수 없습니다");return;} if(c.req&&!has(c.req)){toast("선행 단서(예: 열쇠)가 필요합니다");return;}
@@ -316,7 +351,8 @@ function fallbackCopy(t){ const ta=document.createElement("textarea"); ta.value=
 let tt; function toast(m){ const el=$("toast"); el.textContent=m; el.classList.add("on"); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove("on"),1800); }
 function reset(){ if(confirm("보드를 초기화할까요? (단계·조사·손패·로그·배정이 지워집니다)")){ S={seq:1,revealed:[],hand:[],log:"",tab:"cast",assign:{sim:"ai",yu:"ai",lee:"ai",ose:"ai"}}; save(); render(); } }
 
-render();
+const SOLO=new URLSearchParams(location.search).get("sheet");
+if(SOLO && D.roles.find(r=>r.id===SOLO)) renderSolo(SOLO); else render();
 </script>
 <div class="modal" id="modal"><div class="box" id="mbox"></div></div>
 </body>
