@@ -315,7 +315,7 @@ def sheet(role_id: str, clientId: str = ""):
         seq = ROOM["seq"]
         if not r:
             return JSONResponse({"error": "없는 배역"}, status_code=404)
-        if r["clientId"] and r["clientId"] != clientId:
+        if r["clientId"] != clientId:  # 엄격: 내가 '맡은' 배역만 (빈자리·AI 배역 비밀 열람 차단)
             return JSONResponse({"error": "자기 배역만 열람할 수 있습니다"}, status_code=403)
     s = SC.private_sheet(role_id)
     s["fragments"] = SC.memory_up_to(role_id, seq)
@@ -400,7 +400,7 @@ def publish_card(b: Investigate):
 def get_hand(role_id: str, clientId: str = ""):
     with LOCK:
         r = ROOM["roles"].get(role_id)
-        if not r or (r["clientId"] and r["clientId"] != clientId):
+        if not r or r["clientId"] != clientId:  # 엄격: 내 손패만
             return JSONResponse({"error": "권한 없음"}, status_code=403)
         return {"hand": [SC.public_card(c) for c in ROOM["hands"].get(role_id, [])]}
 
