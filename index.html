@@ -16,23 +16,24 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Apple SD Gothic Neo",sans-serif}
   .serif{font-family:"Nanum Myeongjo","Batang","AppleMyungjo",serif}
   button{font-family:inherit}
-  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:9px 15px;border-radius:10px;cursor:pointer;font-size:14px;transition:.15s}
+  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:8px 14px;border-radius:10px;cursor:pointer;font-size:13.5px;transition:.15s}
   .btn:hover{border-color:var(--gold);color:#fff}
   .btn.gold{background:linear-gradient(90deg,#8a7038,var(--gold));border-color:var(--gold);color:#1a1509;font-weight:700}
   .btn.ember{background:linear-gradient(90deg,#7a1410,var(--ember));border-color:var(--ember-b);color:#fff;font-weight:700}
   .btn.gold:hover,.btn.ember:hover{filter:brightness(1.1)}
-  .btn.sm{padding:5px 11px;font-size:12.5px;border-radius:8px}
+  .btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
   .btn:disabled{opacity:.4;cursor:not-allowed}
   .pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);color:var(--sub)}
   .pill.bad{color:var(--bad);border-color:#5a2c2c}
   .screen{display:none}.screen.on{display:block}
 
+  /* 타이틀 */
   #s-landing{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:0 8vw;position:relative;overflow:hidden;
     background:radial-gradient(70% 55% at 30% 42%,#1a1622 0%,transparent 60%),radial-gradient(130% 110% at 50% 48%,#0d0b12 0%,#070506 55%,#000 100%)}
-  #s-landing .vig{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 140px 40px rgba(0,0,0,.7);background:radial-gradient(140% 105% at 55% 50%,transparent 52%,rgba(0,0,0,.6) 100%)}
+  #s-landing .vig{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 140px 40px rgba(0,0,0,.7)}
   #s-landing .in{position:relative;max-width:900px}
   #s-landing .kick{color:var(--ember-b);letter-spacing:.42em;font-size:12px;margin-bottom:24px}
-  #s-landing h1{margin:0;color:#efe7db;font-weight:700;letter-spacing:.14em;line-height:1.05;font-size:clamp(50px,12vw,130px);text-shadow:0 10px 50px rgba(0,0,0,.8)}
+  #s-landing h1{margin:0;color:#efe7db;font-weight:700;letter-spacing:.14em;line-height:1.05;font-size:clamp(50px,12vw,120px);text-shadow:0 10px 50px rgba(0,0,0,.8)}
   #s-landing .tag{margin-top:20px;color:var(--gold);font-style:italic;font-size:clamp(15px,2.4vw,22px)}
   #s-landing .syn{margin-top:26px;max-width:640px;color:#cfc7d6;font-size:14px;line-height:1.95;border-left:2px solid var(--ember);padding-left:16px;white-space:pre-line;max-height:34vh;overflow:auto}
   .be-chip{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--sub);background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:20px;padding:6px 14px;margin-top:20px}
@@ -42,69 +43,81 @@
   .head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
   .head .t{font-size:22px;font-weight:700;letter-spacing:.04em}
   .lead{color:var(--sub);font-size:13.5px;line-height:1.8;margin:2px 0 18px}
-
   .role-card{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;position:relative;overflow:hidden}
   .role-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--rc,#555)}
   .role-card.mine{border-color:var(--gold)}
   .role-card .av{font-size:28px;width:48px;height:48px;display:grid;place-items:center;background:var(--bg);border-radius:12px;flex:0 0 48px}
-  .role-card .meta{flex:1;min-width:0}.role-card .nm{font-weight:700;font-size:16px;display:flex;align-items:center;gap:7px}
-  .role-card .jb{font-size:11.5px;color:var(--muted)}.role-card .tg{font-size:12.5px;color:#c3bcd2;margin-top:3px;line-height:1.5}
-  .role-card .act{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto}
+  .role-card .nm{font-weight:700;font-size:16px}.role-card .jb{font-size:11.5px;color:var(--muted)}.role-card .tg{font-size:12.5px;color:#c3bcd2;margin-top:3px;line-height:1.5}
   .st-tag{font-size:11.5px;padding:4px 9px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);color:var(--sub)}
   .st-tag.human{color:var(--gold-b);border-color:#5a4a2c}.st-tag.ai{color:#8fb3c9;border-color:#2c465a}
 
+  /* 플레이 · 페이즈 드리븐 */
   #s-play{display:none;flex-direction:column;height:100vh}#s-play.on{display:flex}
-  .chead{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(17,15,21,.96),rgba(17,15,21,.8));backdrop-filter:blur(8px);flex-wrap:wrap}
-  .chead .rt{font-weight:700;display:flex;align-items:center;gap:7px}.chead .rt .mk{color:var(--ember)}
-  .chead .rd{font-size:12px;color:var(--gold)}.chead .spacer{margin-left:auto}.chead .metag{font-size:12px;color:var(--sub)}
-  .table{flex:1;overflow-y:auto;padding:18px 14px;background:radial-gradient(130% 90% at 50% 0%,#14101a 0%,var(--bg) 70%);display:flex;flex-direction:column;gap:11px}
-  .sys{align-self:center;text-align:center;color:var(--muted);font-size:12px;border:1px dashed var(--line);border-radius:20px;padding:5px 16px;max-width:92%}
-  .sys.bc{color:var(--cold);border-color:#2c465a;background:#0e1620;letter-spacing:.02em}
-  .msg{display:flex;gap:9px;max-width:88%}.msg.own{align-self:flex-end;flex-direction:row-reverse}
-  .msg .av{font-size:19px;width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);border-radius:11px}
-  .msg .nm{font-size:12px;font-weight:700;margin:0 0 3px 2px}.msg.own .nm{text-align:right}
-  .msg .bub{background:var(--panel);border:1px solid var(--line);border-radius:4px 14px 14px 14px;padding:9px 13px;font-size:14.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
-  .msg.own .bub{background:linear-gradient(135deg,#8a7038,var(--gold));color:#1a1509;border-radius:14px 4px 14px 14px}
-  .tag-me{font-size:9.5px;color:var(--gold);border:1px solid var(--gold);border-radius:6px;padding:0 4px;margin-left:5px}
-  .typing{align-self:flex-start;color:var(--muted);font-size:13px;padding:2px 12px}
-  .typing span{animation:blink 1.2s infinite}.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
-  @keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
-  .aicall{display:flex;gap:7px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid var(--line);background:var(--bg2);align-items:center}
-  .aicall .lb{font-size:11px;color:var(--muted)}
-  .aichip{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:5px 11px;cursor:pointer;font-size:12.5px}
-  .aichip:hover{border-color:var(--sc)}.aichip .d{width:9px;height:9px;border-radius:50%;background:var(--sc)}
-  .composer{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--bg2);align-items:flex-end}
-  .composer .melab{font-size:12px;color:var(--sub);align-self:center;white-space:nowrap;max-width:92px;overflow:hidden;text-overflow:ellipsis}
-  .composer textarea{flex:1;resize:none;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:10px 13px;font-size:14.5px;font-family:inherit;line-height:1.5;max-height:110px}
+  .chead{display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(17,15,21,.97),rgba(17,15,21,.85));flex-wrap:wrap}
+  .chead .rt{font-weight:700;display:flex;align-items:center;gap:6px;font-size:14px}.chead .rt .mk{color:var(--ember)}
+  .chead .ph{font-size:12px;color:var(--gold)}.chead .me{font-size:12px;color:var(--sub)}.chead .spacer{margin-left:auto}
+  .pbanner{padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);font-size:13px;color:#dfe4f4;line-height:1.6}
+  .pbanner .g{color:var(--gold);font-size:11px;letter-spacing:.06em;margin-right:6px}
+  .pbanner .il{color:var(--cold);margin-top:5px;font-size:12.5px}
+  .ppanel{flex:1 1 auto;overflow-y:auto;padding:14px}
+  #s-play.talk .ppanel,#s-play.reveal .ppanel{flex:0 1 auto;max-height:30vh}
+  .chat{flex:0 0 32vh;overflow-y:auto;padding:12px 14px;border-top:1px solid var(--line);background:radial-gradient(130% 90% at 50% 0%,#14101a,var(--bg) 70%);display:flex;flex-direction:column;gap:10px}
+  #s-play.talk .chat{flex:1 1 auto}
+  .sys{align-self:center;text-align:center;color:var(--muted);font-size:12px;border:1px dashed var(--line);border-radius:20px;padding:4px 14px;max-width:92%}
+  .sys.bc{color:var(--cold);border-color:#2c465a;background:#0e1620}
+  .msg{display:flex;gap:8px;max-width:90%}.msg.own{align-self:flex-end;flex-direction:row-reverse}
+  .msg .av{font-size:18px;width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);border-radius:9px}
+  .msg .nm{font-size:11px;font-weight:700;margin:0 0 2px 2px}.msg.own .nm{text-align:right}
+  .msg .bub{background:var(--panel);border:1px solid var(--line);border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .msg.own .bub{background:linear-gradient(135deg,#8a7038,var(--gold));color:#1a1509;border-radius:12px 4px 12px 12px}
+  .tag-me{font-size:9px;color:var(--gold);border:1px solid var(--gold);border-radius:5px;padding:0 4px;margin-left:4px}
+  .composer{display:flex;gap:8px;padding:9px 12px;border-top:1px solid var(--line);background:var(--bg2);align-items:flex-end}
+  .composer .melab{font-size:12px;color:var(--sub);align-self:center;white-space:nowrap;max-width:88px;overflow:hidden;text-overflow:ellipsis}
+  .composer textarea{flex:1;resize:none;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:9px 12px;font-size:14px;font-family:inherit;line-height:1.5;max-height:96px}
   .composer textarea:focus{outline:none;border-color:var(--gold)}.composer textarea:disabled{opacity:.5}
-  .banner{background:#2a1414;border:1px solid #5a2c2c;color:#ffd3d3;padding:9px 14px;font-size:13px;text-align:center;display:none}.banner.on{display:block}
+  .banner{background:#2a1414;border:1px solid #5a2c2c;color:#ffd3d3;padding:8px 14px;font-size:13px;text-align:center;display:none}.banner.on{display:block}
 
-  .modal{position:fixed;inset:0;background:rgba(6,4,8,.82);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:60;padding:16px}.modal.on{display:flex}
-  .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:560px;width:100%;padding:22px;box-shadow:var(--shadow);max-height:92vh;overflow-y:auto}
-  .modal h2{margin:0 0 4px;font-size:20px}.modal .mlead{color:var(--sub);font-size:13px;margin-bottom:14px}
-  .sheet-sec{border-top:1px dashed var(--line);padding-top:11px;margin-top:11px}.sheet-sec:first-of-type{border-top:0;margin-top:0;padding-top:0}
-  .sheet-sec .h{font-weight:700;color:var(--gold-b);font-size:13.5px;margin-bottom:4px}.sheet-sec .b{font-size:14px;color:#ded8ea;line-height:1.72}
-  .hidden-banner{background:#2a1214;border:1px solid #5a2c2c;color:#ffb9b9;border-radius:10px;padding:11px 14px;font-weight:700;text-align:center;margin-bottom:12px}
-  .frag{background:#0e1620;border:1px solid #2c465a;border-radius:10px;padding:10px 13px;margin:8px 0;color:#cfe0ee;font-size:13.5px}
-  .frag .w{font-size:11px;color:var(--cold);margin-bottom:3px}
+  /* 오프닝/토론 패널 */
+  .intro{white-space:pre-line;font-size:15px;line-height:1.95;color:#ded8ea;border-left:2px solid var(--ember);padding-left:14px}
+  .panel-note{color:var(--sub);font-size:13.5px;line-height:1.8}
 
+  /* 카드맵 */
+  .clue-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .clue-h h3{margin:0;font-size:15px;color:var(--gold-b)}
   .loc-group{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
-  .loc-group .lh{padding:9px 13px;background:var(--panel2);font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:8px}
-  .loc-group .lb{padding:8px 13px;display:flex;flex-direction:column;gap:7px}
-  .card-slot{border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:13px}
-  .card-slot.locked{color:var(--muted);display:flex;align-items:center;justify-content:space-between;gap:8px}
-  .card-slot.open{border-color:var(--cold);background:#0e1620}
-  .card-slot.open .ct{font-weight:700;color:var(--cold-b,#a9d3ea);margin-bottom:3px}
-  .card-slot.open.bait{border-color:#5a4a2c}
-  .card-slot .rr{font-size:11px;color:var(--muted)}
+  .loc-group .lh{padding:8px 12px;background:var(--panel2);font-weight:700;font-size:13px}
+  .cardmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;padding:9px}
+  .gcard{aspect-ratio:3/4;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(160deg,#1a1722,#141119);transition:.15s}
+  .gcard:hover{transform:translateY(-2px);border-color:var(--gold)}
+  .gcard .rb{font-size:9.5px;color:var(--muted)}
+  .gcard .t{font-size:12px;font-weight:700;margin-top:auto;line-height:1.3}
+  .gcard.face{align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#181521,#181521 6px,#15121d 6px,#15121d 12px)}
+  .gcard.face .q{font-size:26px;font-family:"Nanum Myeongjo",serif;color:#3c354c}
+  .gcard.face .rb{position:absolute;bottom:7px;left:0;right:0;text-align:center}.gcard.face .tag{color:var(--gold-b)}
+  .gcard.locked{cursor:default;opacity:.5}
+  .gcard.hand{border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219)}.gcard.hand .t{color:var(--gold-b)}
+  .gcard.pub{border-color:var(--cold);background:linear-gradient(160deg,#111a22,#0e1620)}.gcard.pub.baitc{border-color:#5a4a2c}
+  .gcard .tag{position:absolute;top:6px;right:6px;font-size:8.5px;padding:1px 5px;border-radius:6px;background:rgba(0,0,0,.45)}
+  .gcard.hand .tag{color:var(--gold-b)}.gcard.pub .tag{color:var(--cold)}
 
-  .q-block{margin-bottom:14px}.q-block .q{font-size:14px;color:var(--gold-b);margin-bottom:6px;font-weight:600}
-  .q-block textarea{width:100%;min-height:66px;resize:vertical;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:9px 11px;font-size:13.5px;font-family:inherit;line-height:1.55}
+  /* 질문지 */
+  .q-block{margin-bottom:13px}.q-block .q{font-size:14px;color:var(--gold-b);margin-bottom:6px;font-weight:600}
+  .q-block textarea{width:100%;min-height:62px;resize:vertical;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:9px 11px;font-size:13.5px;font-family:inherit;line-height:1.55}
   .q-block textarea:focus{outline:none;border-color:var(--gold)}
-  .grade-line{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px;flex-wrap:wrap}
-  .grade-line .v{font-size:12px;color:var(--muted);flex-basis:100%}
-  .verdict{font-size:24px;font-weight:800;margin-bottom:10px}.verdict.good{color:var(--good)}.verdict.warn{color:var(--warn)}.verdict.bad{color:var(--bad)}
+  .grade{display:flex;gap:7px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;flex-wrap:wrap}.grade .v{flex-basis:100%;font-size:12px;color:var(--muted)}
+  .verdict{font-size:23px;font-weight:800;margin-bottom:10px}.verdict.good{color:var(--good)}.verdict.warn{color:var(--warn)}.verdict.bad{color:var(--bad)}
   .rev-sol{font-size:14px;line-height:1.85;color:#e4dff0;white-space:pre-wrap}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 17px;margin-bottom:14px}
+  .card h2{margin:0 0 10px;font-size:15px;color:var(--gold-b)}
+  .modal{position:fixed;inset:0;background:rgba(6,4,8,.82);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:60;padding:16px}.modal.on{display:flex}
+  .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:540px;width:100%;padding:22px;box-shadow:var(--shadow);max-height:92vh;overflow-y:auto}
+  .modal h2{margin:0 0 4px;font-size:20px}.modal .mlead{color:var(--sub);font-size:13px;margin-bottom:14px}
+  .sec{border-top:1px dashed var(--line);padding-top:11px;margin-top:11px}.sec:first-of-type{border-top:0;margin-top:0;padding-top:0}
+  .sec .h{font-weight:700;color:var(--gold-b);font-size:13.5px;margin-bottom:4px}.sec .b{font-size:14px;color:#ded8ea;line-height:1.72}
+  .hb{background:#2a1214;border:1px solid #5a2c2c;color:#ffb9b9;border-radius:10px;padding:11px 14px;font-weight:700;text-align:center;margin-bottom:12px}
+  .frag{background:#0e1620;border:1px solid #2c465a;border-radius:10px;padding:9px 12px;margin:8px 0;color:#cfe0ee;font-size:13.5px}.frag .w{font-size:11px;color:var(--cold);margin-bottom:3px}
+  .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"Nanum Myeongjo",serif}
 </style>
 </head>
 <body>
@@ -124,7 +137,7 @@
 <div id="s-lobby" class="screen">
   <div class="wrap">
     <div class="head"><span class="t serif">배역 선택</span><span class="pill" id="beChip2"></span></div>
-    <div class="lead">각자 자기 기기에서 맡을 배역을 고르세요. 인원이 모자라면 빈 자리를 <b>AI로 채우기</b> — AI가 대본대로 조사·거짓말·자백까지 합니다. 배역을 고르면 자기 비밀은 그 기기에만 보입니다.</div>
+    <div class="lead">각자 자기 기기에서 배역을 고르세요(또는 랜덤). 자기 배역의 비밀 큐카드는 이 기기에만 보입니다. 남은 배역은 AI(진행자)가 맡습니다.</div>
     <div id="lobbyList"></div>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
       <button class="btn" onclick="go('play')">관전으로 보기</button>
@@ -135,19 +148,18 @@
 
 <div id="s-play" class="screen">
   <div class="chead">
-    <span class="rt"><span class="mk">◈</span> <span id="pTitle">졸업사진</span></span>
-    <span class="rd" id="pPhase"></span>
-    <span class="metag" id="pMe"></span>
+    <span class="rt"><span class="mk">◈</span> 졸업사진</span>
+    <span class="ph" id="pPhase"></span>
+    <span class="me" id="pMe"></span>
     <span class="spacer"></span>
     <button class="btn sm" onclick="go('lobby')">배역</button>
-    <button class="btn sm" id="sheetBtn" onclick="showMySheet()">내 시트</button>
-    <button class="btn sm" onclick="openBoard()">조사 <span id="clueCount" class="pill" style="padding:0 6px"></span></button>
-    <button class="btn sm" id="advBtn" onclick="advance()">다음 단계 ›</button>
-    <button class="btn sm ember" id="finalBtn" style="display:none" onclick="openFinal()">종막 질문지</button>
+    <button class="btn sm" id="sheetBtn" onclick="showMySheet()">내 큐카드</button>
+    <button class="btn sm" id="advBtn" onclick="advance()">다음 페이즈 ›</button>
   </div>
   <div class="banner" id="banner"></div>
-  <div class="table" id="table"></div>
-  <div class="aicall" id="aicall"></div>
+  <div class="pbanner" id="pbanner"></div>
+  <div class="ppanel" id="ppanel"></div>
+  <div class="chat" id="chat"></div>
   <div class="composer">
     <span class="melab" id="melab">관전 중</span>
     <textarea id="input" rows="1" placeholder="배역을 골라야 말할 수 있어요"></textarea>
@@ -156,25 +168,11 @@
 </div>
 
 <div class="modal" id="sheetModal"><div class="box" id="sheetBox"></div></div>
-<div class="modal" id="boardModal"><div class="box">
-  <h2>조사 보드</h2><div class="mlead">장소를 조사해 단서를 공개합니다. 공개된 카드는 모두가 봅니다. 라운드가 오르면 더 많은 카드가 열립니다.</div>
-  <div id="boardList"></div>
-  <div style="margin-top:14px;text-align:right"><button class="btn" onclick="closeModal('boardModal')">닫기</button></div>
-</div></div>
-<div class="modal" id="finalModal"><div class="box" id="finalBox"></div></div>
-<div class="modal" id="endingModal"><div class="box">
-  <div class="verdict" id="endVerdict"></div>
-  <div id="endGrades" style="margin-bottom:14px"></div>
-  <div class="rev-sol" id="endSol"></div>
-  <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">
-    <button class="btn" onclick="closeModal('endingModal')">여운</button>
-    <button class="btn gold" onclick="resetRoom()">처음부터</button>
-  </div>
-</div></div>
+<div class="modal" id="cardModal"><div class="box" id="cardBox"></div></div>
 
 <script>
 "use strict";
-let SCEN=null, STATE=null, scr="landing", lastRev=-1, busy=false, endShown=false;
+let SCEN=null, STATE=null, myHand=[], scr="landing", lastRev=-1, gradeBusy=false;
 let clientId=localStorage.getItem("pmb.cid");
 if(!clientId){clientId="c"+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);localStorage.setItem("pmb.cid",clientId);}
 let myRoleId=localStorage.getItem("pmb.role")||null;
@@ -182,37 +180,48 @@ let myRoleId=localStorage.getItem("pmb.role")||null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 const roleById=id=>SCEN.characters.find(c=>c.id===id);
+const cardCat=id=>SCEN.cardCatalog.find(c=>c.id===id);
+const myRoleValid=()=>myRoleId&&STATE&&STATE.roles[myRoleId]&&STATE.roles[myRoleId].mode==="human";
 
 async function boot(){
   try{ SCEN=await (await fetch("/api/scenario")).json(); }
-  catch(e){ $("beTxt").textContent="서버 연결 실패 — python server.py 로 서버를 켜세요"; return; }
-  $("lTitle").textContent=SCEN.title; $("lSub").textContent=SCEN.subtitle;
-  $("lIntro").textContent=SCEN.intro; $("pTitle").textContent=SCEN.title;
+  catch(e){ $("beTxt").textContent="서버 연결 실패"; return; }
+  $("lTitle").textContent=SCEN.title; $("lSub").textContent=SCEN.subtitle; $("lIntro").textContent=SCEN.intro;
   const be=SCEN.backend||{ok:false,label:"?"};
   $("beChip").className="be-chip"+(be.ok?" ok":""); $("beTxt").textContent="AI 백엔드 · "+be.label;
   $("beChip2").textContent=be.label; $("beChip2").className="pill"+(be.ok?"":" bad");
   await poll(); setInterval(poll,1500);
 }
-async function poll(){ try{ STATE=await (await fetch("/api/state")).json(); applyState(); }catch(e){} }
+async function poll(){
+  try{ STATE=await (await fetch("/api/state")).json(); }catch(e){ return; }
+  if(myRoleValid()){ try{ myHand=(await (await fetch("/api/hand/"+myRoleId+"?clientId="+encodeURIComponent(clientId))).json()).hand||[]; }catch(e){} }
+  else myHand=[];
+  applyState();
+}
 function go(name){ scr=name; ["landing","lobby","play"].forEach(s=>$("s-"+s).classList.remove("on")); $("s-"+name).classList.add("on"); if(name==="play")$("s-play").style.display="flex"; lastRev=-1; applyState(); }
 
-function myRoleValid(){ return myRoleId&&STATE&&STATE.roles[myRoleId]&&STATE.roles[myRoleId].mode==="human"; }
 function applyState(){
   if(!STATE)return;
   if(myRoleId&&(!STATE.roles[myRoleId]||STATE.roles[myRoleId].mode!=="human")){ myRoleId=null; localStorage.removeItem("pmb.role"); }
-  if(STATE.ending&&!endShown) showEnding();
-  if(!STATE.ending) endShown=false;
   if(scr==="lobby") renderLobby();
   else if(scr==="play"){
-    if(STATE.rev!==lastRev){ renderTable(); lastRev=STATE.rev; if($("boardModal").classList.contains("on"))renderBoard(); }
-    renderAiCall(); updateComposer();
-    $("pPhase").textContent=STATE.phase?(STATE.phase.name):"";
-    $("clueCount").textContent=(STATE.revealedIds||[]).length;
-    $("finalBtn").style.display=(STATE.phase&&STATE.phase.key==="final")?"":"none";
+    const ph=STATE.phase||{};
+    $("s-play").className="screen on "+(ph.key||"");
+    $("pPhase").textContent=(ph.name||"")+(STATE.round?` · 조사 R${STATE.round}`:"");
+    updateComposer();
+    // 배너
+    const il=(STATE.table||[]).slice().reverse().find(m=>m.broadcast);
+    $("pbanner").innerHTML=`<span class="g">GM</span>${esc(ph.gm||"")}`;
+    if(ph.key==="reveal"&&STATE.ending) $("pbanner").innerHTML=`<span class="g">GM</span>진상이 밝혀졌습니다.`;
+    // 페이즈 패널
+    renderPanel(ph);
+    // 채팅
+    if(STATE.rev!==lastRev){ renderChat(); lastRev=STATE.rev; }
     $("advBtn").style.display=(STATE.seq>=9)?"none":"";
   }
 }
 
+/* 로비 */
 function renderLobby(){
   const list=$("lobbyList"); list.innerHTML="";
   const rnd=document.createElement("div"); rnd.style.margin="0 0 12px";
@@ -224,20 +233,90 @@ function renderLobby(){
     let act="";
     if(mine) act=`<span class="st-tag human">나의 배역</span><button class="btn sm gold" onclick="go('play')">입장</button><button class="btn sm" onclick="releaseRole()">해제</button>`;
     else if(r.mode==="human") act=`<span class="st-tag human">사람 참여 중</span>`;
-    else if(r.mode==="ai") act=`<span class="st-tag ai">AI가 맡음</span><button class="btn sm" onclick="setAI('${c.id}')">AI 해제</button>`;
-    else act=`<button class="btn sm gold" onclick="claim('${c.id}')">맡기</button><button class="btn sm" onclick="setAI('${c.id}')">AI로 채우기</button>`;
-    d.innerHTML=`<div class="av">${c.avatar}</div><div class="meta"><div class="nm">${esc(c.name)}${mine?' <span class="tag-me">나</span>':''}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div><div class="tg">${esc(c.tagline)}</div></div><div class="act">${act}</div>`;
+    else if(r.mode==="ai") act=`<span class="st-tag ai">AI(진행자)</span><button class="btn sm" onclick="setAI('${c.id}')">해제</button>`;
+    else act=`<button class="btn sm gold" onclick="claim('${c.id}')">맡기</button><button class="btn sm" onclick="setAI('${c.id}')">AI로</button>`;
+    d.innerHTML=`<div class="av">${c.avatar}</div><div style="flex:1;min-width:0"><div class="nm" style="color:${c.color}">${esc(c.name)}${mine?' <span class="tag-me">나</span>':''}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div><div class="tg">${esc(c.tagline)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${act}</div>`;
     list.appendChild(d);
   });
 }
-async function claim(id){ const r=await post("/api/claim",{roleId:id,clientId}); if(r&&r.error){banner(r.error);return;} myRoleId=id; localStorage.setItem("pmb.role",id); await poll(); go("play"); }
-async function claimRandom(){ const r=await post("/api/claim-random",{clientId}); if(r&&r.error){banner(r.error);return;} if(r&&r.roleId){ myRoleId=r.roleId; localStorage.setItem("pmb.role",r.roleId); await poll(); go("play"); } }
+async function claim(id){ const r=await post("/api/claim",{roleId:id,clientId}); if(r&&r.error){banner(r.error);return;} setMy(id); go("play"); }
+async function claimRandom(){ const r=await post("/api/claim-random",{clientId}); if(r&&r.error){banner(r.error);return;} if(r&&r.roleId){ setMy(r.roleId); go("play"); } }
+async function setMy(id){ myRoleId=id; localStorage.setItem("pmb.role",id); await poll(); }
 async function releaseRole(){ if(myRoleId){ await post("/api/release",{roleId:myRoleId,clientId}); myRoleId=null; localStorage.removeItem("pmb.role"); await poll(); } }
 async function setAI(id){ const r=await post("/api/setai",{roleId:id}); if(r&&r.error)banner(r.error); await poll(); }
-async function resetRoom(){ if(!confirm("방을 초기화할까요? 모든 진행이 사라집니다."))return; await post("/api/reset",{}); myRoleId=null; localStorage.removeItem("pmb.role"); endShown=false; ["endingModal","finalModal","boardModal","sheetModal"].forEach(closeModal); await poll(); go("lobby"); }
+async function resetRoom(){ if(!confirm("방을 초기화할까요?"))return; await post("/api/reset",{}); myRoleId=null; localStorage.removeItem("pmb.role"); await poll(); go("lobby"); }
 
-function renderTable(){
-  const box=$("table"); const near=box.scrollHeight-box.scrollTop-box.clientHeight<130; box.innerHTML="";
+/* 페이즈 패널 */
+function renderPanel(ph){
+  const p=$("ppanel"); const k=ph.key;
+  if(k==="open"){ p.innerHTML=`<div class="card"><h2>사건 · 공통지문</h2><div class="intro">${esc(SCEN.intro)}</div></div>
+    <div class="card"><h2>피해자</h2><div class="panel-note">${esc(SCEN.victim||"")}</div></div>
+    <div class="panel-note" style="text-align:center">각자 <b>내 큐카드</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`; }
+  else if(k==="invest"){ p.innerHTML=`<div class="clue-h"><h3>조사 맵</h3><span class="pill">공개 ${STATE.revealed.length}</span><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">카드를 눌러 <b>조사(손패)</b> → 열어보고 <b>전체공개</b>. 불리한 카드는 손패에 감출 수 있어요.</div><div id="cmap"></div>`;
+    renderMap($("cmap")); }
+  else if(k==="talk"){ const pubs=(STATE.revealed||[]);
+    p.innerHTML=`<div class="clue-h"><h3>토론</h3><span class="pill">공개 단서 ${pubs.length}</span></div><div class="panel-note">아래 대화창에서 서로를 취조하세요. 공개된 단서는 아래에 요약돼 있습니다.</div>
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">${pubs.map(c=>`<div class="card" style="margin:0;padding:9px 12px"><b style="color:var(--cold)">${esc(c.title)}</b> <span class="lead" style="margin:0">${esc(c.text)}</span></div>`).join("")||'<div class="panel-note">아직 공개된 단서가 없습니다.</div>'}</div>`; }
+  else if(k==="final"){ renderFinal(p); }
+  else if(k==="reveal"){ renderReveal(p); }
+  else p.innerHTML="";
+}
+
+function renderMap(el){
+  const revIds=(STATE.revealedIds||[]); const handIds=myHand.map(c=>c.id); const cr=STATE.round||0;
+  const pub={}; (STATE.revealed||[]).forEach(c=>pub[c.id]=c); const hand={}; myHand.forEach(c=>hand[c.id]=c);
+  const locs=[["A","🏫 시체 (교실 중앙)"],["B","📋 3학년 2반 교실"],["C","🌫️ 옥상"],["D","🎨 미술실"],["E","📻 방송실"],["F","🗄️ 교무실"]];
+  let h="";
+  locs.forEach(([lc,ln])=>{ const cs=SCEN.cardCatalog.filter(c=>c.loc===lc); if(!cs.length)return;
+    h+=`<div class="loc-group"><div class="lh">${ln}</div><div class="cardmap">`;
+    cs.forEach(c=>{
+      if(pub[c.id]) h+=`<div class="gcard pub${pub[c.id].bait?' baitc':''}" onclick="openCard('${c.id}')"><span class="tag">공개</span><div class="rb">R${c.round}</div><div class="t">${esc(pub[c.id].title)}</div></div>`;
+      else if(hand[c.id]) h+=`<div class="gcard hand" onclick="openCard('${c.id}')"><span class="tag">손패</span><div class="rb">R${c.round}·비공개</div><div class="t">${esc(hand[c.id].title)}</div></div>`;
+      else{ const reqOk=!c.requires||revIds.includes(c.requires)||handIds.includes(c.requires); const roundOk=c.round<=cr;
+        if(roundOk&&reqOk&&myRoleValid()) h+=`<div class="gcard face" onclick="investigate('${c.id}')"><span class="tag">${c.obligatory?'공개의무':'조사'}</span><div class="q">?</div><div class="rb">R${c.round}</div></div>`;
+        else h+=`<div class="gcard face locked"><div class="q">🔒</div><div class="rb">${roundOk?(myRoleValid()?"선행 필요":"관전"):"R"+c.round}</div></div>`; }
+    });
+    h+=`</div></div>`; });
+  el.innerHTML=h;
+}
+async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); }
+function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const hand=myHand.find(c=>c.id===id); const c=pub||hand; if(!c)return;
+  const inHand=!!hand&&!pub;
+  $("cardBox").innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:8px">${esc(c.locName)} · R${c.round}${pub?' · 전체공개':' · 손패(비공개)'}</div>
+    <h2 style="font-size:18px">${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
+    <div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">${inHand?`<button class="btn gold" onclick="publish('${id}')">전체공개</button>`:''}<button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
+  openModal("cardModal");
+}
+async function publish(id){ closeModal("cardModal"); const r=await post("/api/publish",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error)banner(r.error); await poll(); }
+
+/* 종막 질문지 */
+function renderFinal(p){
+  const g=myRoleId?STATE.grades[myRoleId]:null; const mine=myRoleValid();
+  let h=`<div class="card"><h2>종막 · 질문지</h2><div class="mlead">배역으로서 서술로 답하면 진행자(AI)가 진상 기준으로 채점합니다.</div>`;
+  if(mine&&!g){ h+=SCEN.finalQuestions.map((q,i)=>`<div class="q-block"><div class="q">${i+1}. ${esc(q)}</div><textarea id="qa${i}"></textarea></div>`).join("")+`<div style="text-align:right"><button class="btn ember" onclick="submitFinal()">제출·채점</button></div>`; }
+  else if(mine&&g){ h+=gradeRow(myRoleId,g); }
+  else h+=`<div class="panel-note">관전 중 — 사람 배역만 답합니다.</div>`;
+  h+=`</div>`;
+  const others=Object.keys(STATE.grades||{}).filter(id=>id!==myRoleId);
+  if(others.length){ h+=`<div class="card"><h2>다른 배역 채점</h2>${others.map(id=>gradeRow(id,STATE.grades[id])).join("")}</div>`; }
+  p.innerHTML=h;
+}
+function gradeRow(id,g){ const c=roleById(id); return `<div class="grade"><span style="color:${c.color};font-weight:700">${c.avatar} ${esc(c.name)}</span><span class="pill ${g.selfAccused?'':'bad'}">${g.selfAccused?'자기지목 ✓':'자기지목 ✗'}</span><span class="pill">죄 ${g.sinsAcknowledged}</span>${g.osewonIdentified?'<span class="pill">오세원 간파 ✓</span>':''}<span class="pill">${g.score}점</span>${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
+async function submitFinal(){ if(gradeBusy)return; const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():"")); if(answers.every(a=>!a)){alert("한 문항 이상 답해주세요.");return;} gradeBusy=true; banner("채점 중…"); const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers}); gradeBusy=false; if(r&&r.error)banner("채점 오류: "+r.error); else banner(""); await poll(); }
+
+/* 엔딩 */
+function renderReveal(p){
+  const e=STATE.ending;
+  if(!e){ p.innerHTML=`<div class="card"><h2>진상 공개</h2><div class="panel-note">아직 채점이 끝나지 않았습니다. 종막 질문지 답변이 모이면 엔딩이 열립니다.</div></div>`; return; }
+  const tone=e.tone==="good"?"good":(e.tone==="warn"?"warn":"bad");
+  const g=STATE.grades||{}; const gh=["sim","yu","lee","ose"].filter(id=>g[id]).map(id=>gradeRow(id,g[id])).join("");
+  p.innerHTML=`<div class="card"><div class="verdict ${tone}">${esc(e.name)}</div>${gh}<div class="rev-sol" style="margin-top:12px">${esc(e.desc)}\n\n─ 진상 ─\n${esc(e.truth)}</div></div>`;
+}
+
+/* 채팅 */
+function renderChat(){
+  const box=$("chat"); const near=box.scrollHeight-box.scrollTop-box.clientHeight<120; box.innerHTML="";
   (STATE.table||[]).forEach(m=>{
     if(m.kind==="system"){ const s=document.createElement("div"); s.className="sys"+(m.broadcast?" bc":""); s.textContent=m.text; box.appendChild(s); return; }
     const c=roleById(m.roleId); const own=m.roleId===myRoleId;
@@ -245,14 +324,7 @@ function renderTable(){
     row.innerHTML=`<div class="av">${c?c.avatar:"❔"}</div><div><div class="nm" style="color:${c?c.color:"#999"}">${esc(m.speaker)}${m.kind==="human"?'<span class="tag-me">사람</span>':''}</div><div class="bub">${esc(m.text)}</div></div>`;
     box.appendChild(row);
   });
-  if(STATE.typing){ const c=roleById(STATE.typing); const t=document.createElement("div"); t.className="typing"; t.innerHTML=`${esc(c?c.name:"...")} <span>·</span><span>·</span><span>·</span>`; box.appendChild(t); }
   if(near) box.scrollTop=box.scrollHeight;
-}
-function renderAiCall(){
-  const bar=$("aicall"); const ais=SCEN.characters.filter(c=>STATE.roles[c.id].mode==="ai");
-  bar.innerHTML=ais.length?`<span class="lb">AI 배역 부르기</span>`:`<span class="lb">AI 배역이 없습니다. 로비에서 빈 자리를 'AI로 채우기'.</span>`;
-  ais.forEach(c=>{ const b=document.createElement("span"); b.className="aichip"; b.style.setProperty("--sc",c.color); b.innerHTML=`<span class="d"></span>${esc(c.name)}`; b.onclick=()=>aiSay(c.id); bar.appendChild(b); });
-  if(ais.length>1){ const all=document.createElement("span"); all.className="aichip"; all.style.setProperty("--sc","var(--gold)"); all.innerHTML=`<span class="d" style="background:var(--gold)"></span>전원 한마디`; all.onclick=async()=>{ for(const c of ais)await aiSay(c.id); }; bar.appendChild(all); }
 }
 function updateComposer(){
   const ok=myRoleValid(); const c=ok?roleById(myRoleId):null;
@@ -262,105 +334,29 @@ function updateComposer(){
   $("pMe").textContent=ok?(c.avatar+" "+c.name):"";
 }
 async function humanSay(){ if(!myRoleValid())return; const inp=$("input"); const t=inp.value.trim(); if(!t)return; inp.value=""; inp.style.height="auto"; const r=await post("/api/human-say",{roleId:myRoleId,clientId,text:t}); if(r&&r.error)banner(r.error); else banner(""); await poll(); }
-async function aiSay(id){ if(busy)return; busy=true; const r=await post("/api/ai-say",{roleId:id}); if(r&&r.error&&r.error.indexOf("말하는 중")<0)banner("AI 응답 오류: "+r.error); else banner(""); busy=false; await poll(); }
-async function advance(){ const nx=STATE.seq+1<=9?SCEN.phases[STATE.seq]:null; if(!confirm("다음 단계로 넘어갈까요?"+(nx?` (${nx.name})`:"")))return; await post("/api/advance",{}); await poll(); }
+async function advance(){ if(!confirm("다음 페이즈로 넘어갈까요?"))return; await post("/api/advance",{}); await poll(); }
 function banner(m){ const b=$("banner"); if(m){b.textContent=m;b.classList.add("on");}else b.classList.remove("on"); }
 
+/* 내 큐카드 */
 async function showMySheet(){
   if(!myRoleValid())return;
-  let s; try{ s=await (await fetch("/api/sheet/"+myRoleId+"?clientId="+encodeURIComponent(clientId))).json(); }catch(e){ banner("시트 로드 실패"); return; }
+  let s; try{ s=await (await fetch("/api/sheet/"+myRoleId+"?clientId="+encodeURIComponent(clientId))).json(); }catch(e){ banner("큐카드 로드 실패"); return; }
   if(s.error){ banner(s.error); return; }
   const frags=(s.fragments||[]).map(f=>`<div class="frag"><div class="w">기억의 파편 · ${esc(f.when)}</div>${esc(f.text)}</div>`).join("");
   $("sheetBox").innerHTML=`<h2 style="color:${s.color}">${s.avatar} ${esc(s.name)} <span style="font-size:13px;color:var(--muted)">· ${esc(s.job)}</span></h2>
     <div class="mlead">${esc(s.persona)}</div>
-    ${s.hidden?`<div class="hidden-banner">⚑ 스포일러 배역 — 정체를 숨기세요</div>`:``}
-    ${s.sheet.map(x=>`<div class="sheet-sec"><div class="h">${esc(x.h)}</div><div class="b">${esc(x.b).replace(/\n/g,"<br>")}</div></div>`).join("")}
-    ${frags?`<div class="sheet-sec"><div class="h">떠오른 기억</div>${frags}</div>`:``}
+    ${s.hidden?`<div class="hb">⚑ 스포일러 배역 — 정체를 숨기세요</div>`:``}
+    ${s.sheet.map(x=>`<div class="sec"><div class="h">${esc(x.h)}</div><div class="b">${esc(x.b).replace(/\n/g,"<br>")}</div></div>`).join("")}
+    ${frags?`<div class="sec"><div class="h">떠오른 기억</div>${frags}</div>`:``}
+    <div class="sec"><div class="h">나의 목표</div>${s.goals.map(g=>`<div class="goal"><span>${esc(g.t)}</span><span class="pt">+${g.p}</span></div>`).join("")}</div>
     <div style="margin-top:16px;text-align:right"><button class="btn" onclick="closeModal('sheetModal')">확인</button></div>`;
   openModal("sheetModal");
-}
-
-function openBoard(){ renderBoard(); openModal("boardModal"); }
-function renderBoard(){
-  const revealed={}; (STATE.revealed||[]).forEach(c=>revealed[c.id]=c);
-  const revIds=STATE.revealedIds||[]; const cr=STATE.round||0;
-  const locs=[["A","시체(교실 중앙)"],["B","3학년 2반 교실"],["C","옥상"],["D","미술실"],["E","방송실"],["F","교무실"]];
-  const list=$("boardList"); list.innerHTML="";
-  locs.forEach(([lc,ln])=>{
-    const cards=SCEN.cardCatalog.filter(c=>c.loc===lc);
-    if(!cards.length)return;
-    const g=document.createElement("div"); g.className="loc-group";
-    let inner=`<div class="lh">${ln}</div><div class="lb">`;
-    cards.forEach(c=>{
-      const open=revealed[c.id];
-      if(open){
-        inner+=`<div class="card-slot open${open.bait?' bait':''}"><div class="ct">${esc(open.title)}${open.bait?' <span class="rr">※미끼?</span>':''}</div><div>${esc(open.text)}</div></div>`;
-      }else{
-        const reqOk=!c.requires||revIds.includes(c.requires);
-        const roundOk=c.round<=cr;
-        if(roundOk&&reqOk){
-          inner+=`<div class="card-slot locked"><span class="rr">미조사 단서 (R${c.round})${c.obligatory?' · 공개의무':''}</span><button class="btn sm gold" onclick="revealCard('${c.id}')">조사</button></div>`;
-        }else{
-          const why=!roundOk?`조사 R${c.round}에 열림`:`선행 단서 필요`;
-          inner+=`<div class="card-slot locked"><span class="rr">🔒 ${why}</span></div>`;
-        }
-      }
-    });
-    inner+=`</div>`; g.innerHTML=inner; list.appendChild(g);
-  });
-}
-async function revealCard(id){ const r=await post("/api/reveal-card",{cardId:id}); if(r&&r.error)banner(r.error); else banner(""); await poll(); renderBoard(); }
-
-function openFinal(){
-  const box=$("finalBox"); const mine=myRoleValid(); const myGrade=myRoleId?STATE.grades[myRoleId]:null;
-  let h=`<h2>종막 · 질문지</h2><div class="mlead">각자 서술형으로 답하면 AI가 채점합니다. 오승택을 죽인 것은 누구인가 — 당신은 누구를 지목합니까.</div>`;
-  if(mine&&!myGrade){
-    h+=SCEN.finalQuestions.map((q,i)=>`<div class="q-block"><div class="q">${i+1}. ${esc(q)}</div><textarea id="qa${i}" placeholder="배역으로서 진솔하게…"></textarea></div>`).join("");
-    h+=`<div style="text-align:right;margin-top:6px"><button class="btn ember" onclick="submitFinal()">제출하고 채점받기</button></div>`;
-  }else if(mine&&myGrade){
-    h+=gradeCard(myRoleId,myGrade);
-  }else{ h+=`<div class="lead">관전 중 — 사람 배역이 아니면 답변하지 않습니다.</div>`; }
-  // AI 배역 최종답변
-  const ais=SCEN.characters.filter(c=>STATE.roles[c.id].mode==="ai");
-  if(ais.length){
-    h+=`<div class="sheet-sec"><div class="h">AI 배역 최종 답변</div>`;
-    ais.forEach(c=>{ const gr=STATE.grades[c.id];
-      h+= gr? gradeCard(c.id,gr) : `<div class="grade-line"><span style="color:${c.color}">${c.avatar} ${esc(c.name)}</span><button class="btn sm" onclick="aiFinal('${c.id}')">AI 답변 받기</button></div>`;
-    });
-    h+=`</div>`;
-  }
-  h+=`<div style="margin-top:16px;text-align:right"><button class="btn" onclick="closeModal('finalModal')">닫기</button></div>`;
-  box.innerHTML=h; openModal("finalModal");
-}
-function gradeCard(id,g){ const c=roleById(id); return `<div class="grade-line"><span style="color:${c.color};font-weight:700">${c.avatar} ${esc(c.name)}</span>
-  <span class="pill ${g.selfAccused?'':'bad'}">${g.selfAccused?'자기지목 ✓':'자기지목 ✗'}</span>
-  <span class="pill">죄 인정 ${g.sinsAcknowledged}</span>${g.osewonIdentified?'<span class="pill">오세원 간파 ✓</span>':''}<span class="pill">${g.score}점</span>
-  ${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
-async function submitFinal(){
-  const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():""));
-  if(answers.every(a=>!a)){ alert("한 문항 이상 답해주세요."); return; }
-  const btn=event.target; btn.disabled=true; btn.textContent="채점 중…";
-  const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers});
-  if(r&&r.error) banner("채점 오류: "+r.error);
-  await poll(); openFinal();
-}
-async function aiFinal(id){ const r=await post("/api/ai-final",{roleId:id}); if(r&&r.error)banner("AI 채점 오류: "+r.error); await poll(); openFinal(); }
-
-function showEnding(){
-  endShown=true; ["finalModal","boardModal","sheetModal"].forEach(closeModal);
-  const e=STATE.ending; const tone=e.tone==="good"?"good":(e.tone==="warn"?"warn":"bad");
-  $("endVerdict").textContent=e.name; $("endVerdict").className="verdict "+tone;
-  const g=STATE.grades; let gh="";
-  ["sim","yu","lee","ose"].forEach(id=>{ if(g[id]) gh+=gradeCard(id,g[id]); });
-  $("endGrades").innerHTML=gh;
-  $("endSol").textContent=e.desc+"\n\n─ 진상 ─\n"+e.truth;
-  openModal("endingModal");
 }
 
 async function post(url,body){ try{ return await (await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json(); }catch(e){ banner("서버 연결 오류"); return {error:"network"}; } }
 function openModal(id){ $(id).classList.add("on"); } function closeModal(id){ $(id).classList.remove("on"); }
 $("input").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); humanSay(); }});
-$("input").addEventListener("input",e=>{ e.target.style.height="auto"; e.target.style.height=Math.min(110,e.target.scrollHeight)+"px"; });
+$("input").addEventListener("input",e=>{ e.target.style.height="auto"; e.target.style.height=Math.min(96,e.target.scrollHeight)+"px"; });
 boot();
 </script>
 </body>
