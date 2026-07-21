@@ -1,18 +1,12 @@
 """
-PIMMmurderboard · 그해 여름, 동창회 — 로컬 멀티플레이 게임 서버
+PIMMmurderboard · 졸업사진(卒業寫眞) — 로컬 멀티플레이 게임 서버
 
-각자 자기 PC/폰으로 접속해 함께 플레이한다(같은 와이파이). 서버가 '방(room)' 상태를
-쥐고, 각 기기는 폴링으로 동기화한다. 배역의 비밀은 그 배역을 맡은 기기에만 내려간다.
-사람이 맡지 않은 배역은 AI가 대본대로 참여한다(거짓말·의심·투표까지).
+각자 자기 PC/폰으로 접속(같은 와이파이). 서버가 '방(room)' 상태를 쥐고 각 기기가 폴링 동기화.
+배역의 비밀은 그 배역을 맡은 기기에만. 사람이 안 맡은 배역은 AI가 대본대로 플레이(조사·거짓말·자백).
+승리 구조: 오승택을 죽인 범인은 없다 — 종막 질문지(서술형)를 AI가 채점, 모두 자기지목 시 진혼 엔딩.
 
-백엔드 교체형:
-    - 기본: Claude API  (.env 의 ANTHROPIC_API_KEY · 한국어·연기 최상, 종량 과금)
-    - 무료: 로컬 Ollama (.env 에 LLM_BACKEND=ollama · 한국어는 qwen2.5 권장)
-
-실행:
-    pip install -r requirements.txt
-    cp .env.example .env      # ANTHROPIC_API_KEY 입력 (Ollama면 키 불필요)
-    python server.py          # 켜지면 접속 주소가 출력됩니다 (같은 와이파이면 폰으로도 접속)
+백엔드 교체형: 기본 Claude API(.env ANTHROPIC_API_KEY) / 무료 Ollama(LLM_BACKEND=ollama, qwen2.5).
+실행: pip install -r requirements.txt → cp .env.example .env → python server.py
 """
 from __future__ import annotations
 
@@ -33,23 +27,20 @@ from pydantic import BaseModel
 _HERE = Path(__file__).resolve().parent
 try:
     from dotenv import load_dotenv
-
     load_dotenv(_HERE / ".env")
 except Exception:
     pass
 
 import scenario as SC  # noqa: E402
 
-# ── 설정 ──
 BACKEND = os.getenv("LLM_BACKEND", "claude").lower()
 CLAUDE_MODEL = os.getenv("REUNION_MODEL") or os.getenv("PIMM_MODEL") or "claude-opus-4-8"
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5")
-HOST = os.getenv("REUNION_HOST", "0.0.0.0")  # 같은 와이파이의 다른 기기 접속 허용
+HOST = os.getenv("REUNION_HOST", "0.0.0.0")
 PORT = int(os.getenv("REUNION_PORT", "8790"))
 
-# ── LLM ──
 try:
     import anthropic
 except Exception:
@@ -112,28 +103,36 @@ def backend_ready() -> tuple[bool, str]:
     return True, f"Claude · {CLAUDE_MODEL}"
 
 
-def _table_text(table: list[dict]) -> str:
-    talk = [t for t in table if t.get("kind") != "system" and t.get("text")]
-    if not talk:
-        return "(아직 아무 말도 오가지 않았다. 네가 먼저 운을 떼도 된다.)"
-    return "\n".join(f"{t.get('speaker','?')}: {t['text']}" for t in talk)
+def _parse_json(raw: str) -> dict:
+    try:
+        m = re.search(r"\{.*\}", raw, re.S)
+        return json.loads(m.group(0)) if m else {}
+    except Exception:
+        return {}
 
 
-# ── 방(room) 상태 ──
+def current_round(seq: int) -> int:
+    if seq >= 6:
+        return 3
+    if seq >= 4:
+        return 2
+    if seq >= 2:
+        return 1
+    return 0
+
+
+# ── 방 상태 ──
 LOCK = threading.RLock()
-ROOM: dict = {}
 
 
 def fresh_room() -> dict:
     return {
-        "rev": 1,
-        "roles": {c["id"]: {"mode": "open", "clientId": None} for c in SC.CHARACTERS},  # open|human|ai
+        "rev": 1, "seq": 1,
+        "roles": {c["id"]: {"mode": "open", "clientId": None} for c in SC.CHARACTERS},
         "table": [{"kind": "system", "text": f'{SC.PHASES[0]["name"]} — {SC.PHASES[0]["gm"]}'}],
-        "round": 1,
-        "votes": {},        # roleId -> suspectId
-        "voteReasons": {},  # roleId -> reason (AI)
-        "typing": None,     # roleId 생성 중
-        "revealed": False,
+        "revealed": [],           # 공개된 card id
+        "grades": {},             # roleId -> grade dict (name 포함)
+        "typing": None,
     }
 
 
@@ -144,24 +143,34 @@ def bump():
     ROOM["rev"] += 1
 
 
+def _auto_reveal_obligatory():
+    cr = current_round(ROOM["seq"])
+    for cid in SC.obligatory_cards_upto_round(cr):
+        if cid not in ROOM["revealed"]:
+            ROOM["revealed"].append(cid)
+
+
 def public_state() -> dict:
     with LOCK:
+        seq = ROOM["seq"]
+        ph = SC.phase_by_seq(seq)
+        ending = None
+        g = ROOM["grades"]
+        if all(rid in g for rid in ("sim", "yu", "lee")):
+            ending = SC.compute_ending(g)
         return {
-            "rev": ROOM["rev"],
-            "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None}
-                      for rid, r in ROOM["roles"].items()},
+            "rev": ROOM["rev"], "seq": seq, "round": current_round(seq),
+            "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ph["ap"], "min": ph["min"]},
+            "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
             "table": ROOM["table"],
-            "round": ROOM["round"],
-            "votes": ROOM["votes"],
-            "voteReasons": ROOM["voteReasons"],
+            "revealed": [SC.public_card(cid) for cid in ROOM["revealed"]],
+            "revealedIds": list(ROOM["revealed"]),
             "typing": ROOM["typing"],
-            "revealed": ROOM["revealed"],
-            "culprit": ({"id": SC.CULPRIT_ID, "name": SC.get_character(SC.CULPRIT_ID)["name"],
-                         "solution": SC.SOLUTION} if ROOM["revealed"] else None),
+            "grades": g,
+            "ending": ending,
         }
 
 
-# ── API ──
 app = FastAPI(title="PIMMmurderboard")
 
 
@@ -184,10 +193,14 @@ class RoleOnly(BaseModel):
     roleId: str
 
 
-class HumanVote(BaseModel):
+class CardOnly(BaseModel):
+    cardId: str
+
+
+class FinalAnswers(BaseModel):
     roleId: str
     clientId: str
-    suspectId: str
+    answers: list[str]
 
 
 @app.get("/api/scenario")
@@ -195,6 +208,10 @@ def scenario():
     ok, label = backend_ready()
     d = SC.public_scenario()
     d["backend"] = {"ok": ok, "label": label}
+    # 조사카드 카탈로그(제목·본문 제외 — 미공개 슬롯 구조만)
+    d["cardCatalog"] = [{"id": c["id"], "loc": c["loc"], "locName": c["locName"], "round": c["round"],
+                         "requires": c.get("requires"), "obligatory": c.get("reveal") == "obligatory"}
+                        for c in SC.CARDS]
     return d
 
 
@@ -211,7 +228,6 @@ def claim(b: Claim):
             return JSONResponse({"error": "없는 배역"}, status_code=404)
         if r["clientId"] and r["clientId"] != b.clientId:
             return JSONResponse({"error": "이미 다른 사람이 맡은 배역입니다"}, status_code=409)
-        # 같은 clientId가 다른 배역을 갖고 있으면 해제
         for rr in ROOM["roles"].values():
             if rr["clientId"] == b.clientId:
                 rr["clientId"] = None
@@ -251,12 +267,49 @@ def setai(b: SetAI):
 def sheet(role_id: str, clientId: str = ""):
     with LOCK:
         r = ROOM["roles"].get(role_id)
+        seq = ROOM["seq"]
         if not r:
             return JSONResponse({"error": "없는 배역"}, status_code=404)
         if r["clientId"] and r["clientId"] != clientId:
             return JSONResponse({"error": "자기 배역만 열람할 수 있습니다"}, status_code=403)
     s = SC.private_sheet(role_id)
+    s["fragments"] = SC.memory_up_to(role_id, seq)
     return s
+
+
+@app.post("/api/reveal-card")
+def reveal_card(b: CardOnly):
+    with LOCK:
+        c = SC.get_card(b.cardId)
+        if not c:
+            return JSONResponse({"error": "없는 카드"}, status_code=404)
+        cr = current_round(ROOM["seq"])
+        if c["round"] > cr:
+            return JSONResponse({"error": f"아직 조사할 수 없습니다 (조사 R{c['round']}에 열림)"}, status_code=409)
+        req = c.get("requires")
+        if req and req not in ROOM["revealed"]:
+            rq = SC.get_card(req)
+            return JSONResponse({"error": f"먼저 '{rq['title'] if rq else req}'가 필요합니다"}, status_code=409)
+        if b.cardId not in ROOM["revealed"]:
+            ROOM["revealed"].append(b.cardId)
+            bump()
+    return {"card": SC.public_card(b.cardId)}
+
+
+@app.post("/api/advance")
+def advance():
+    with LOCK:
+        if ROOM["seq"] < len(SC.PHASES):
+            ROOM["seq"] += 1
+            seq = ROOM["seq"]
+            ph = SC.phase_by_seq(seq)
+            il = SC.interlude_for(seq)
+            if il:
+                ROOM["table"].append({"kind": "system", "broadcast": True, "text": f"📻 교내방송 — {il}"})
+            ROOM["table"].append({"kind": "system", "text": f'{ph["name"]} — {ph["gm"]}'})
+            _auto_reveal_obligatory()
+            bump()
+        return {"seq": ROOM["seq"]}
 
 
 @app.post("/api/human-say")
@@ -281,11 +334,13 @@ def ai_say(b: RoleOnly):
             return JSONResponse({"error": "다른 배역이 말하는 중입니다"}, status_code=429)
         ROOM["typing"] = b.roleId
         bump()
-        snapshot = list(ROOM["table"])
+        seq = ROOM["seq"]
+        revealed = list(ROOM["revealed"])
+        table = list(ROOM["table"])
     c = SC.get_character(b.roleId)
     try:
-        reply = llm(SC.build_play_prompt(c),
-                    f"다음은 지금까지 테이블에서 오간 대화다.\n\n{_table_text(snapshot)}\n\n이제 '{c['name']}'로서 다음 한마디를 하라 (1~3문장).", 400)
+        reply = llm(SC.build_play_prompt(c, seq, revealed, table),
+                    f"이제 '{c['name']}'로서 다음 한마디를 하라 (1~3문장).", 400)
         reply = re.sub(rf"^{re.escape(c['name'])}\s*[:：]\s*", "", reply or "").strip()
     except Exception as e:  # noqa: BLE001
         with LOCK:
@@ -299,77 +354,58 @@ def ai_say(b: RoleOnly):
     return {"ok": True}
 
 
-@app.post("/api/next-round")
-def next_round():
-    with LOCK:
-        if ROOM["round"] < len(SC.PHASES):
-            ROOM["round"] += 1
-            ph = SC.PHASES[ROOM["round"] - 1]
-            ROOM["table"].append({"kind": "system", "text": f'{ph["name"]} — {ph["gm"]}'})
-            bump()
-        return {"round": ROOM["round"]}
+def _grade(c: dict, answers: list[str]) -> dict:
+    raw = llm(SC.build_grade_prompt(c, answers), "채점 JSON만 출력하라.", 500)
+    o = _parse_json(raw)
+    ncount = len(c["sins"]) if c["sins"] else 0
+    return {
+        "name": c["name"],
+        "selfAccused": bool(o.get("selfAccused", False)),
+        "sinsAcknowledged": max(0, min(ncount, int(o.get("sinsAcknowledged", 0) or 0))),
+        "osewonIdentified": bool(o.get("osewonIdentified", False)),
+        "score": max(0, min(40, int(o.get("score", 0) or 0))),
+        "verdict": str(o.get("verdict", "") or ""),
+    }
 
 
-@app.post("/api/human-vote")
-def human_vote(b: HumanVote):
+@app.post("/api/final-answers")
+def final_answers(b: FinalAnswers):
     with LOCK:
         r = ROOM["roles"].get(b.roleId)
         if not r or r["clientId"] != b.clientId:
-            return JSONResponse({"error": "그 배역의 표가 아닙니다"}, status_code=403)
-        ROOM["votes"][b.roleId] = b.suspectId
-        ROOM["voteReasons"].pop(b.roleId, None)
+            return JSONResponse({"error": "그 배역의 답이 아닙니다"}, status_code=403)
+    c = SC.get_character(b.roleId)
+    try:
+        grade = _grade(c, b.answers)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"error": str(e)}, status_code=502)
+    with LOCK:
+        ROOM["grades"][b.roleId] = grade
         bump()
-    return {"ok": True}
+    return {"grade": grade}
 
 
-@app.post("/api/ai-vote")
-def ai_vote(b: RoleOnly):
+@app.post("/api/ai-final")
+def ai_final(b: RoleOnly):
     with LOCK:
         r = ROOM["roles"].get(b.roleId)
         if not r or r["mode"] != "ai":
             return JSONResponse({"error": "AI 배역이 아닙니다"}, status_code=409)
-        snapshot = list(ROOM["table"])
+        revealed = list(ROOM["revealed"])
+        table = list(ROOM["table"])
     c = SC.get_character(b.roleId)
     try:
-        raw = llm(SC.build_vote_prompt(c),
-                  f"지금까지 오간 대화다.\n\n{_table_text(snapshot)}\n\n이제 투표하라. JSON만.", 200)
+        raw = llm(SC.build_final_answer_prompt(c, revealed, table), "JSON만 출력하라.", 700)
+        answers = _parse_json(raw).get("answers", [])
+        if not isinstance(answers, list) or not answers:
+            answers = ["(답변 없음)"]
+        grade = _grade(c, [str(x) for x in answers])
     except Exception as e:  # noqa: BLE001
         return JSONResponse({"error": str(e)}, status_code=502)
-    sid, reason = _parse_vote(raw, c)
     with LOCK:
-        ROOM["votes"][b.roleId] = sid
-        ROOM["voteReasons"][b.roleId] = reason
+        ROOM["grades"][b.roleId] = grade
         bump()
-    t = SC.get_character(sid)
-    return {"suspectId": sid, "suspectName": t["name"] if t else sid, "reason": reason}
-
-
-def _parse_vote(raw: str, voter: dict) -> tuple[str, str]:
-    valid = [o["id"] for o in SC.CHARACTERS if o["id"] != voter["id"]]
-    sid, reason = "", ""
-    try:
-        m = re.search(r"\{.*\}", raw, re.S)
-        obj = json.loads(m.group(0)) if m else {}
-        sid = str(obj.get("suspect", "")).strip()
-        reason = str(obj.get("reason", "")).strip()
-    except Exception:  # noqa: BLE001
-        pass
-    if sid not in valid:
-        for o in SC.CHARACTERS:
-            if o["id"] in valid and (o["name"] in raw or o["id"] in raw):
-                sid = o["id"]
-                break
-    if sid not in valid:
-        sid = random.choice(valid)
-    return sid, reason or "왠지 그런 느낌이 들어."
-
-
-@app.post("/api/reveal")
-def reveal():
-    with LOCK:
-        ROOM["revealed"] = True
-        bump()
-    return {"ok": True}
+    return {"answers": answers, "grade": grade}
 
 
 @app.post("/api/reset")
@@ -398,15 +434,13 @@ def lan_ip() -> str:
 
 if __name__ == "__main__":
     import uvicorn
-
     ok, label = backend_ready()
     ip = lan_ip()
     print("=" * 56)
-    print("  PIMMmurderboard · 그해 여름, 동창회")
+    print("  PIMMmurderboard · 졸업사진(卒業寫眞)")
     print(f"  AI 백엔드: {label}" + ("" if ok else "  ⚠ (미준비 — .env 확인)"))
     print("  브라우저에서 열기:")
-    print(f"    이 컴퓨터   →  http://127.0.0.1:{PORT}")
+    print(f"    이 컴퓨터    →  http://127.0.0.1:{PORT}")
     print(f"    같은 와이파이 →  http://{ip}:{PORT}   (폰·다른 PC는 이 주소로)")
-    print("  각자 접속해 배역을 고르세요. 빈 자리는 'AI로 채우기'.")
     print("=" * 56)
     uvicorn.run(app, host=HOST, port=PORT)
