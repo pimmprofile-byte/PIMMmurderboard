@@ -276,7 +276,7 @@ function renderPanel(ph){
   if(k==="open"){ p.innerHTML=`<div class="card"><h2>사건 · 공통지문</h2><div class="intro">${esc(SCEN.intro)}</div></div>
     <div class="card"><h2>피해자</h2><div class="panel-note">${esc(SCEN.victim||"")}</div></div>
     <div class="panel-note" style="text-align:center">각자 <b>내 큐카드</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`; }
-  else if(k==="invest"){ p.innerHTML=`<div class="clue-h"><h3>조사 맵</h3><span class="pill">공개 ${STATE.revealed.length}</span><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">카드를 눌러 <b>조사(손패)</b> → 열어보고 <b>전체공개</b>. 불리한 카드는 손패에 감출 수 있어요.</div><div id="cmap"></div>`;
+  else if(k==="invest"){ p.innerHTML=`<div class="clue-h"><h3>조사 맵</h3><span class="pill">공개 ${STATE.revealed.length}</span><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">카드를 눌러 <b>조사</b>하면 <b>손패(비공개)</b>로 들어옵니다. 알아낸 것은 <b>대화로만</b> 공유하세요(감춰도 됩니다).</div><div id="cmap"></div>`;
     renderMap($("cmap")); }
   else if(k==="talk"){ const pubs=(STATE.revealed||[]);
     p.innerHTML=`<div class="clue-h"><h3>토론</h3><span class="pill">공개 단서 ${pubs.length}</span></div><div class="panel-note">아래 대화창에서 서로를 취조하세요. 공개된 단서는 아래에 요약돼 있습니다.</div>
@@ -306,7 +306,7 @@ function renderMap(el){
 async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); }
 function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const hand=myHand.find(c=>c.id===id); const c=pub||hand; if(!c)return;
   const inHand=!!hand&&!pub;
-  $("cardBox").innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:8px">${esc(c.locName)} · R${c.round}${pub?' · 전체공개':' · 손패(비공개)'}</div>
+  $("cardBox").innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:8px">${esc(c.locName)} · R${c.round}${pub?' · 공개':' · 손패(비공개)'}</div>
     <h2 style="font-size:18px">${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
     <div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>
     <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end"><span class="lead" style="margin:0 auto 0 0;font-size:12px">이 단서는 <b>당신 손패(비공개)</b>입니다. 알리려면 대화로 말하세요.</span><button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;

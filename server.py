@@ -147,10 +147,7 @@ def bump():
 
 
 def _auto_reveal_obligatory():
-    cr = current_round(ROOM["seq"])
-    for cid in SC.obligatory_cards_upto_round(cr):
-        if cid not in ROOM["revealed"]:
-            ROOM["revealed"].append(cid)
+    return  # '전체공개' 개념 미사용(우선) — 공개의무 카드도 GM이 대화로 내레이션한다
 
 
 def public_state() -> dict:
