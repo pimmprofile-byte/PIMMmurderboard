@@ -57,6 +57,22 @@
   .slot.open .ct{font-weight:700;color:#a9d3ea;margin-bottom:3px}
   .slot.open.bait{border-color:#5a4a2c}
   .slot .rr{font-size:11px;color:var(--muted)}
+  .cardmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+  .gcard{aspect-ratio:3/4;border:1px solid var(--line);border-radius:11px;padding:9px;display:flex;flex-direction:column;cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(160deg,#1a1722,#141119);transition:.15s}
+  .gcard:hover{transform:translateY(-2px);border-color:var(--gold)}
+  .gcard .rb{font-size:10px;color:var(--muted)}
+  .gcard .t{font-size:12.5px;font-weight:700;margin-top:auto;line-height:1.35}
+  .gcard.face{align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#181521,#181521 6px,#15121d 6px,#15121d 12px)}
+  .gcard.face .q{font-size:28px;font-family:"Nanum Myeongjo","Batang",serif;color:#3c354c}
+  .gcard.face .rb{position:absolute;bottom:8px;left:0;right:0;text-align:center}
+  .gcard.face .tag{color:var(--gold-b)}
+  .gcard.locked{cursor:default;opacity:.55}
+  .gcard.hand{border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219)}
+  .gcard.hand .t{color:var(--gold-b)}
+  .gcard.pub{border-color:var(--cold);background:linear-gradient(160deg,#111a22,#0e1620)}
+  .gcard.pub.baitc{border-color:#5a4a2c}
+  .gcard .tag{position:absolute;top:7px;right:7px;font-size:9px;padding:1px 6px;border-radius:6px;background:rgba(0,0,0,.45)}
+  .gcard.hand .tag{color:var(--gold-b)}.gcard.pub .tag{color:var(--cold)}
 
   textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px;font-size:13.5px;font-family:inherit;line-height:1.6;resize:vertical}
   textarea:focus,select:focus{outline:none;border-color:var(--gold)}
@@ -247,17 +263,18 @@ function boardMarkup(){
   const cr=roundOf(S.seq); const apMax={1:3,2:3,3:2}[cr]||0;
   const apUsed=[...S.revealed,...S.hand].filter(id=>{const c=card(id);return c&&c.r===cr&&!c.ob;}).length;
   const locs=[["A","시체(교실 중앙)"],["B","3학년 2반 교실"],["C","옥상"],["D","미술실"],["E","방송실"],["F","교무실"]];
-  let h=`<div class="card"><h2>조사 · 공개 ${S.revealed.length} · 손패 ${S.hand.length}${cr?` · R${cr} ${apUsed}/${apMax}`:""}</h2><div class="lead" style="margin-bottom:12px">조사하면 <b>손패(나만 봄)</b>로 들어옵니다. <b>전체공개</b>를 눌러야 다른 배역(에이전트)이 그 단서를 압니다 — 불리한 카드는 감출 수 있어요. 공개의무 카드는 라운드 진입 시 자동 전체공개.</div>`;
+  const locIcon={A:"🏫 시체 (교실 중앙)",B:"📋 3학년 2반 교실",C:"🌫️ 옥상",D:"🎨 미술실",E:"📻 방송실",F:"🗄️ 교무실"};
+  let h=`<div class="card"><h2>조사 맵 · 공개 ${S.revealed.length} · 손패 ${S.hand.length}${cr?` · R${cr} ${apUsed}/${apMax}`:""}</h2><div class="lead" style="margin-bottom:12px">카드를 눌러 <b>조사(손패)</b> → 열어보고 <b>전체공개</b>. 불리한 카드는 손패에 감출 수 있어요. 공개의무 카드는 라운드 진입 시 자동 공개.</div>`;
   locs.forEach(([lc,ln])=>{ const cs=D.cards.filter(c=>c.loc===lc); if(!cs.length)return;
-    h+=`<div class="loc-group"><div class="lh">${ln}</div><div class="lb">`;
+    h+=`<div class="loc-group"><div class="lh">${esc(locIcon[lc]||ln)}</div><div class="lb" style="display:block"><div class="cardmap">`;
     cs.forEach(c=>{
-      if(S.revealed.includes(c.id)) h+=`<div class="slot open${c.bait?' bait':''}"><div class="ct">${esc(c.t)} <span class="rr">공개</span>${c.bait?' <span class="rr">※미끼?</span>':''}</div><div>${esc(c.b)}</div></div>`;
-      else if(S.hand.includes(c.id)) h+=`<div class="slot open" style="border-color:#5a4a2c"><div class="ct" style="color:var(--gold-b)">${esc(c.t)} <span class="rr">손패 · 비공개</span></div><div>${esc(c.b)}</div><div class="row" style="margin-top:7px"><button class="btn gold sm" onclick="publish('${c.id}')">전체공개</button></div></div>`;
+      if(S.revealed.includes(c.id)) h+=`<div class="gcard pub${c.bait?' baitc':''}" onclick="openCard('${c.id}')"><span class="tag">공개</span><div class="rb">R${c.r}${c.bait?' · ※':''}</div><div class="t">${esc(c.t)}</div></div>`;
+      else if(S.hand.includes(c.id)) h+=`<div class="gcard hand" onclick="openCard('${c.id}')"><span class="tag">손패</span><div class="rb">R${c.r} · 비공개</div><div class="t">${esc(c.t)}</div></div>`;
       else{ const reqOk=!c.req||has(c.req); const roundOk=c.r<=cr;
-        if(roundOk&&reqOk) h+=`<div class="slot locked"><span class="rr">미조사 (R${c.r})${c.ob?' · 공개의무':''}</span><button class="btn gold sm" onclick="investigate('${c.id}')">조사</button></div>`;
-        else h+=`<div class="slot locked"><span class="rr">🔒 ${roundOk?"선행 단서 필요":"조사 R"+c.r+"에 열림"}</span></div>`; }
+        if(roundOk&&reqOk) h+=`<div class="gcard face" onclick="investigate('${c.id}')"><span class="tag">${c.ob?'공개의무':'조사'}</span><div class="q">?</div><div class="rb">R${c.r}</div></div>`;
+        else h+=`<div class="gcard face locked"><div class="q">🔒</div><div class="rb">${roundOk?"선행 필요":"R"+c.r}</div></div>`; }
     });
-    h+=`</div></div>`; });
+    h+=`</div></div></div>`; });
   h+=`</div>`; return h;
 }
 function renderLog(r){
@@ -324,6 +341,12 @@ function investigate(id){ const c=card(id); const cr=roundOf(S.seq);
   if(c.r>cr){toast("아직 조사할 수 없습니다");return;} if(c.req&&!has(c.req)){toast("선행 단서(예: 열쇠)가 필요합니다");return;}
   if(!has(id)){ S.hand.push(id); save(); render(); toast("손패에 넣었어요 — 공개는 당신 선택"); } }
 function publish(id){ S.hand=S.hand.filter(x=>x!==id); if(!S.revealed.includes(id))S.revealed.push(id); save(); render(); pushState(true); }
+function openCard(id){ const c=card(id); const inHand=S.hand.includes(id); const isPub=S.revealed.includes(id);
+  document.getElementById("mbox").innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:8px">${esc(c.ln)} · R${c.r}${isPub?' · 전체공개':inHand?' · 손패(비공개)':''}</div>
+    <h2 style="font-size:18px">${esc(c.t)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
+    <div class="sec"><div class="b" style="font-size:15px">${esc(c.b)}</div></div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end;gap:8px">${inHand?`<button class="btn gold" onclick="publish('${id}');closeM()">전체공개</button>`:""}<button class="btn" onclick="closeM()">닫기</button></div>`;
+  document.getElementById("modal").classList.add("on"); }
 function saveLog(){ toast("저장됨"); }
 /* 조사카드 전체공개 / 페이즈 진행 시 자동 호출 — 공개된 것만 클립보드로 밀어준다(손패 제외) */
 function pushState(auto){
