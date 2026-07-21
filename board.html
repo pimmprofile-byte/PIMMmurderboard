@@ -195,7 +195,7 @@ const D = {
 /* ============ 상태 (로컬 · 새로고침 유지) ============ */
 const LS="board.gp.v1";
 let S = load();
-function load(){ try{return Object.assign({seq:1,revealed:[],log:"",tab:"run"},JSON.parse(localStorage.getItem(LS)||"{}"));}catch(e){return {seq:1,revealed:[],log:"",tab:"run"};} }
+function load(){ const def={seq:1,revealed:[],hand:[],log:"",tab:"cast",assign:{sim:"ai",yu:"ai",lee:"ai",ose:"ai"}}; try{const s=Object.assign(def,JSON.parse(localStorage.getItem(LS)||"{}")); if(!s.assign)s.assign={sim:"ai",yu:"ai",lee:"ai",ose:"ai"}; if(!s.hand)s.hand=[]; return s;}catch(e){return def;} }
 function save(){ try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){} }
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -205,14 +205,14 @@ const roundOf=seq=> seq>=6?3:seq>=4?2:seq>=2?1:0;
 function autoReveal(){ const cr=roundOf(S.seq); D.cards.forEach(c=>{ if(c.ob&&c.r<=cr&&!S.revealed.includes(c.id))S.revealed.push(c.id); }); }
 
 /* ============ 렌더 ============ */
-const TABS=[["run","진행"],["cast","배역"],["board","조사"],["log","진행 로그"],["final","종막"]];
+const TABS=[["run","진행 · 조사"],["cast","배역"],["log","진행 로그"],["final","종막"]];
 function render(){
   autoReveal();
   $("hPhase").textContent="· "+D.phases[S.seq-1].name+" (조사 R"+roundOf(S.seq)+")";
   const tb=$("tabs"); tb.innerHTML="";
   TABS.forEach(([k,l])=>{ const t=document.createElement("div"); t.className="tab"+(S.tab===k?" on":""); t.textContent=l; t.onclick=()=>{S.tab=k;save();render();}; tb.appendChild(t); });
   const r=$("root"); r.innerHTML="";
-  ({run:renderRun,cast:renderCast,board:renderBoard,log:renderLog,final:renderFinal}[S.tab])(r);
+  ({run:renderRun,cast:renderCast,log:renderLog,final:renderFinal}[S.tab]||renderRun)(r);
   save();
 }
 function renderRun(r){
@@ -224,27 +224,36 @@ function renderRun(r){
     <div class="row" style="margin-top:14px"><button class="btn sm" ${S.seq<=1?"disabled":""} onclick="setSeq(${S.seq-1})">‹ 이전</button>
       <button class="btn gold sm" ${S.seq>=9?"disabled":""} onclick="setSeq(${S.seq+1})">다음 단계 ›</button>
       <span style="margin-left:auto"><button class="btn sm" onclick="pushState()">📋 상태 복사(수동)</button></span></div></div>
-  <div class="card"><h2>이렇게 진행하세요</h2><div class="lead">이 보드(상태·조사·시트)와 <b>Claude 코드 세션</b>(GM + AI 배역)을 나란히 켜둡니다. 게임은 <b>세션 창에 대화를 적어넣으며</b> 진행하고, 이 보드에서 <b>조사카드를 공개하거나 다음 단계로 넘어가면 최신 공개 상태가 자동으로 클립보드에 복사</b>됩니다 — 그걸 세션에 한 번 붙여넣으면 GM·AI 배역이 공개된 단서를 인지하고 이어갑니다.</div></div>`;
+  ${boardMarkup()}`;
 }
 function renderCast(r){
-  r.innerHTML=`<div class="card"><h2>배역 — 자기 배역만 열어보세요 🙈</h2><div class="lead" style="margin-bottom:10px">비밀 대본이 들어 있습니다. 자기 배역 외에는 열지 마세요(신뢰 기반).</div><div id="rl"></div></div>`;
+  r.innerHTML=`<div class="card"><h2>배역 배정 &amp; 선택</h2><div class="lead" style="margin-bottom:12px">각 배역을 <b>사람</b>이 맡을지 <b>AI(이 세션)</b>가 맡을지 고르세요 — 지금은 <b>사람 2 · AI 2</b> 구조. '사람'으로 고른 배역만 <b>시트(비밀 대본)</b>를 열 수 있습니다. 오세원은 스포일러라 보통 AI를 권장합니다.</div><div id="rl"></div></div>`;
   const rl=r.querySelector("#rl");
-  D.roles.forEach(c=>{ const d=document.createElement("div"); d.className="role-card"; d.style.setProperty("--rc",c.color);
-    d.innerHTML=`<div class="av">${c.avatar}</div><div><div class="nm" style="color:${c.color}">${esc(c.name)}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div><div class="tg">${esc(c.tagline)}</div></div>`;
-    d.onclick=()=>openSheet(c.id); rl.appendChild(d); });
+  D.roles.forEach(c=>{ const mode=S.assign[c.id]||"ai"; const d=document.createElement("div"); d.className="role-card"; d.style.setProperty("--rc",c.color);
+    d.innerHTML=`<div class="av">${c.avatar}</div>
+      <div style="flex:1;min-width:0"><div class="nm" style="color:${c.color}">${esc(c.name)}${c.hidden?' <span class="pill">스포일러</span>':''}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div><div class="tg">${esc(c.tagline)}</div></div>
+      <div class="row" style="flex:0 0 auto;gap:6px">
+        <select onchange="setAssign('${c.id}',this.value)"><option value="ai"${mode==="ai"?" selected":""}>AI가 연기</option><option value="human"${mode==="human"?" selected":""}>사람이 플레이</option></select>
+        <button class="btn sm ${mode==="human"?"gold":""}" ${mode==="human"?"":"disabled"} onclick="openSheet('${c.id}')">시트</button>
+      </div>`;
+    rl.appendChild(d); });
 }
-function renderBoard(r){
-  const rev={}; S.revealed.forEach(id=>rev[id]=1); const cr=roundOf(S.seq);
+function boardMarkup(){
+  const cr=roundOf(S.seq); const apMax={1:3,2:3,3:2}[cr]||0;
+  const apUsed=[...S.revealed,...S.hand].filter(id=>{const c=card(id);return c&&c.r===cr&&!c.ob;}).length;
   const locs=[["A","시체(교실 중앙)"],["B","3학년 2반 교실"],["C","옥상"],["D","미술실"],["E","방송실"],["F","교무실"]];
-  let h=`<div class="card"><h2>조사 보드 · 공개 단서 ${S.revealed.length}</h2><div class="lead" style="margin-bottom:12px">장소를 조사해 단서를 공개합니다. 공개된 카드는 모두가 봅니다. 공개의무 카드는 라운드 진입 시 자동 공개.</div><div id="bl"></div></div>`;
-  r.innerHTML=h; const bl=r.querySelector("#bl");
+  let h=`<div class="card"><h2>조사 · 공개 ${S.revealed.length} · 손패 ${S.hand.length}${cr?` · R${cr} ${apUsed}/${apMax}`:""}</h2><div class="lead" style="margin-bottom:12px">조사하면 <b>손패(나만 봄)</b>로 들어옵니다. <b>전체공개</b>를 눌러야 다른 배역(에이전트)이 그 단서를 압니다 — 불리한 카드는 감출 수 있어요. 공개의무 카드는 라운드 진입 시 자동 전체공개.</div>`;
   locs.forEach(([lc,ln])=>{ const cs=D.cards.filter(c=>c.loc===lc); if(!cs.length)return;
-    const g=document.createElement("div"); g.className="loc-group"; let inner=`<div class="lh">${ln}</div><div class="lb">`;
-    cs.forEach(c=>{ if(rev[c.id]){ inner+=`<div class="slot open${c.bait?' bait':''}"><div class="ct">${esc(c.t)}${c.bait?' <span class="rr">※미끼?</span>':''}</div><div>${esc(c.b)}</div></div>`; }
-      else{ const reqOk=!c.req||S.revealed.includes(c.req); const roundOk=c.r<=cr;
-        if(roundOk&&reqOk) inner+=`<div class="slot locked"><span class="rr">미조사 (R${c.r})${c.ob?' · 공개의무':''}</span><button class="btn gold sm" onclick="reveal('${c.id}')">조사</button></div>`;
-        else inner+=`<div class="slot locked"><span class="rr">🔒 ${roundOk?"선행 단서 필요":"조사 R"+c.r+"에 열림"}</span></div>`; } });
-    inner+=`</div>`; g.innerHTML=inner; bl.appendChild(g); });
+    h+=`<div class="loc-group"><div class="lh">${ln}</div><div class="lb">`;
+    cs.forEach(c=>{
+      if(S.revealed.includes(c.id)) h+=`<div class="slot open${c.bait?' bait':''}"><div class="ct">${esc(c.t)} <span class="rr">공개</span>${c.bait?' <span class="rr">※미끼?</span>':''}</div><div>${esc(c.b)}</div></div>`;
+      else if(S.hand.includes(c.id)) h+=`<div class="slot open" style="border-color:#5a4a2c"><div class="ct" style="color:var(--gold-b)">${esc(c.t)} <span class="rr">손패 · 비공개</span></div><div>${esc(c.b)}</div><div class="row" style="margin-top:7px"><button class="btn gold sm" onclick="publish('${c.id}')">전체공개</button></div></div>`;
+      else{ const reqOk=!c.req||has(c.req); const roundOk=c.r<=cr;
+        if(roundOk&&reqOk) h+=`<div class="slot locked"><span class="rr">미조사 (R${c.r})${c.ob?' · 공개의무':''}</span><button class="btn gold sm" onclick="investigate('${c.id}')">조사</button></div>`;
+        else h+=`<div class="slot locked"><span class="rr">🔒 ${roundOk?"선행 단서 필요":"조사 R"+c.r+"에 열림"}</span></div>`; }
+    });
+    h+=`</div></div>`; });
+  h+=`</div>`; return h;
 }
 function renderLog(r){
   r.innerHTML=`<div class="card"><h2>진행 로그</h2><div class="lead" style="margin-bottom:8px">오간 대사·판단을 적어두세요. '🔗 에이전트에게 상태 복사'가 최근 로그를 함께 담아줍니다.</div>
@@ -274,33 +283,38 @@ function openSheet(id){
 function closeM(){ $("modal").classList.remove("on"); }
 
 function setSeq(n){ n=Math.max(1,Math.min(9,n)); const changed=n!==S.seq; S.seq=n; autoReveal(); save(); render(); if(changed) pushState(true); }
-function reveal(id){ const c=card(id); const cr=roundOf(S.seq);
-  if(c.r>cr){toast("아직 조사할 수 없습니다");return;} if(c.req&&!S.revealed.includes(c.req)){toast("선행 단서가 필요합니다");return;}
-  if(!S.revealed.includes(id)){ S.revealed.push(id); save(); render(); pushState(true); } }
+function setAssign(id,v){ S.assign[id]=v; save(); render(); }
+function has(id){ return S.revealed.includes(id)||S.hand.includes(id); }
+function investigate(id){ const c=card(id); const cr=roundOf(S.seq);
+  if(c.r>cr){toast("아직 조사할 수 없습니다");return;} if(c.req&&!has(c.req)){toast("선행 단서(예: 열쇠)가 필요합니다");return;}
+  if(!has(id)){ S.hand.push(id); save(); render(); toast("손패에 넣었어요 — 공개는 당신 선택"); } }
+function publish(id){ S.hand=S.hand.filter(x=>x!==id); if(!S.revealed.includes(id))S.revealed.push(id); save(); render(); pushState(true); }
 function saveLog(){ toast("저장됨"); }
-/* 조사카드 공개 / 페이즈 진행 시 자동 호출 — 최신 공개 상태를 클립보드로 밀어준다(에이전트가 인지) */
+/* 조사카드 전체공개 / 페이즈 진행 시 자동 호출 — 공개된 것만 클립보드로 밀어준다(손패 제외) */
 function pushState(auto){
   const ph=D.phases[S.seq-1];
   const rev=S.revealed.map(id=>{const c=card(id);return `- [${c.ln}] ${c.t}: ${c.b}`;}).join("\n");
   const log=(S.log||"").slice(-1400);
   const il=D.interludes[S.seq];
+  const asg=D.roles.map(x=>`${x.name}=${(S.assign[x.id]==='human')?'사람':'AI(세션)'}`).join(", ");
   const block=`[졸업사진 · 게임보드 상태 업데이트]
 단계: ${ph.name} (조사 R${roundOf(S.seq)})
+배역 배정: ${asg}
 GM 지문: ${ph.gm}${il?`\n망령 인터루드(교내방송): ${il}`:""}
 
-■ 지금까지 공개된 조사카드 (전체):
+■ 전체공개된 조사카드 (손패/비공개 제외):
 ${rev||"(아직 없음)"}
 
 ■ 최근 진행 로그:
 ${log||"(없음)"}
 
-※ 위 공개 카드·단계를 인지하고 이후 GM·배역 진행에 반영해줘. 사람이 맡지 않은 배역과 GM은 네가 진행한다.`;
+※ 위 공개 카드·단계·배정을 인지하고 이후 GM·배역 진행에 반영해줘. 사람이 맡지 않은 배역(AI)과 GM은 네가 진행한다.`;
   copy(block); toast(auto?"📋 상태 자동 복사됨 — 세션에 붙여넣기":"📋 복사됨 — 세션에 붙여넣기");
 }
 function copy(t){ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).catch(()=>fallbackCopy(t));}else fallbackCopy(t); }
 function fallbackCopy(t){ const ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");}catch(e){} ta.remove(); }
 let tt; function toast(m){ const el=$("toast"); el.textContent=m; el.classList.add("on"); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove("on"),1800); }
-function reset(){ if(confirm("보드를 초기화할까요? (단계·공개카드·로그가 지워집니다)")){ S={seq:1,revealed:[],log:"",tab:"run"}; save(); render(); } }
+function reset(){ if(confirm("보드를 초기화할까요? (단계·조사·손패·로그·배정이 지워집니다)")){ S={seq:1,revealed:[],hand:[],log:"",tab:"cast",assign:{sim:"ai",yu:"ai",lee:"ai",ose:"ai"}}; save(); render(); } }
 
 render();
 </script>
