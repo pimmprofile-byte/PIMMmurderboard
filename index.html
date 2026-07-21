@@ -215,6 +215,9 @@ function applyState(){
 
 function renderLobby(){
   const list=$("lobbyList"); list.innerHTML="";
+  const rnd=document.createElement("div"); rnd.style.margin="0 0 12px";
+  rnd.innerHTML=`<button class="btn gold" onclick="claimRandom()" ${myRoleId?"disabled":""}>🎲 랜덤 배역 받기</button> <span class="lead" style="margin:0">무작위로 빈 배역을 받습니다</span>`;
+  list.appendChild(rnd);
   SCEN.characters.forEach(c=>{
     const r=STATE.roles[c.id]; const mine=myRoleId===c.id;
     const d=document.createElement("div"); d.className="role-card"+(mine?" mine":""); d.style.setProperty("--rc",c.color);
@@ -228,6 +231,7 @@ function renderLobby(){
   });
 }
 async function claim(id){ const r=await post("/api/claim",{roleId:id,clientId}); if(r&&r.error){banner(r.error);return;} myRoleId=id; localStorage.setItem("pmb.role",id); await poll(); go("play"); }
+async function claimRandom(){ const r=await post("/api/claim-random",{clientId}); if(r&&r.error){banner(r.error);return;} if(r&&r.roleId){ myRoleId=r.roleId; localStorage.setItem("pmb.role",r.roleId); await poll(); go("play"); } }
 async function releaseRole(){ if(myRoleId){ await post("/api/release",{roleId:myRoleId,clientId}); myRoleId=null; localStorage.removeItem("pmb.role"); await poll(); } }
 async function setAI(id){ const r=await post("/api/setai",{roleId:id}); if(r&&r.error)banner(r.error); await poll(); }
 async function resetRoom(){ if(!confirm("방을 초기화할까요? 모든 진행이 사라집니다."))return; await post("/api/reset",{}); myRoleId=null; localStorage.removeItem("pmb.role"); endShown=false; ["endingModal","finalModal","boardModal","sheetModal"].forEach(closeModal); await poll(); go("lobby"); }

@@ -130,7 +130,8 @@ def fresh_room() -> dict:
         "rev": 1, "seq": 1,
         "roles": {c["id"]: {"mode": "open", "clientId": None} for c in SC.CHARACTERS},
         "table": [{"kind": "system", "text": f'{SC.PHASES[0]["name"]} — {SC.PHASES[0]["gm"]}'}],
-        "revealed": [],           # 공개된 card id
+        "revealed": [],           # 전체공개 card id
+        "hands": {},              # roleId -> [cardId] (손패, 비공개)
         "grades": {},             # roleId -> grade dict (name 포함)
         "typing": None,
     }
@@ -197,6 +198,10 @@ class CardOnly(BaseModel):
     cardId: str
 
 
+class ClientOnly(BaseModel):
+    clientId: str
+
+
 class FinalAnswers(BaseModel):
     roleId: str
     clientId: str
@@ -236,6 +241,22 @@ def claim(b: Claim):
         r["mode"] = "human"
         bump()
     return {"ok": True}
+
+
+@app.post("/api/claim-random")
+def claim_random(b: ClientOnly):
+    with LOCK:
+        for rid, r in ROOM["roles"].items():
+            if r["clientId"] == b.clientId:
+                return {"ok": True, "roleId": rid}
+        opens = [rid for rid, r in ROOM["roles"].items() if r["mode"] == "open"]
+        if not opens:
+            return JSONResponse({"error": "빈 배역이 없습니다"}, status_code=409)
+        rid = random.choice(opens)
+        ROOM["roles"][rid]["clientId"] = b.clientId
+        ROOM["roles"][rid]["mode"] = "human"
+        bump()
+    return {"ok": True, "roleId": rid}
 
 
 @app.post("/api/release")
