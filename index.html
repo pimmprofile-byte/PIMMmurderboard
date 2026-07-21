@@ -94,6 +94,21 @@
   .loc-group{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
   .loc-group .lh{padding:8px 12px;background:var(--panel2);font-weight:700;font-size:13px}
   .cardmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;padding:9px}
+  /* 학교 구획도(플로어 플랜) */
+  .floormap{display:grid;gap:11px;grid-template-columns:repeat(3,1fr);
+    grid-template-areas:"roof roof roof" "art bcast staff" "class class class"}
+  .room{border:1px solid var(--line);border-radius:13px;padding:10px 11px;background:linear-gradient(160deg,#161320,#111017);position:relative;animation:roomIn .5s ease both}
+  @keyframes roomIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .room .rmh{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#d7d0e4;margin-bottom:9px;border-bottom:1px dashed var(--line);padding-bottom:6px}
+  .room .rmh .fl{margin-left:auto;font-size:9.5px;color:var(--muted);font-weight:400;letter-spacing:.03em}
+  .room .cardmap{padding:0;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:7px}
+  .room.roof{grid-area:roof;background:linear-gradient(160deg,#131a21,#0e1218)}
+  .room.art{grid-area:art}.room.bcast{grid-area:bcast}.room.staff{grid-area:staff}
+  .room.class{grid-area:class;border-color:#553236;background:linear-gradient(160deg,#1d1417,#140f13)}
+  .room.class .scene{border:1px solid #6e3a3a;border-radius:10px;padding:8px;background:rgba(120,42,42,.14);margin-bottom:8px}
+  .room.class .scene .sh{font-size:11px;font-weight:700;color:#f0a99e;margin-bottom:6px;letter-spacing:.02em}
+  .room .cardmap .gcard{aspect-ratio:auto;min-height:74px}
+  @media(max-width:640px){ .floormap{grid-template-columns:1fr;grid-template-areas:"roof" "art" "bcast" "staff" "class"} }
   .gcard{aspect-ratio:3/4;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(160deg,#1a1722,#141119);transition:.15s}
   .gcard:hover{transform:translateY(-2px);border-color:var(--gold)}
   .gcard .rb{font-size:9.5px;color:var(--muted)}
@@ -151,8 +166,10 @@
   .gm-loc .cs{display:flex;gap:5px;flex-wrap:wrap}
   .cell{width:44px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--sub);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.12s;position:relative}
   .cell:hover:not(.locked){border-color:var(--gold);color:#fff}
-  .cell.on{background:linear-gradient(150deg,#3a2c12,#6a5320);border-color:var(--gold);color:#fff;box-shadow:0 0 12px -3px rgba(201,162,74,.7)}
-  .cell.on::after{content:"✓";position:absolute;top:-5px;right:-4px;font-size:10px;background:var(--gold);color:#1a1509;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center}
+  .cell.on{background:linear-gradient(150deg,#211b28,#2b2333);border-color:var(--cc,var(--gold));color:#fff;box-shadow:0 0 13px -3px var(--cc,var(--gold))}
+  .cell.on::after{content:"✓";position:absolute;top:-5px;right:-4px;font-size:10px;background:var(--cc,var(--gold));color:#120f16;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center;font-weight:800}
+  @keyframes markPop{0%{transform:scale(1)}28%{transform:scale(1.28);box-shadow:0 0 20px 3px var(--cc,var(--gold))}60%{transform:scale(.96)}100%{transform:scale(1)}}
+  .cell.justmark{animation:markPop .75s cubic-bezier(.2,.8,.2,1)}
   .cell.dim{opacity:.4}
   /* GM 시네마틱 낭독 패널 */
   .gm-cine{max-width:760px;margin:0 auto;padding:34px 22px 30px;text-align:center}
@@ -334,7 +351,7 @@ async function poll(){
   else myHand=[];
   applyState();
 }
-function go(name){ scr=name; ["landing","lobby","play","gm"].forEach(s=>$("s-"+s).classList.remove("on")); $("s-"+name).classList.add("on"); if(name==="play")$("s-play").style.display="flex"; if(name==="gm")$("s-gm").style.display="flex"; lastRev=-1; fxSeq=null; applyState(); }
+function go(name){ scr=name; ["landing","lobby","play","gm"].forEach(s=>$("s-"+s).classList.remove("on")); $("s-"+name).classList.add("on"); if(name==="play")$("s-play").style.display="flex"; if(name==="gm")$("s-gm").style.display="flex"; lastRev=-1; fxSeq=null; if(name==="gm")gmSeenMarks=null; if(name==="play")handSeen=null; applyState(); }
 let gmKey=localStorage.getItem("pmb.gmkey")||"";
 function enterGM(){
   if(gmKey==null)gmKey="";
@@ -434,19 +451,23 @@ function renderLobby(){
   });
 }
 /* ===== GM 마킹 보드 (페이즈 구동 · 시네마틱) ===== */
-let gmSig=null;
+let gmSig=null, gmSeenMarks=null;
 function renderGM(){
   const ph=STATE.phase||{}; const cur=STATE.round||0; const ap=ph.ap||0; const k=ph.key;
   $("gmPhase").textContent=(ph.name||"")+(cur?` · R${cur}`:"")+(ap?` · 인당 ${ap}장`:"");
   $("gmAdvBtn").style.display=(STATE.seq>=9)?"none":"";
   const checked=STATE.checked||{}; const used=STATE.usedAP||{};
+  // 새로 마킹된 칸(플레이어가 방금 조사) 감지 → 펄스 1회
+  const curMarks=new Set(); Object.entries(checked).forEach(([r,ids])=>ids.forEach(id=>curMarks.add(r+":"+id)));
+  let fresh=new Set();
+  if(gmSeenMarks===null) gmSeenMarks=curMarks; else { curMarks.forEach(m=>{ if(!gmSeenMarks.has(m))fresh.add(m); }); gmSeenMarks=curMarks; }
   // 시그니처가 같으면 다시 그리지 않음(시네마틱 재생·매트릭스 깜빡임 방지)
   const sig=k+"|"+STATE.seq+"|"+cur+"|"+JSON.stringify(checked)+"|"+JSON.stringify(used);
-  if(sig!==gmSig){ gmSig=sig; $("gmWrap").innerHTML=buildGMBody(ph,cur,ap,k,checked,used); }
+  if(sig!==gmSig||fresh.size){ gmSig=sig; $("gmWrap").innerHTML=buildGMBody(ph,cur,ap,k,checked,used,fresh); }
   renderChat("gmChat");
   updateAiSelect();
 }
-function buildGMBody(ph,cur,ap,k,checked,used){
+function buildGMBody(ph,cur,ap,k,checked,used,fresh){
   const inter=(SCEN.interludes||{})[String(ph.seq)]||"";
   if(k==="open") return gmCinematic("막이 오른다 · 공통지문 낭독", (SCEN.intro||""), SCEN.victim,
     "각자 <b>내 큐카드</b>로 자기소개를 나눈 뒤, 준비되면 <b>다음 페이즈 ›</b>로 <b>조사 R1</b>을 여세요.");
@@ -468,8 +489,8 @@ function buildGMBody(ph,cur,ap,k,checked,used){
     let cells="";
     locs.forEach(loc=>{
       const cards=byLoc[loc]; let cc="";
-      cards.forEach(cd=>{ const on=ck.includes(cd.id);
-        cc+=`<div class="cell${on?' on':''}" onclick="gmMark('${c.id}','${cd.id}')" title="${esc(cd.locName)} · R${cd.round}${cd.requires?' · '+cd.requires+' 선행':''}">${cd.id}${cd.requires?`<span class="rq">${cd.requires}▶</span>`:""}</div>`;
+      cards.forEach(cd=>{ const on=ck.includes(cd.id); const jm=fresh&&fresh.has(c.id+":"+cd.id);
+        cc+=`<div class="cell${on?' on':''}${jm?' justmark':''}" style="--cc:${c.color}" onclick="gmMark('${c.id}','${cd.id}')" title="${esc(cd.locName)} · R${cd.round}${cd.requires?' · '+cd.requires+' 선행':''}">${cd.id}${cd.requires?`<span class="rq">${cd.requires}▶</span>`:""}</div>`;
       });
       cells+=`<div class="gm-loc"><div class="lh">${loc} · ${esc(cards[0].locName)}</div><div class="cs">${cc}</div></div>`;
     });
@@ -534,23 +555,35 @@ function renderPanel(ph){
   else p.innerHTML="";
 }
 
+let handSeen=null;
 function renderMap(el){
   const revIds=(STATE.revealedIds||[]); const handIds=myHand.map(c=>c.id); const cr=STATE.round||0;
   const ap=(STATE.phase||{}).ap||0; const used=(STATE.usedAP||{})[myRoleId]||0; const apOut=myRoleValid()&&ap>0&&used>=ap;
   const pub={}; (STATE.revealed||[]).forEach(c=>pub[c.id]=c); const hand={}; myHand.forEach(c=>hand[c.id]=c);
-  const locs=[["A","🏫 시체 (교실 중앙)"],["B","📋 3학년 2반 교실"],["C","🌫️ 옥상"],["D","🎨 미술실"],["E","📻 방송실"],["F","🗄️ 교무실"]];
-  let h="";
-  locs.forEach(([lc,ln])=>{ const cs=SCEN.cardCatalog.filter(c=>c.loc===lc); if(!cs.length)return;
-    h+=`<div class="loc-group"><div class="lh">${ln}</div><div class="cardmap">`;
-    cs.forEach(c=>{
-      if(pub[c.id]) h+=`<div class="gcard pub${pub[c.id].bait?' baitc':''}" onclick="openCard('${c.id}')"><span class="tag">공개</span><div class="rb">R${c.round}</div><div class="t">${esc(pub[c.id].title)}</div></div>`;
-      else if(hand[c.id]) h+=`<div class="gcard hand" onclick="openCard('${c.id}')"><span class="tag">손패</span><div class="rb">R${c.round}·비공개</div><div class="t">${esc(hand[c.id].title)}</div></div>`;
-      else{ const reqOk=!c.requires||revIds.includes(c.requires)||handIds.includes(c.requires); const roundOk=c.round<=cr;
-        if(roundOk&&reqOk&&myRoleValid()&&!apOut) h+=`<div class="gcard face" onclick="investigate('${c.id}')"><span class="tag">조사</span><div class="q">?</div><div class="rb">R${c.round}</div></div>`;
-        else h+=`<div class="gcard face locked"><div class="q">🔒</div><div class="rb">${!roundOk?"R"+c.round:(!myRoleValid()?"관전":(apOut?"턴 소진":"선행 필요"))}</div></div>`; }
-    });
-    h+=`</div></div>`; });
-  el.innerHTML=h;
+  // 새로 손패에 들어온 카드 = 뒤집힘 애니메이션 1회
+  const curHand=new Set(handIds); let fresh=new Set();
+  if(handSeen===null) handSeen=curHand; else { curHand.forEach(id=>{ if(!handSeen.has(id))fresh.add(id); }); handSeen=curHand; }
+  const cardHTML=(c)=>{
+    if(pub[c.id]) return `<div class="gcard pub${pub[c.id].bait?' baitc':''}" onclick="openCard('${c.id}')"><span class="tag">공개</span><div class="rb">R${c.round}</div><div class="t">${esc(pub[c.id].title)}</div></div>`;
+    if(hand[c.id]) return `<div class="gcard hand${fresh.has(c.id)?' just-open':''}" onclick="openCard('${c.id}')"><span class="tag">손패</span><div class="rb">R${c.round}·비공개</div><div class="t">${esc(hand[c.id].title)}</div></div>`;
+    const reqOk=!c.requires||revIds.includes(c.requires)||handIds.includes(c.requires); const roundOk=c.round<=cr;
+    if(roundOk&&reqOk&&myRoleValid()&&!apOut) return `<div class="gcard face" onclick="investigate('${c.id}')"><span class="tag">조사</span><div class="q">?</div><div class="rb">R${c.round}</div></div>`;
+    return `<div class="gcard face locked"><div class="q">🔒</div><div class="rb">${!roundOk?"R"+c.round:(!myRoleValid()?"관전":(apOut?"턴 소진":"선행 필요"))}</div></div>`;
+  };
+  const cardsOf=(loc)=>SCEN.cardCatalog.filter(c=>c.loc===loc);
+  const room=(cls,icon,name,floor,cards)=> cards.length?`<div class="room ${cls}"><div class="rmh">${icon} ${name}<span class="fl">${floor}</span></div><div class="cardmap">${cards.map(cardHTML).join("")}</div></div>`:"";
+  const A=cardsOf("A"), Bc=cardsOf("B");
+  let cls=`<div class="room class"><div class="rmh">🏫 3학년 2반 교실<span class="fl">1층 · 현장</span></div>`;
+  if(A.length) cls+=`<div class="scene"><div class="sh">🩸 시체 · 교실 중앙</div><div class="cardmap">${A.map(cardHTML).join("")}</div></div>`;
+  if(Bc.length) cls+=`<div class="cardmap">${Bc.map(cardHTML).join("")}</div>`;
+  cls+=`</div>`;
+  el.innerHTML=`<div class="floormap">
+    ${room("roof","🌫️","옥상","최상층",cardsOf("C"))}
+    ${room("art","🎨","미술실","교사동",cardsOf("D"))}
+    ${room("bcast","📻","방송실","교사동",cardsOf("E"))}
+    ${room("staff","🗄️","교무실","교사동",cardsOf("F"))}
+    ${cls}
+  </div>`;
 }
 async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); openCard(id); }
 function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const hand=myHand.find(c=>c.id===id); const c=pub||hand; if(!c)return;
