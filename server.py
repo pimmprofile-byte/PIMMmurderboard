@@ -133,7 +133,8 @@ def fresh_room() -> dict:
         "roles": {c["id"]: {"mode": "open", "clientId": None} for c in SC.CHARACTERS},
         "table": [{"kind": "system", "text": f'{SC.PHASES[0]["name"]} — {SC.PHASES[0]["gm"]}'}],
         "revealed": [],           # 전체공개 card id
-        "hands": {},              # roleId -> [cardId] (손패, 비공개)
+        "hands": {},              # roleId -> [cardId] (손패, 비공개 · 조사/마킹 통합)
+        "checkedRound": {},       # roleId -> {cardId: round} (턴별 조사 수 제한 계산용)
         "grades": {},             # roleId -> grade dict (name 포함)
         "finalAnswers": {},       # roleId -> [answer str] (백엔드 미설정 시 진행자 수동채점용 보관)
         "typing": None,
@@ -159,13 +160,20 @@ def public_state() -> dict:
         g = ROOM["grades"]
         if all(rid in g for rid in ("sim", "yu", "lee")):
             ending = SC.compute_ending(g)
+        cur = current_round(seq)
+        ap = int(ph.get("ap", 0) or 0)
+        # 내용 없는 마킹 현황(누가 어떤 카드를 조사했는지 id만) + 이번 턴 남은 조사 수
+        checked = {rid: list(cs) for rid, cs in ROOM["hands"].items() if cs}
+        used = {rid: sum(1 for r in cm.values() if r == cur) for rid, cm in ROOM["checkedRound"].items()}
         return {
-            "rev": ROOM["rev"], "seq": seq, "round": current_round(seq),
-            "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ph["ap"], "min": ph["min"]},
+            "rev": ROOM["rev"], "seq": seq, "round": cur,
+            "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"]},
             "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
             "table": ROOM["table"],
             "revealed": [SC.public_card(cid) for cid in ROOM["revealed"]],
             "revealedIds": list(ROOM["revealed"]),
+            "checked": checked,
+            "usedAP": used,
             "typing": ROOM["typing"],
             "grades": g,
             "ending": ending,
@@ -350,12 +358,29 @@ def _agent_ok(key: str) -> bool:
     return (not AGENT_KEY) or key == AGENT_KEY
 
 
-def _try_investigate(role_id: str, card_id: str) -> str | None:
+def _ap_for(seq: int) -> int:
+    return int(SC.phase_by_seq(seq).get("ap", 0) or 0)
+
+
+def _round_checks(role_id: str, rnd: int) -> int:
+    """이번 조사 라운드에 이 배역이 조사한 카드 수."""
+    return sum(1 for r in ROOM["checkedRound"].get(role_id, {}).values() if r == rnd)
+
+
+def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True) -> str | None:
     c = SC.get_card(card_id)
     if not c:
         return "없는 카드"
-    if c["round"] > current_round(ROOM["seq"]):
+    cur = current_round(ROOM["seq"])
+    if c["round"] > cur:
         return f"아직 조사할 수 없습니다 (조사 R{c['round']}에 열림)"
+    ap = _ap_for(ROOM["seq"])
+    already = card_id in ROOM["hands"].get(role_id, [])
+    if enforce_ap and not already:
+        if ap <= 0:
+            return "지금은 조사 턴이 아닙니다 (조사 페이즈에서만 열 수 있어요)"
+        if _round_checks(role_id, cur) >= ap:
+            return f"이번 조사 턴({cur}라운드)에 열 수 있는 {ap}장을 모두 사용했습니다"
     req = c.get("requires")
     seen = set(ROOM["revealed"]) | set(ROOM["hands"].get(role_id, []))
     if req and req not in seen:
@@ -366,8 +391,22 @@ def _try_investigate(role_id: str, card_id: str) -> str | None:
     h = ROOM["hands"].setdefault(role_id, [])
     if card_id not in h:
         h.append(card_id)
+        ROOM["checkedRound"].setdefault(role_id, {})[card_id] = cur
         bump()
     return None
+
+
+def _mark_toggle(role_id: str, card_id: str) -> str | None:
+    """GM 마킹 토글: 내용은 반환하지 않는다(진행자는 카드 내용을 볼 수 없음)."""
+    if role_id not in ROOM["roles"]:
+        return "없는 배역"
+    h = ROOM["hands"].setdefault(role_id, [])
+    if card_id in h:  # 마킹 해제
+        h.remove(card_id)
+        ROOM["checkedRound"].get(role_id, {}).pop(card_id, None)
+        bump()
+        return None
+    return _try_investigate(role_id, card_id)
 
 
 def _publish(card_id: str) -> None:
@@ -389,6 +428,21 @@ def investigate(b: Investigate):
         if err:
             return JSONResponse({"error": err}, status_code=409)
     return {"card": SC.public_card(b.cardId)}
+
+
+@app.post("/api/mark")
+def mark(b: AgentCard):
+    """진행자(GM) 마킹 — 어떤 배역이 어떤 카드를 조사했는지 토글. 카드 내용은 반환하지 않음."""
+    if not _agent_ok(b.key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    with LOCK:
+        if not b.roleId:
+            return JSONResponse({"error": "배역 필요"}, status_code=400)
+        err = _mark_toggle(b.roleId, b.cardId)
+        if err:
+            return JSONResponse({"error": err}, status_code=409)
+        checked = b.cardId in ROOM["hands"].get(b.roleId, [])
+    return {"ok": True, "checked": checked}
 
 
 @app.post("/api/publish")

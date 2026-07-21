@@ -125,6 +125,94 @@
   .hb{background:#2a1214;border:1px solid #5a2c2c;color:#ffb9b9;border-radius:10px;padding:11px 14px;font-weight:700;text-align:center;margin-bottom:12px}
   .frag{background:#0e1620;border:1px solid #2c465a;border-radius:10px;padding:9px 12px;margin:8px 0;color:#cfe0ee;font-size:13.5px}.frag .w{font-size:11px;color:var(--cold);margin-bottom:3px}
   .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"Nanum Myeongjo",serif}
+
+  /* ============ GM 마킹 보드 ============ */
+  .gm-wrap{max-width:1000px;margin:0 auto;padding:14px 16px 40px}
+  .gm-guide{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 15px;margin-bottom:14px}
+  .gm-guide .g{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--gold-b);border:1px solid var(--gold);border-radius:6px;padding:1px 7px;margin-right:8px}
+  .gm-guide .il{margin-top:8px;color:#e8dfb0;font-style:italic;font-size:13px}
+  .gm-note{color:var(--muted);font-size:12px;margin:2px 0 14px}
+  .gm-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--sub);margin-bottom:10px}
+  .gm-legend b{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:4px}
+  .gm-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .gm-row .who{min-width:118px;flex-shrink:0}
+  .gm-row .who .nm{font-weight:700;font-size:14px}
+  .gm-row .who .cnt{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .gm-row .who .cnt.full{color:var(--ember-b);font-weight:700}
+  .gm-row .who .kind{font-size:10.5px;color:var(--gold-b)}
+  .gm-cells{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+  .gm-loc{display:flex;flex-direction:column;gap:4px;padding:6px;border:1px dashed var(--line);border-radius:9px;background:#120f18}
+  .gm-loc .lh{font-size:9.5px;color:var(--muted);letter-spacing:.04em}
+  .gm-loc .cs{display:flex;gap:5px;flex-wrap:wrap}
+  .cell{width:44px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--sub);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.12s;position:relative}
+  .cell:hover:not(.locked){border-color:var(--gold);color:#fff}
+  .cell.on{background:linear-gradient(150deg,#3a2c12,#6a5320);border-color:var(--gold);color:#fff;box-shadow:0 0 12px -3px rgba(201,162,74,.7)}
+  .cell.on::after{content:"✓";position:absolute;top:-5px;right:-4px;font-size:10px;background:var(--gold);color:#1a1509;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center}
+  .cell.locked{opacity:.32;cursor:not-allowed}
+  .cell .rq{position:absolute;bottom:-3px;left:0;right:0;text-align:center;font-size:7.5px;color:var(--muted)}
+  @media(max-width:560px){ .gm-row .who{min-width:88px} .cell{width:40px;height:32px} }
+
+  /* ============ 연출 애니메이션 ============ */
+  /* 조사카드 뒤집힘(맵) */
+  @keyframes cardFlip{0%{transform:rotateY(90deg) scale(.9);opacity:0}55%{opacity:1}100%{transform:rotateY(0) scale(1);opacity:1}}
+  .gcard.just-open{animation:cardFlip .5s cubic-bezier(.2,.7,.2,1) both}
+  /* 조사카드 모달 공개 */
+  @keyframes boxReveal{0%{transform:perspective(1200px) rotateX(14deg) translateY(24px) scale(.94);opacity:0;filter:blur(6px)}100%{transform:none;opacity:1;filter:none}}
+  .modal .box.reveal{animation:boxReveal .5s cubic-bezier(.16,.8,.24,1) both}
+  @keyframes glowPulse{0%{box-shadow:var(--shadow),0 0 0 0 rgba(201,162,74,.0)}30%{box-shadow:var(--shadow),0 0 34px 4px rgba(201,162,74,.45)}100%{box-shadow:var(--shadow),0 0 0 0 rgba(201,162,74,0)}}
+  .modal .box.reveal.clue{animation:boxReveal .5s cubic-bezier(.16,.8,.24,1) both,glowPulse 1.5s ease .3s 1}
+  /* 충격 단서(A5류) — 붉은 섬광 + 흔들림 */
+  @keyframes shockFlash{0%{transform:none}8%{transform:translateX(-5px)}16%{transform:translateX(5px)}24%{transform:translateX(-4px)}32%{transform:translateX(3px)}40%{transform:none}}
+  @keyframes shockTint{0%{box-shadow:var(--shadow),inset 0 0 0 0 rgba(200,68,47,0)}20%{box-shadow:var(--shadow),inset 0 0 60px 6px rgba(200,68,47,.5)}100%{box-shadow:var(--shadow),inset 0 0 0 0 rgba(200,68,47,0)}}
+  .modal .box.reveal.shock{animation:boxReveal .4s ease both,shockFlash .5s ease .35s 1,shockTint 1.6s ease .35s 1}
+  /* 미끼 단서 — 금빛 어른거림 */
+  @keyframes baitShimmer{0%,100%{box-shadow:var(--shadow)}50%{box-shadow:var(--shadow),0 0 26px 2px rgba(201,162,74,.32)}}
+  .modal .box.reveal.bait{animation:boxReveal .5s ease both,baitShimmer 2.2s ease .3s 2}
+
+  /* 기억의 파편 떠오름 */
+  @keyframes fragSurface{0%{opacity:0;filter:blur(8px);transform:translateY(10px)}100%{opacity:1;filter:blur(0);transform:none}}
+  .frag{animation:fragSurface .7s ease both}
+  .frag.newfrag{border-color:#4d7ea6;box-shadow:0 0 22px -4px rgba(127,180,214,.55)}
+  @keyframes fragPing{0%,100%{box-shadow:0 0 0 0 rgba(127,180,214,0)}40%{box-shadow:0 0 26px 2px rgba(127,180,214,.6)}}
+  .frag.newfrag{animation:fragSurface .7s ease both,fragPing 1.8s ease .5s 2}
+
+  /* 페이즈 전환 시네마틱 오버레이 */
+  #phaseFx{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 45%,rgba(10,8,12,.86),rgba(4,3,6,.97));opacity:0}
+  #phaseFx.on{display:flex}
+  #phaseFx .fx-in{max-width:82vw;text-align:center;transform:translateY(0)}
+  #phaseFx .fx-kick{font-size:12px;letter-spacing:.5em;color:var(--ember-b);margin-bottom:18px;text-transform:uppercase}
+  #phaseFx .fx-name{font-family:"Nanum Myeongjo","AppleMyungjo",serif;font-weight:700;color:#efe7db;
+    font-size:clamp(34px,8vw,72px);letter-spacing:.14em;line-height:1.1;text-shadow:0 8px 44px rgba(0,0,0,.85)}
+  #phaseFx .fx-line{margin-top:22px;color:#cbc3d8;font-size:clamp(14px,2.3vw,18px);font-style:italic;line-height:1.8;min-height:1.2em}
+  @keyframes fxFade{0%{opacity:0}12%{opacity:1}82%{opacity:1}100%{opacity:0}}
+  @keyframes fxRise{0%{opacity:0;transform:translateY(26px);filter:blur(7px);letter-spacing:.34em}100%{opacity:1;transform:none;filter:blur(0)}}
+  #phaseFx.play{animation:fxFade var(--fxdur,2.8s) ease forwards}
+  #phaseFx.play .fx-in{animation:fxRise .9s cubic-bezier(.16,.8,.24,1) both}
+  /* 페이즈별 결 */
+  #phaseFx.k-open{--fxdur:3.2s}
+  #phaseFx.k-invest .fx-kick{color:var(--cold)}
+  #phaseFx.k-invest .fx-name{color:#dfe9f2}
+  #phaseFx.k-talk .fx-kick{color:var(--gold-b)}
+  /* 교내방송(인터루드가 있는 페이즈) — 방송 라벨 + 스캔라인 깜빡임 */
+  #phaseFx.pa .fx-kick::after{content:"  ·  📢 교내방송";opacity:.85}
+  #phaseFx.pa .fx-line{color:#e8dfb0;font-style:normal;letter-spacing:.04em}
+  @keyframes paFlicker{0%,100%{opacity:1}42%{opacity:.62}44%{opacity:1}70%{opacity:.5}72%{opacity:1}}
+  #phaseFx.pa.play .fx-line{animation:paFlicker 2.4s steps(1) both}
+  #phaseFx.pa::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.03) 3px 4px)}
+  /* 종막 — 붉은 긴장 */
+  #phaseFx.k-final{background:radial-gradient(120% 90% at 50% 45%,rgba(40,8,8,.9),rgba(3,2,4,.98))}
+  #phaseFx.k-final .fx-kick,#phaseFx.k-final .fx-name{color:#f0c9c2}
+  #phaseFx.k-final .fx-name{text-shadow:0 0 40px rgba(200,68,47,.5)}
+  /* 진상 공개 — 여명 */
+  #phaseFx.k-reveal{background:linear-gradient(0deg,rgba(60,52,30,.5),rgba(6,5,9,.96) 60%)}
+  #phaseFx.k-reveal .fx-kick{color:var(--gold-b)}
+  #phaseFx.k-reveal .fx-name{color:#f3ecd6;text-shadow:0 0 50px rgba(201,162,74,.55)}
+
+  @media (prefers-reduced-motion: reduce){
+    .gcard.just-open,.modal .box.reveal,.frag,#phaseFx.play,#phaseFx.play .fx-in{animation-duration:.01ms!important}
+  }
 </style>
 </head>
 <body>
@@ -147,9 +235,11 @@
     <div class="lead">각자 자기 기기에서 배역을 고르세요(또는 랜덤). 자기 배역의 비밀 큐카드는 이 기기에만 보입니다. 남은 배역은 AI(진행자)가 맡습니다.</div>
     <div id="lobbyList"></div>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn gold" onclick="enterGM()">🎬 GM으로 진행</button>
       <button class="btn" onclick="go('play')">관전으로 보기</button>
       <button class="btn sm" onclick="resetRoom()">방 초기화</button>
     </div>
+    <div class="lead" style="margin-top:6px;font-size:12px;opacity:.75">진행자(GM)는 페이즈를 넘기고 <b>누가 어떤 카드를 조사했는지 마킹</b>만 합니다. 카드 내용은 진행자에게 보이지 않아 스포일러가 없습니다.</div>
   </div>
 </div>
 
@@ -175,8 +265,22 @@
   </div>
 </div>
 
+<div id="s-gm" class="screen">
+  <div class="chead">
+    <span class="rt"><span class="mk">🎬</span> GM 진행</span>
+    <span class="ph" id="gmPhase"></span>
+    <span class="spacer"></span>
+    <button class="btn sm" onclick="go('lobby')">나가기</button>
+    <button class="btn sm" onclick="resetRoom()">방 초기화</button>
+    <button class="btn gold sm" id="gmAdvBtn" onclick="advance()">다음 페이즈 ›</button>
+  </div>
+  <div class="banner" id="gmBanner"></div>
+  <div class="gm-wrap" id="gmWrap"></div>
+</div>
+
 <div class="modal" id="sheetModal"><div class="box" id="sheetBox"></div></div>
 <div class="modal" id="cardModal"><div class="box" id="cardBox"></div></div>
+<div id="phaseFx"><div class="fx-in"><div class="fx-kick" id="fxKick"></div><div class="fx-name serif" id="fxName"></div><div class="fx-line" id="fxLine"></div></div></div>
 
 <script>
 "use strict";
@@ -206,12 +310,21 @@ async function poll(){
   else myHand=[];
   applyState();
 }
-function go(name){ scr=name; ["landing","lobby","play"].forEach(s=>$("s-"+s).classList.remove("on")); $("s-"+name).classList.add("on"); if(name==="play")$("s-play").style.display="flex"; lastRev=-1; applyState(); }
+function go(name){ scr=name; ["landing","lobby","play","gm"].forEach(s=>$("s-"+s).classList.remove("on")); $("s-"+name).classList.add("on"); if(name==="play")$("s-play").style.display="flex"; if(name==="gm")$("s-gm").style.display="flex"; lastRev=-1; fxSeq=null; applyState(); }
+let gmKey=localStorage.getItem("pmb.gmkey")||"";
+function enterGM(){
+  if(gmKey==null)gmKey="";
+  const k=prompt("GM 키를 입력하세요.\n· 로컬(내 PC)에서 인터넷 없이 진행하면 그냥 [확인]\n· 클라우드(Render) 배포본이면 배포 때 넣은 AGENT_KEY", gmKey||"");
+  if(k===null)return;               // 취소
+  gmKey=k.trim(); localStorage.setItem("pmb.gmkey",gmKey);
+  go("gm");
+}
 
 function applyState(){
   if(!STATE)return;
   if(myRoleId&&(!STATE.roles[myRoleId]||STATE.roles[myRoleId].mode!=="human")){ myRoleId=null; localStorage.removeItem("pmb.role"); }
   if(scr==="lobby") renderLobby();
+  else if(scr==="gm"){ renderGM(); maybePhaseFx(STATE.phase||{}); }
   else if(scr==="play"){
     const ph=STATE.phase||{};
     $("s-play").className="screen on "+(ph.key||"");
@@ -227,7 +340,35 @@ function applyState(){
     if(STATE.rev!==lastRev){ renderChat(); lastRev=STATE.rev; }
     $("advBtn").style.display=(STATE.seq>=9)?"none":"";
     renderAiCall();
+    maybePhaseFx(ph);
   }
+}
+
+/* ===== 페이즈 전환 시네마틱 ===== */
+let fxSeq=null;
+const FX_KICK={open:"막이 오른다",invest:"조사",talk:"토론",final:"종막",reveal:"진상"};
+const TALK_SEQ={3:1,5:1,7:1};
+function maybePhaseFx(ph){
+  if((scr!=="play"&&scr!=="gm")||!STATE) return;
+  if(fxSeq===STATE.seq) return;
+  fxSeq=STATE.seq;
+  playPhaseFx(ph);
+  // 토론 페이즈: 새 기억 파편 안내(자기 배역이 있을 때)
+  if(ph.key==="talk"&&TALK_SEQ[STATE.seq]&&myRoleValid()) banner("🧠 기억의 파편이 떠올랐다 — 상단 ‘내 큐카드’를 확인하세요.");
+}
+function playPhaseFx(ph){
+  if(!ph||!ph.key) return;
+  const fx=$("phaseFx"); if(!fx) return;
+  const inter=(SCEN&&SCEN.interludes)?SCEN.interludes[String(ph.seq)]:"";
+  $("fxKick").textContent=FX_KICK[ph.key]||"";
+  $("fxName").textContent=ph.name||"";
+  $("fxLine").textContent=inter||"";
+  fx.className="on k-"+ph.key+(inter?" pa":"");
+  void fx.offsetWidth;
+  fx.classList.add("play");
+  const dur=ph.key==="open"?3200:2800;
+  clearTimeout(fx._t);
+  fx._t=setTimeout(()=>{ fx.className=""; },dur+90);
 }
 
 /* AI 배역 진행 (서버 Claude API가 연기) — GM이 눌러 AI 턴 진행 */
@@ -268,6 +409,44 @@ function renderLobby(){
     list.appendChild(d);
   });
 }
+/* ===== GM 마킹 보드 ===== */
+function renderGM(){
+  const ph=STATE.phase||{}; const cur=STATE.round||0; const ap=ph.ap||0;
+  $("gmPhase").textContent=(ph.name||"")+(cur?` · R${cur}`:"")+(ap?` · 인당 ${ap}장`:"");
+  $("gmAdvBtn").style.display=(STATE.seq>=9)?"none":"";
+  const inter=(SCEN.interludes||{})[String(ph.seq)]||"";
+  const cat=SCEN.cardCatalog||[];
+  const locs=[]; const byLoc={};
+  cat.forEach(c=>{ if(!byLoc[c.loc]){byLoc[c.loc]=[];locs.push(c.loc);} byLoc[c.loc].push(c); });
+  const checked=STATE.checked||{}; const used=STATE.usedAP||{};
+  let h=`<div class="gm-guide"><span class="g">GM 지문</span>${esc(ph.gm||"")}${inter?`<div class="il">📢 “${esc(inter)}”</div>`:""}</div>
+    <div class="gm-note">플레이어가 “○○ 카드 봤어요”라고 말하면 그 배역 줄에서 해당 칸을 누르세요. <b>AI 배역(내가 대신 조사)</b>도 여기서 마킹합니다. 칸을 다시 누르면 해제. — 카드 <b>내용은 진행자에게 보이지 않습니다</b>.</div>
+    <div class="gm-legend"><span><b style="background:var(--panel2)"></b>미조사</span><span><b style="background:linear-gradient(150deg,#3a2c12,#6a5320)"></b>조사함 ✓</span><span><b style="background:var(--panel2);opacity:.32"></b>이번 라운드 잠김</span></div>`;
+  SCEN.characters.forEach(c=>{
+    const rl=STATE.roles[c.id]||{}; const kind=rl.mode==="human"?"사람":(rl.mode==="ai"?"AI":"빈자리");
+    const u=used[c.id]||0; const full=ap>0&&u>=ap; const ck=checked[c.id]||[];
+    let cells="";
+    locs.forEach(loc=>{
+      const cards=byLoc[loc];
+      let cc="";
+      cards.forEach(cd=>{
+        const locked=cd.round>cur; const on=ck.includes(cd.id);
+        cc+=`<div class="cell${on?' on':''}${locked?' locked':''}" ${locked?'':`onclick="gmMark('${c.id}','${cd.id}')"`} title="${esc(cd.locName)} · R${cd.round}${cd.requires?' · '+cd.requires+' 선행':''}">${cd.id}${cd.requires?`<span class="rq">${cd.requires}▶</span>`:""}</div>`;
+      });
+      cells+=`<div class="gm-loc"><div class="lh">${loc} · ${esc(cards[0].locName)}</div><div class="cs">${cc}</div></div>`;
+    });
+    h+=`<div class="gm-row"><div class="who"><div class="nm" style="color:${c.color}">${c.avatar} ${esc(c.name)}</div><div class="kind">${kind}</div><div class="cnt${full?' full':''}">이번 턴 ${u}/${ap} 조사</div></div><div class="gm-cells">${cells}</div></div>`;
+  });
+  $("gmWrap").innerHTML=h;
+}
+async function gmMark(role,cardId){
+  const r=await post("/api/mark",{roleId:role,cardId,key:gmKey});
+  if(r&&r.error){ gmBanner(r.error==="key"?"GM 키가 올바르지 않습니다 — 배포본은 배포 때 넣은 AGENT_KEY가 필요합니다.":r.error); }
+  else gmBanner("");
+  await poll();
+}
+function gmBanner(m){ const b=$("gmBanner"); if(m){b.textContent=m;b.classList.add("on");}else b.classList.remove("on"); }
+
 async function claim(id){ const r=await post("/api/claim",{roleId:id,clientId}); if(r&&r.error){banner(r.error);return;} await setMy(id); go("play"); }
 async function claimRandom(){ const r=await post("/api/claim-random",{clientId}); if(r&&r.error){banner(r.error);return;} if(r&&r.roleId){ await setMy(r.roleId); go("play"); } }
 async function setMy(id){ myRoleId=id; localStorage.setItem("pmb.role",id); await poll(); }
@@ -281,7 +460,8 @@ function renderPanel(ph){
   if(k==="open"){ p.innerHTML=`<div class="card"><h2>사건 · 공통지문</h2><div class="intro">${esc(SCEN.intro)}</div></div>
     <div class="card"><h2>피해자</h2><div class="panel-note">${esc(SCEN.victim||"")}</div></div>
     <div class="panel-note" style="text-align:center">각자 <b>내 큐카드</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`; }
-  else if(k==="invest"){ p.innerHTML=`<div class="clue-h"><h3>조사 맵</h3><span class="pill">공개 ${STATE.revealed.length}</span><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">카드를 눌러 <b>조사</b>하면 <b>손패(비공개)</b>로 들어옵니다. 알아낸 것은 <b>대화로만</b> 공유하세요(감춰도 됩니다).</div><div id="cmap"></div>`;
+  else if(k==="invest"){ const ap=ph.ap||0; const u=(STATE.usedAP||{})[myRoleId]||0; const left=Math.max(0,ap-u); const apPill=myRoleValid()?`<span class="pill" style="color:${left>0?'var(--good)':'var(--ember-b)'}">이번 턴 조사 ${u}/${ap}</span>`:"";
+    p.innerHTML=`<div class="clue-h"><h3>조사 맵</h3>${apPill}<span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">${myRoleValid()?`이번 턴엔 <b>${ap}장</b>까지 조사할 수 있어요. 카드를 눌러 <b>조사</b>하면 <b>손패(비공개)</b>로 들어옵니다. 알아낸 것은 <b>대화로만</b> 공유하세요(감춰도 됩니다).`:`관전 중 — 배역을 맡아야 조사할 수 있어요.`}</div><div id="cmap"></div>`;
     renderMap($("cmap")); }
   else if(k==="talk"){ const pubs=(STATE.revealed||[]);
     p.innerHTML=`<div class="clue-h"><h3>토론</h3><span class="pill">공개 단서 ${pubs.length}</span></div><div class="panel-note">아래 대화창에서 서로를 취조하세요. 공개된 단서는 아래에 요약돼 있습니다.</div>
@@ -293,6 +473,7 @@ function renderPanel(ph){
 
 function renderMap(el){
   const revIds=(STATE.revealedIds||[]); const handIds=myHand.map(c=>c.id); const cr=STATE.round||0;
+  const ap=(STATE.phase||{}).ap||0; const used=(STATE.usedAP||{})[myRoleId]||0; const apOut=myRoleValid()&&ap>0&&used>=ap;
   const pub={}; (STATE.revealed||[]).forEach(c=>pub[c.id]=c); const hand={}; myHand.forEach(c=>hand[c.id]=c);
   const locs=[["A","🏫 시체 (교실 중앙)"],["B","📋 3학년 2반 교실"],["C","🌫️ 옥상"],["D","🎨 미술실"],["E","📻 방송실"],["F","🗄️ 교무실"]];
   let h="";
@@ -302,19 +483,23 @@ function renderMap(el){
       if(pub[c.id]) h+=`<div class="gcard pub${pub[c.id].bait?' baitc':''}" onclick="openCard('${c.id}')"><span class="tag">공개</span><div class="rb">R${c.round}</div><div class="t">${esc(pub[c.id].title)}</div></div>`;
       else if(hand[c.id]) h+=`<div class="gcard hand" onclick="openCard('${c.id}')"><span class="tag">손패</span><div class="rb">R${c.round}·비공개</div><div class="t">${esc(hand[c.id].title)}</div></div>`;
       else{ const reqOk=!c.requires||revIds.includes(c.requires)||handIds.includes(c.requires); const roundOk=c.round<=cr;
-        if(roundOk&&reqOk&&myRoleValid()) h+=`<div class="gcard face" onclick="investigate('${c.id}')"><span class="tag">${c.obligatory?'공개의무':'조사'}</span><div class="q">?</div><div class="rb">R${c.round}</div></div>`;
-        else h+=`<div class="gcard face locked"><div class="q">🔒</div><div class="rb">${roundOk?(myRoleValid()?"선행 필요":"관전"):"R"+c.round}</div></div>`; }
+        if(roundOk&&reqOk&&myRoleValid()&&!apOut) h+=`<div class="gcard face" onclick="investigate('${c.id}')"><span class="tag">조사</span><div class="q">?</div><div class="rb">R${c.round}</div></div>`;
+        else h+=`<div class="gcard face locked"><div class="q">🔒</div><div class="rb">${!roundOk?"R"+c.round:(!myRoleValid()?"관전":(apOut?"턴 소진":"선행 필요"))}</div></div>`; }
     });
     h+=`</div></div>`; });
   el.innerHTML=h;
 }
-async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); }
+async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); openCard(id); }
 function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const hand=myHand.find(c=>c.id===id); const c=pub||hand; if(!c)return;
   const inHand=!!hand&&!pub;
   $("cardBox").innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:8px">${esc(c.locName)} · R${c.round}${pub?' · 공개':' · 손패(비공개)'}</div>
     <h2 style="font-size:18px">${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
     <div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>
     <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end"><span class="lead" style="margin:0 auto 0 0;font-size:12px">이 단서는 <b>당신 손패(비공개)</b>입니다. 알리려면 대화로 말하세요.</span><button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
+  const box=$("cardBox");
+  box.classList.remove("reveal","shock","bait","clue");
+  void box.offsetWidth;
+  box.classList.add("reveal", c.id==="A5"?"shock":(c.bait?"bait":"clue"));
   openModal("cardModal");
 }
 async function publish(id){ closeModal("cardModal"); const r=await post("/api/publish",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error)banner(r.error); await poll(); }
@@ -372,7 +557,8 @@ async function showMySheet(){
   if(!myRoleValid())return;
   let s; try{ s=await (await fetch("/api/sheet/"+myRoleId+"?clientId="+encodeURIComponent(clientId))).json(); }catch(e){ banner("큐카드 로드 실패"); return; }
   if(s.error){ banner(s.error); return; }
-  const frags=(s.fragments||[]).map(f=>`<div class="frag"><div class="w">기억의 파편 · ${esc(f.when)}</div>${esc(f.text)}</div>`).join("");
+  const curPhase=(STATE&&STATE.phase)?STATE.phase.name:"";
+  const frags=(s.fragments||[]).map((f,i,arr)=>`<div class="frag${(f.when===curPhase&&i===arr.length-1)?' newfrag':''}"><div class="w">기억의 파편 · ${esc(f.when)}${(f.when===curPhase&&i===arr.length-1)?' · NEW':''}</div>${esc(f.text)}</div>`).join("");
   $("sheetBox").innerHTML=`<h2 style="color:${s.color}">${s.avatar} ${esc(s.name)} <span style="font-size:13px;color:var(--muted)">· ${esc(s.job)}</span></h2>
     <div class="mlead">${esc(s.persona)}</div>
     ${s.hidden?`<div class="hb">⚑ 스포일러 배역 — 정체를 숨기세요</div>`:``}
