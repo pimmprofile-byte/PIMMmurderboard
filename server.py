@@ -135,6 +135,7 @@ def fresh_room() -> dict:
         "revealed": [],           # 전체공개 card id
         "hands": {},              # roleId -> [cardId] (손패, 비공개)
         "grades": {},             # roleId -> grade dict (name 포함)
+        "finalAnswers": {},       # roleId -> [answer str] (백엔드 미설정 시 진행자 수동채점용 보관)
         "typing": None,
     }
 
@@ -423,6 +424,7 @@ def gm(key: str = ""):
             "revealed": [SC.public_card(c) for c in ROOM["revealed"]],
             "hands": {rid: [SC.public_card(c) for c in cs] for rid, cs in ROOM["hands"].items()},
             "grades": ROOM["grades"],
+            "finalAnswers": ROOM["finalAnswers"],
         }
 
 
@@ -554,6 +556,12 @@ def final_answers(b: FinalAnswers):
         r = ROOM["roles"].get(b.roleId)
         if not r or r["clientId"] != b.clientId:
             return JSONResponse({"error": "그 배역의 답이 아닙니다"}, status_code=403)
+    # 백엔드(API 키)가 없으면 AI 채점 대신 답변을 보관 → 진행자(GM)가 채점/엔딩 내레이션
+    if not backend_ready()[0]:
+        with LOCK:
+            ROOM["finalAnswers"][b.roleId] = list(b.answers)
+            bump()
+        return {"pending": True, "answers": list(b.answers)}
     c = SC.get_character(b.roleId)
     try:
         grade = _grade(c, b.answers)
@@ -561,6 +569,7 @@ def final_answers(b: FinalAnswers):
         return JSONResponse({"error": str(e)}, status_code=502)
     with LOCK:
         ROOM["grades"][b.roleId] = grade
+        ROOM["finalAnswers"][b.roleId] = list(b.answers)
         bump()
     return {"grade": grade}
 

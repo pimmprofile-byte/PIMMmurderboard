@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>졸업사진 卒業寫眞 — PIMMmurderboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%95%AF%EF%B8%8F%3C/text%3E%3C/svg%3E">
+
 <style>
   :root{
     --bg:#0b0a0d;--bg2:#111015;--panel:#17151d;--panel2:#1f1c27;--line:#2f2a3a;
@@ -230,6 +232,8 @@ function applyState(){
 
 /* AI 배역 진행 (서버 Claude API가 연기) — GM이 눌러 AI 턴 진행 */
 let aiBusy=false;
+function finalSubmitted(id){ return id&&localStorage.getItem("pmb.final."+id)!=null; }
+function finalAnswersOf(id){ try{ return JSON.parse(localStorage.getItem("pmb.final."+id)||"null"); }catch(e){ return null; } }
 function renderAiCall(){
   const bar=$("aicall"); bar.style.display="none"; return;  /* AI 배역은 GM 콘솔(에이전트)로 구동 */
   const ph=STATE.phase||{};
@@ -264,12 +268,12 @@ function renderLobby(){
     list.appendChild(d);
   });
 }
-async function claim(id){ const r=await post("/api/claim",{roleId:id,clientId}); if(r&&r.error){banner(r.error);return;} setMy(id); go("play"); }
-async function claimRandom(){ const r=await post("/api/claim-random",{clientId}); if(r&&r.error){banner(r.error);return;} if(r&&r.roleId){ setMy(r.roleId); go("play"); } }
+async function claim(id){ const r=await post("/api/claim",{roleId:id,clientId}); if(r&&r.error){banner(r.error);return;} await setMy(id); go("play"); }
+async function claimRandom(){ const r=await post("/api/claim-random",{clientId}); if(r&&r.error){banner(r.error);return;} if(r&&r.roleId){ await setMy(r.roleId); go("play"); } }
 async function setMy(id){ myRoleId=id; localStorage.setItem("pmb.role",id); await poll(); }
 async function releaseRole(){ if(myRoleId){ await post("/api/release",{roleId:myRoleId,clientId}); myRoleId=null; localStorage.removeItem("pmb.role"); await poll(); } }
 async function setAI(id){ const r=await post("/api/setai",{roleId:id}); if(r&&r.error)banner(r.error); await poll(); }
-async function resetRoom(){ if(!confirm("방을 초기화할까요?"))return; await post("/api/reset",{}); myRoleId=null; localStorage.removeItem("pmb.role"); await poll(); go("lobby"); }
+async function resetRoom(){ if(!confirm("방을 초기화할까요?"))return; await post("/api/reset",{}); myRoleId=null; localStorage.removeItem("pmb.role"); Object.keys(localStorage).filter(k=>k.indexOf("pmb.final.")===0).forEach(k=>localStorage.removeItem(k)); await poll(); go("lobby"); }
 
 /* 페이즈 패널 */
 function renderPanel(ph){
@@ -319,7 +323,8 @@ async function publish(id){ closeModal("cardModal"); const r=await post("/api/pu
 function renderFinal(p){
   const g=myRoleId?STATE.grades[myRoleId]:null; const mine=myRoleValid();
   let h=`<div class="card"><h2>종막 · 질문지</h2><div class="mlead">배역으로서 서술로 답하면 진행자(AI)가 진상 기준으로 채점합니다.</div>`;
-  if(mine&&!g){ h+=SCEN.finalQuestions.map((q,i)=>`<div class="q-block"><div class="q">${i+1}. ${esc(q)}</div><textarea id="qa${i}"></textarea></div>`).join("")+`<div style="text-align:right"><button class="btn ember" onclick="submitFinal()">제출·채점</button></div>`; }
+  if(mine&&!g&&finalSubmitted(myRoleId)){ const a=finalAnswersOf(myRoleId)||[]; h+=`<div class="panel-note">제출 완료 — 진행자(GM)가 채점 후 엔딩을 진행합니다.</div>`+SCEN.finalQuestions.map((q,i)=>`<div class="q-block"><div class="q">${i+1}. ${esc(q)}</div><div class="b" style="white-space:pre-wrap;opacity:.85">${esc(a[i]||"(무응답)")}</div></div>`).join(""); }
+  else if(mine&&!g){ h+=SCEN.finalQuestions.map((q,i)=>`<div class="q-block"><div class="q">${i+1}. ${esc(q)}</div><textarea id="qa${i}"></textarea></div>`).join("")+`<div style="text-align:right"><button class="btn ember" onclick="submitFinal()">제출</button></div>`; }
   else if(mine&&g){ h+=gradeRow(myRoleId,g); }
   else h+=`<div class="panel-note">관전 중 — 사람 배역만 답합니다.</div>`;
   h+=`</div>`;
@@ -328,7 +333,7 @@ function renderFinal(p){
   p.innerHTML=h;
 }
 function gradeRow(id,g){ const c=roleById(id); return `<div class="grade"><span style="color:${c.color};font-weight:700">${c.avatar} ${esc(c.name)}</span><span class="pill ${g.selfAccused?'':'bad'}">${g.selfAccused?'자기지목 ✓':'자기지목 ✗'}</span><span class="pill">죄 ${g.sinsAcknowledged}</span>${g.osewonIdentified?'<span class="pill">오세원 간파 ✓</span>':''}<span class="pill">${g.score}점</span>${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
-async function submitFinal(){ if(gradeBusy)return; const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():"")); if(answers.every(a=>!a)){alert("한 문항 이상 답해주세요.");return;} gradeBusy=true; banner("채점 중…"); const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers}); gradeBusy=false; if(r&&r.error)banner("채점 오류: "+r.error); else banner(""); await poll(); }
+async function submitFinal(){ if(gradeBusy)return; const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():"")); if(answers.every(a=>!a)){alert("한 문항 이상 답해주세요.");return;} gradeBusy=true; banner("제출 중…"); const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers}); gradeBusy=false; if(r&&r.error){banner("제출 오류: "+r.error); return;} localStorage.setItem("pmb.final."+myRoleId,JSON.stringify(answers)); banner(r&&r.pending?"제출 완료 — 진행자(GM)가 채점합니다":""); await poll(); }
 
 /* 엔딩 */
 function renderReveal(p){
