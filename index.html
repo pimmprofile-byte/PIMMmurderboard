@@ -230,7 +230,8 @@ function applyState(){
 /* AI 배역 진행 (서버 Claude API가 연기) — GM이 눌러 AI 턴 진행 */
 let aiBusy=false;
 function renderAiCall(){
-  const bar=$("aicall"); const ph=STATE.phase||{};
+  const bar=$("aicall"); bar.style.display="none"; return;  /* AI 배역은 GM 콘솔(에이전트)로 구동 */
+  const ph=STATE.phase||{};
   const ais=SCEN.characters.filter(c=>STATE.roles[c.id]&&STATE.roles[c.id].mode==="ai");
   if(!ais.length){ bar.style.display="none"; return; }
   bar.style.display="flex";
@@ -308,7 +309,7 @@ function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const 
   $("cardBox").innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:8px">${esc(c.locName)} · R${c.round}${pub?' · 전체공개':' · 손패(비공개)'}</div>
     <h2 style="font-size:18px">${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
     <div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>
-    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">${inHand?`<button class="btn gold" onclick="publish('${id}')">전체공개</button>`:''}<button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end"><span class="lead" style="margin:0 auto 0 0;font-size:12px">이 단서는 <b>당신 손패(비공개)</b>입니다. 알리려면 대화로 말하세요.</span><button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
   openModal("cardModal");
 }
 async function publish(id){ closeModal("cardModal"); const r=await post("/api/publish",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error)banner(r.error); await poll(); }

@@ -176,6 +176,13 @@ def public_state() -> dict:
 
 app = FastAPI(title="PIMMmurderboard")
 
+# GM 콘솔(다른 출처의 board.html)이 라이브 서버를 호출할 수 있게 CORS 개방
+try:
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+except Exception:
+    pass
+
 
 class Claim(BaseModel):
     roleId: str
@@ -460,6 +467,16 @@ def agent_advance(b: KeyOnly):
     if not _agent_ok(b.key):
         return JSONResponse({"error": "key"}, status_code=403)
     return advance()
+
+
+@app.post("/api/agent/narrate")
+def agent_narrate(b: AgentSay):  # roleId 무시, text=GM 내레이션(전체 방송)
+    if not _agent_ok(b.key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    with LOCK:
+        ROOM["table"].append({"kind": "system", "broadcast": True, "text": b.text.strip()})
+        bump()
+    return {"ok": True}
 
 
 @app.post("/api/advance")
