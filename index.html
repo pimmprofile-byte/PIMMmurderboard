@@ -315,6 +315,7 @@
     <div class="gm-side">
       <div class="gm-side-h">💬 테이블 대화 <span style="font-weight:400;color:var(--muted);font-size:11px">플레이어 발언이 실시간으로 뜹니다</span></div>
       <div class="chat" id="gmChat"></div>
+      <div class="aicall" id="gmAiTrig" style="display:none"></div>
       <div class="composer">
         <select id="gmAiRole" title="AI 배역 선택"></select>
         <textarea id="gmAiInput" rows="1" placeholder="AI 배역 대사 전송…  (Enter)"></textarea>
@@ -422,8 +423,10 @@ function playPhaseFx(ph){
 let aiBusy=false;
 function finalSubmitted(id){ return id&&localStorage.getItem("pmb.final."+id)!=null; }
 function finalAnswersOf(id){ try{ return JSON.parse(localStorage.getItem("pmb.final."+id)||"null"); }catch(e){ return null; } }
+function backendOn(){ return !!(SCEN&&SCEN.backend&&SCEN.backend.ok); }
 function renderAiCall(){
-  const bar=$("aicall"); bar.style.display="none"; return;  /* AI 배역은 GM 콘솔(에이전트)로 구동 */
+  const bar=$("aicall");
+  if(!backendOn()){ bar.style.display="none"; return; }  /* API 키가 있어야 자동 AI. 없으면 GM이 수동 릴레이 */
   const ph=STATE.phase||{};
   const ais=SCEN.characters.filter(c=>STATE.roles[c.id]&&STATE.roles[c.id].mode==="ai");
   if(!ais.length){ bar.style.display="none"; return; }
@@ -472,6 +475,13 @@ function renderGM(){
   if(sig!==gmSig||fresh.size){ gmSig=sig; $("gmWrap").innerHTML=buildGMBody(ph,cur,ap,k,checked,used,fresh); }
   renderChat("gmChat");
   updateAiSelect();
+  // API 백엔드가 켜져 있으면 AI 자동발언 버튼, 아니면 수동 릴레이(입력창)
+  const trig=$("gmAiTrig");
+  const ais=SCEN.characters.filter(c=>(STATE.roles[c.id]||{}).mode==="ai");
+  if(backendOn()&&ais.length){
+    trig.style.display="flex";
+    trig.innerHTML=`<span class="lb">🤖 자동발언</span>`+ais.map(c=>`<span class="aichip" style="--sc:${c.color}" onclick="aiSay('${c.id}')"><span class="d"></span>${esc(c.name)}</span>`).join("")+(ais.length>1?`<span class="aichip" style="--sc:var(--gold)" onclick="aiAll()"><span class="d" style="background:var(--gold)"></span>전원</span>`:"")+((STATE.phase||{}).key==="final"?ais.map(c=>!(STATE.grades||{})[c.id]?`<span class="aichip" style="--sc:${c.color}" onclick="aiFinal('${c.id}')"><span class="d"></span>${esc(c.name)} 답변</span>`:"").join(""):"");
+  } else trig.style.display="none";
 }
 function buildGMBody(ph,cur,ap,k,checked,used,fresh){
   const inter=(SCEN.interludes||{})[String(ph.seq)]||"";
