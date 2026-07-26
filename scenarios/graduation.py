@@ -10,8 +10,22 @@
 """
 from __future__ import annotations
 
+ID = "graduation"
 TITLE = "졸업사진"
 SUBTITLE = "卒業寫眞 · 10년 만의 동창회"
+META = {"title": TITLE, "subtitle": SUBTITLE,
+        "blurb": "폐교 동창회에서 벌어지는 반전·진혼 미스터리. 플레이어가 스스로 진상을 깨닫는다.",
+        "players": "2~4인", "tone": "반전·심리", "difficulty": "★★★"}
+
+# ── 조사 맵(플레이어 층별 지도용) — CARDS의 loc 문자와 대응, 렌더 순서대로 ──
+MAP = [
+    {"loc": "C", "icon": "🌫️", "name": "옥상"},
+    {"loc": "D", "icon": "🎨", "name": "미술실"},
+    {"loc": "E", "icon": "📻", "name": "방송실"},
+    {"loc": "F", "icon": "🗄️", "name": "교무실"},
+    {"loc": "A", "icon": "🩸", "name": "시체·교실 중앙"},
+    {"loc": "B", "icon": "🏫", "name": "3학년 2반 교실"},
+]
 
 # 공통지문 최종본 (v1.1)
 COMMON_INTRO = (
@@ -257,6 +271,7 @@ ENDINGS = {
 def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
+        "map": MAP,
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
                         "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"]} for c in CHARACTERS],
@@ -431,8 +446,11 @@ def build_grade_prompt(c: dict, answers: list[str]) -> str:
 {{"selfAccused": true, "sinsAcknowledged": 0, "osewonIdentified": true, "score": 0, "verdict": "..."}}"""
 
 
-def compute_ending(grades: dict) -> dict:
+def compute_ending(grades: dict) -> dict | None:
     culprits = ["sim", "yu", "lee"]
+    if not all(rid in grades for rid in culprits):
+        return None  # 아직 채점이 끝나지 않음 — 엔딩은 준비되지 않았다
+
     # 자기지목은 죄 2개 이상 인정을 동반해야 유효
     accused = [rid for rid in culprits
                if grades.get(rid, {}).get("selfAccused") and grades.get(rid, {}).get("sinsAcknowledged", 0) >= 2]

@@ -39,6 +39,18 @@
   #s-landing h1{margin:0;color:#efe7db;font-weight:700;letter-spacing:.14em;line-height:1.05;font-size:clamp(50px,12vw,120px);text-shadow:0 10px 50px rgba(0,0,0,.8)}
   #s-landing .tag{margin-top:20px;color:var(--gold);font-style:italic;font-size:clamp(15px,2.4vw,22px)}
   #s-landing .syn{margin-top:26px;max-width:640px;color:#cfc7d6;font-size:14px;line-height:1.95;border-left:2px solid var(--ember);padding-left:16px;white-space:pre-line;max-height:34vh;overflow:auto}
+  .scenpick{margin-top:26px;max-width:720px}
+  .scenpick .sp-h{color:var(--ember-b);letter-spacing:.32em;font-size:11px;margin-bottom:10px}
+  .sp-row{display:flex;gap:11px;flex-wrap:wrap}
+  .sp-card{flex:1 1 220px;min-width:200px;border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:linear-gradient(160deg,#161320,#111017);cursor:pointer;transition:border-color .18s,transform .18s;position:relative}
+  .sp-card:hover{transform:translateY(-2px);border-color:var(--ember)}
+  .sp-card.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+  .sp-card .spt{font-weight:700;color:#e7dfd3;font-size:15px;letter-spacing:.04em}
+  .sp-card .spb{color:#b6adc0;font-size:12px;line-height:1.6;margin-top:6px}
+  .sp-card .spm{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .sp-card .spm .pill{font-size:9.5px}
+  .sp-card .sp-go{margin-top:10px;width:100%}
+  .sp-card .sp-on{position:absolute;top:9px;right:10px;font-size:9px;color:var(--gold);letter-spacing:.06em}
   .be-chip{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--sub);background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:20px;padding:6px 14px;margin-top:20px}
   .be-chip .d{width:8px;height:8px;border-radius:50%;background:var(--bad)}.be-chip.ok .d{background:var(--good)}
 
@@ -97,6 +109,8 @@
   /* 학교 구획도(플로어 플랜) */
   .floormap{display:grid;gap:11px;grid-template-columns:repeat(3,1fr);
     grid-template-areas:"roof roof roof" "art bcast staff" "class class class"}
+  /* 데이터 구동 존 그리드(시나리오 map 기반) */
+  .floormap.generic{grid-template-columns:repeat(auto-fill,minmax(212px,1fr));grid-template-areas:none}
   .room{border:1px solid var(--line);border-radius:13px;padding:10px 11px;background:linear-gradient(160deg,#161320,#111017);position:relative;animation:roomIn .5s ease both}
   @keyframes roomIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   .room .rmh{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#d7d0e4;margin-bottom:9px;border-bottom:1px dashed var(--line);padding-bottom:6px}
@@ -259,13 +273,14 @@
     <div class="tag serif" id="lSub">卒業寫眞 · 10년 만의 동창회</div>
     <div class="syn serif" id="lIntro">…</div>
     <div><span class="be-chip" id="beChip"><span class="d"></span><span id="beTxt">백엔드 확인 중…</span></span></div>
+    <div class="scenpick"><div class="sp-h">시나리오 선택</div><div class="sp-row" id="scenPicker"></div></div>
     <div style="margin-top:32px"><button class="btn ember" style="padding:14px 44px;font-size:16px;letter-spacing:.15em" onclick="go('lobby')">들어가기</button></div>
   </div>
 </div>
 
 <div id="s-lobby" class="screen">
   <div class="wrap">
-    <div class="head"><span class="t serif">배역 선택</span><span class="pill" id="beChip2"></span></div>
+    <div class="head"><span class="t serif">배역 선택</span><span class="pill" id="lobbyScen" style="cursor:pointer" title="시나리오 바꾸기" onclick="go('landing')">🎬 <span id="lobbyScenName"></span> · 바꾸기</span><span class="pill" id="beChip2"></span></div>
     <div class="lead">각자 자기 기기에서 배역을 고르세요(또는 랜덤). 자기 배역의 비밀 큐카드는 이 기기에만 보입니다. 남은 배역은 AI(진행자)가 맡습니다.</div>
     <div id="lobbyList"></div>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
@@ -343,17 +358,51 @@ const roleById=id=>SCEN.characters.find(c=>c.id===id);
 const cardCat=id=>SCEN.cardCatalog.find(c=>c.id===id);
 const myRoleValid=()=>myRoleId&&STATE&&STATE.roles[myRoleId]&&STATE.roles[myRoleId].mode==="human";
 
-async function boot(){
-  try{ SCEN=await (await fetch("/api/scenario")).json(); }
-  catch(e){ $("beTxt").textContent="서버 연결 실패"; return; }
+async function loadScenario(){
+  SCEN=await (await fetch("/api/scenario")).json();
+  applyLanding();
+}
+function applyLanding(){
+  if(!SCEN)return;
+  // 랜딩/로비 문안을 선택된 시나리오에서 채운다
   $("lTitle").textContent=SCEN.title; $("lSub").textContent=SCEN.subtitle; $("lIntro").textContent=SCEN.intro;
+  $("lobbyScenName").textContent=SCEN.title;
   const be=SCEN.backend||{ok:false,label:"?"};
   $("beChip").className="be-chip"+(be.ok?" ok":""); $("beTxt").textContent="AI 백엔드 · "+be.label;
   $("beChip2").textContent=be.label; $("beChip2").className="pill"+(be.ok?"":" bad");
+}
+async function boot(){
+  try{ await loadScenario(); }
+  catch(e){ $("beTxt").textContent="서버 연결 실패"; return; }
+  loadScenarios();
   await poll(); setInterval(poll,1500);
+}
+
+/* ===== 시나리오 선택(랜딩) ===== */
+let SCENLIST=[];
+async function loadScenarios(){
+  try{ const r=await (await fetch("/api/scenarios")).json(); SCENLIST=r.scenarios||[]; renderPicker(r.active); }catch(e){}
+}
+function activeScenId(){ return (STATE&&STATE.scenarioId)||(SCEN&&SCEN.scenarioId)||null; }
+function renderPicker(active){
+  const el=$("scenPicker"); if(!el)return;
+  const act=active||activeScenId();
+  el.innerHTML=SCENLIST.map(s=>`<div class="sp-card${s.id===act?' active':''}" onclick="selectScenario('${s.id}')">${s.id===act?'<span class="sp-on">● 진행 중</span>':''}<div class="spt">${esc(s.title)}</div><div class="spb">${esc(s.blurb||'')}</div><div class="spm"><span class="pill">${esc(s.players||'')}</span><span class="pill">${esc(s.tone||'')}</span><span class="pill">${esc(s.difficulty||'')}</span></div><button class="btn ${s.id===act?'':'gold'} sm sp-go" onclick="event.stopPropagation();selectScenario('${s.id}')">${s.id===act?'진행 중':'이 시나리오로'}</button></div>`).join("");
+}
+async function selectScenario(id){
+  if(id===activeScenId()){ go('lobby'); return; }
+  if(!confirm("이 시나리오로 방을 새로 시작할까요? (모두의 진행이 초기화됩니다)"))return;
+  const r=await post("/api/select",{scenarioId:id,key:gmKey});
+  if(r&&r.error){ alert("시나리오 전환 실패: "+(r.error==="key"?"GM 키가 필요합니다 (상단 GM으로 진행에서 키 입력)":r.error)); return; }
+  myRoleId=null; localStorage.removeItem("pmb.role");
+  Object.keys(localStorage).filter(k=>k.indexOf("pmb.final.")===0).forEach(k=>localStorage.removeItem(k));
+  await loadScenario(); await loadScenarios(); await poll();
+  banner(""); go('lobby');
 }
 async function poll(){
   try{ STATE=await (await fetch("/api/state")).json(); }catch(e){ return; }
+  // 다른 사람이 시나리오를 바꿨으면 이 기기도 새 시나리오로 갱신
+  if(STATE&&SCEN&&STATE.scenarioId&&STATE.scenarioId!==SCEN.scenarioId){ try{ await loadScenario(); await loadScenarios(); }catch(e){} }
   if(myRoleValid()){ try{ myHand=(await (await fetch("/api/hand/"+myRoleId+"?clientId="+encodeURIComponent(clientId))).json()).hand||[]; }catch(e){} }
   else myHand=[];
   applyState();
@@ -369,6 +418,7 @@ function enterGM(){
 }
 
 function applyState(){
+  if(scr==="landing") renderPicker();
   if(!STATE)return;
   if(myRoleId&&(!STATE.roles[myRoleId]||STATE.roles[myRoleId].mode!=="human")){ myRoleId=null; localStorage.removeItem("pmb.role"); }
   if(scr==="lobby") renderLobby();
@@ -589,19 +639,10 @@ function renderMap(el){
   };
   // 이번 라운드에 열린 카드만(+이미 가진 것) — 아직 안 열린 카드는 감춰 정보 과부하 방지
   const cardsOf=(loc)=>SCEN.cardCatalog.filter(c=>c.loc===loc && (c.round<=cr || pub[c.id] || hand[c.id]));
-  const room=(cls,icon,name,floor,cards)=> cards.length?`<div class="room ${cls}"><div class="rmh">${icon} ${name}<span class="fl">${floor}</span></div><div class="cardmap">${cards.map(cardHTML).join("")}</div></div>`:"";
-  const A=cardsOf("A"), Bc=cardsOf("B");
-  let cls=`<div class="room class"><div class="rmh">🏫 3학년 2반 교실<span class="fl">1층 · 현장</span></div>`;
-  if(A.length) cls+=`<div class="scene"><div class="sh">🩸 시체 · 교실 중앙</div><div class="cardmap">${A.map(cardHTML).join("")}</div></div>`;
-  if(Bc.length) cls+=`<div class="cardmap">${Bc.map(cardHTML).join("")}</div>`;
-  cls+=`</div>`;
-  el.innerHTML=`<div class="floormap">
-    ${room("roof","🌫️","옥상","최상층",cardsOf("C"))}
-    ${room("art","🎨","미술실","교사동",cardsOf("D"))}
-    ${room("bcast","📻","방송실","교사동",cardsOf("E"))}
-    ${room("staff","🗄️","교무실","교사동",cardsOf("F"))}
-    ${cls}
-  </div>`;
+  // 시나리오가 정의한 존(map)마다 방 상자 하나 — 아이콘+이름 헤더 + 그 위치의 카드
+  const zones=(SCEN.map&&SCEN.map.length)?SCEN.map:[];
+  const room=(z)=>{ const cards=cardsOf(z.loc); return cards.length?`<div class="room"><div class="rmh">${z.icon||"📍"} ${esc(z.name||z.loc)}</div><div class="cardmap">${cards.map(cardHTML).join("")}</div></div>`:""; };
+  el.innerHTML=`<div class="floormap generic">${zones.map(room).join("")}</div>`;
 }
 async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); openCard(id); }
 function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const hand=myHand.find(c=>c.id===id); const c=pub||hand; if(!c)return;
@@ -631,7 +672,14 @@ function renderFinal(p){
   if(others.length){ h+=`<div class="card"><h2>다른 배역 채점</h2>${others.map(id=>gradeRow(id,STATE.grades[id])).join("")}</div>`; }
   p.innerHTML=h;
 }
-function gradeRow(id,g){ const c=roleById(id); return `<div class="grade"><span style="color:${c.color};font-weight:700">${c.avatar} ${esc(c.name)}</span><span class="pill ${g.selfAccused?'':'bad'}">${g.selfAccused?'자기지목 ✓':'자기지목 ✗'}</span><span class="pill">죄 ${g.sinsAcknowledged}</span>${g.osewonIdentified?'<span class="pill">오세원 간파 ✓</span>':''}<span class="pill">${g.score}점</span>${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
+function gradeRow(id,g){ const c=roleById(id)||{color:"#999",avatar:"❔",name:id};
+  let pills;
+  if(Array.isArray(g.tags)){ // 시나리오가 표시 태그를 제공하면 그대로 렌더
+    pills=g.tags.map(t=>`<span class="pill ${t.ok?'':'bad'}">${esc(t.label)}</span>`).join("");
+  }else{ // 졸업사진 폴백
+    pills=`<span class="pill ${g.selfAccused?'':'bad'}">${g.selfAccused?'자기지목 ✓':'자기지목 ✗'}</span><span class="pill">죄 ${g.sinsAcknowledged}</span>${g.osewonIdentified?'<span class="pill">오세원 간파 ✓</span>':''}`;
+  }
+  return `<div class="grade"><span style="color:${c.color};font-weight:700">${c.avatar} ${esc(c.name)}</span>${pills}<span class="pill">${g.score}점</span>${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
 async function submitFinal(){ if(gradeBusy)return; const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():"")); if(answers.every(a=>!a)){alert("한 문항 이상 답해주세요.");return;} gradeBusy=true; banner("제출 중…"); const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers}); gradeBusy=false; if(r&&r.error){banner("제출 오류: "+r.error); return;} localStorage.setItem("pmb.final."+myRoleId,JSON.stringify(answers)); banner(r&&r.pending?"제출 완료 — 진행자(GM)가 채점합니다":""); await poll(); }
 
 /* 엔딩 */
@@ -639,7 +687,7 @@ function renderReveal(p){
   const e=STATE.ending;
   if(!e){ p.innerHTML=`<div class="card"><h2>진상 공개</h2><div class="panel-note">아직 채점이 끝나지 않았습니다. 종막 질문지 답변이 모이면 엔딩이 열립니다.</div></div>`; return; }
   const tone=e.tone==="good"?"good":(e.tone==="warn"?"warn":"bad");
-  const g=STATE.grades||{}; const gh=["sim","yu","lee","ose"].filter(id=>g[id]).map(id=>gradeRow(id,g[id])).join("");
+  const g=STATE.grades||{}; const gh=Object.keys(g).map(id=>gradeRow(id,g[id])).join("");
   p.innerHTML=`<div class="card"><div class="verdict ${tone}">${esc(e.name)}</div>${gh}<div class="rev-sol" style="margin-top:12px">${esc(e.desc)}\n\n─ 진상 ─\n${esc(e.truth)}</div></div>`;
 }
 

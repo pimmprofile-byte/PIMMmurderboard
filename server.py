@@ -31,7 +31,10 @@ try:
 except Exception:
     pass
 
-import scenario as SC  # noqa: E402
+import scenarios  # noqa: E402
+
+# 활성 시나리오(앱 전역) — 모든 함수는 전역 SC를 읽으므로, SC를 재바인딩하면 앱 전체가 그 시나리오로 전환된다.
+SC = scenarios.get(os.getenv("SCENARIO") or scenarios.default_id())
 
 BACKEND = os.getenv("LLM_BACKEND", "claude").lower()
 CLAUDE_MODEL = os.getenv("REUNION_MODEL") or os.getenv("PIMM_MODEL") or "claude-opus-4-8"
@@ -130,6 +133,7 @@ LOCK = threading.RLock()
 def fresh_room() -> dict:
     return {
         "rev": 1, "seq": 1,
+        "scenarioId": SC.ID,
         "roles": {c["id"]: {"mode": "open", "clientId": None} for c in SC.CHARACTERS},
         "table": [{"kind": "system", "text": f'{SC.PHASES[0]["name"]} — {SC.PHASES[0]["gm"]}'}],
         "revealed": [],           # 전체공개 card id
@@ -144,6 +148,17 @@ def fresh_room() -> dict:
 ROOM = fresh_room()
 
 
+def use_scenario(sid: str) -> bool:
+    """시나리오를 교체하고 방을 새 시나리오로 초기화한다(모두에게 반영)."""
+    global SC, ROOM
+    if sid not in scenarios.ids():
+        return False
+    with LOCK:
+        SC = scenarios.get(sid)
+        ROOM = fresh_room()
+    return True
+
+
 def bump():
     ROOM["rev"] += 1
 
@@ -156,17 +171,15 @@ def public_state() -> dict:
     with LOCK:
         seq = ROOM["seq"]
         ph = SC.phase_by_seq(seq)
-        ending = None
         g = ROOM["grades"]
-        if all(rid in g for rid in ("sim", "yu", "lee")):
-            ending = SC.compute_ending(g)
+        ending = SC.compute_ending(g)  # 준비 안 됐으면 시나리오가 None을 반환
         cur = current_round(seq)
         ap = int(ph.get("ap", 0) or 0)
         # 내용 없는 마킹 현황(누가 어떤 카드를 조사했는지 id만) + 이번 턴 남은 조사 수
         checked = {rid: list(cs) for rid, cs in ROOM["hands"].items() if cs}
         used = {rid: sum(1 for r in cm.values() if r == cur) for rid, cm in ROOM["checkedRound"].items()}
         return {
-            "rev": ROOM["rev"], "seq": seq, "round": cur,
+            "rev": ROOM["rev"], "seq": seq, "round": cur, "scenarioId": SC.ID,
             "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"]},
             "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
             "table": ROOM["table"],
@@ -239,6 +252,11 @@ class KeyOnly(BaseModel):
     key: str = ""
 
 
+class SelectScenario(BaseModel):
+    scenarioId: str
+    key: str = ""
+
+
 class FinalAnswers(BaseModel):
     roleId: str
     clientId: str
@@ -255,6 +273,22 @@ def scenario():
                          "requires": c.get("requires"), "obligatory": c.get("reveal") == "obligatory"}
                         for c in SC.CARDS]
     return d
+
+
+@app.get("/api/scenarios")
+def scenarios_list():
+    return {"scenarios": scenarios.meta_list(), "active": SC.ID}
+
+
+@app.post("/api/select")
+def select_scenario(b: SelectScenario):
+    # GM-급 조작 — 배포본에선 AGENT_KEY로 보호, 로컬(미설정)은 개방
+    if not _agent_ok(b.key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    if b.scenarioId not in scenarios.ids():
+        return JSONResponse({"error": "없는 시나리오"}, status_code=400)
+    use_scenario(b.scenarioId)  # 방을 새 시나리오로 초기화(모두에게 반영)
+    return {"ok": True, "active": SC.ID}
 
 
 @app.get("/api/state")
@@ -594,7 +628,7 @@ def _grade(c: dict, answers: list[str]) -> dict:
     raw = llm(SC.build_grade_prompt(c, answers), "채점 JSON만 출력하라.", 500)
     o = _parse_json(raw)
     ncount = len(c["sins"]) if c["sins"] else 0
-    return {
+    g = {
         "name": c["name"],
         "selfAccused": bool(o.get("selfAccused", False)),
         "sinsAcknowledged": max(0, min(ncount, int(o.get("sinsAcknowledged", 0) or 0))),
@@ -602,6 +636,16 @@ def _grade(c: dict, answers: list[str]) -> dict:
         "score": max(0, min(40, int(o.get("score", 0) or 0))),
         "verdict": str(o.get("verdict", "") or ""),
     }
+    # 후더닛 시나리오(예: subway)용 추가 필드 — 있을 때만 보존(자기지목형 시나리오엔 영향 없음).
+    if "culpritGuess" in o:
+        g["culpritGuess"] = str(o.get("culpritGuess") or "unknown")
+    if "correct" in o:
+        g["correct"] = bool(o.get("correct", False))
+    if "cluesFound" in o:
+        g["cluesFound"] = max(0, int(o.get("cluesFound", 0) or 0))
+    if isinstance(o.get("tags"), list):
+        g["tags"] = o["tags"]
+    return g
 
 
 @app.post("/api/final-answers")
