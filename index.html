@@ -154,6 +154,35 @@
   .hb{background:#2a1214;border:1px solid #5a2c2c;color:#ffb9b9;border-radius:10px;padding:11px 14px;font-weight:700;text-align:center;margin-bottom:12px}
   .frag{background:#0e1620;border:1px solid #2c465a;border-radius:10px;padding:9px 12px;margin:8px 0;color:#cfe0ee;font-size:13.5px}.frag .w{font-size:11px;color:var(--cold);margin-bottom:3px}
   .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"Nanum Myeongjo",serif}
+  /* ── 스와이프 카드 캐러셀 (롤카드·손패 넘겨보기) ── */
+  .swipe{position:relative;margin:6px 0 2px}
+  .sw-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .sw-track::-webkit-scrollbar{display:none}
+  .sw-slide{flex:0 0 100%;scroll-snap-align:center;min-width:0;padding:2px;max-height:66vh;overflow-y:auto}
+  .sw-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:36px;height:36px;border-radius:50%;
+    background:rgba(18,15,24,.92);border:1px solid var(--line);color:var(--ink);font-size:21px;line-height:1;display:grid;place-items:center;cursor:pointer;transition:.15s}
+  .sw-nav:hover:not(:disabled){border-color:var(--gold);color:#fff}
+  .sw-nav.prev{left:-8px}.sw-nav.next{right:-8px}
+  .sw-nav:disabled{opacity:.2;cursor:default}
+  .sw-dots{display:flex;gap:6px;justify-content:center;align-items:center;margin-top:13px;flex-wrap:wrap}
+  .sw-dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.22s;cursor:pointer}
+  .sw-dot.on{background:var(--gold);width:22px;border-radius:4px}
+  .sw-count{text-align:center;font-size:11.5px;color:var(--muted);margin-top:5px;letter-spacing:.02em}
+  /* 큰 카드(롤/손패) */
+  .bigcard{border-radius:16px;padding:18px 18px 20px;background:linear-gradient(165deg,#1d1a25,#141119);border:1px solid var(--line);min-height:220px}
+  .bigcard.role{border-color:color-mix(in srgb,var(--rc,#8a7a4a) 45%,var(--line));background:linear-gradient(165deg,#211c28,#15121b)}
+  .bigcard.role::before{content:"";display:block;height:3px;width:46px;border-radius:3px;background:var(--rc,var(--gold));margin-bottom:14px}
+  .bigcard.clue{border-color:#5a4a2c;background:linear-gradient(165deg,#241d13,#17121a)}
+  .bc-eyebrow{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .bc-title{font-weight:800;font-size:20px;line-height:1.28;color:#f2ecdf}
+  .bc-title.role{color:var(--rc,#f2ecdf)}
+  .bc-sub{font-size:13px;color:var(--sub);margin-top:4px}
+  .bc-body{font-size:15.5px;line-height:1.8;color:#e2dcef;margin-top:14px;white-space:pre-wrap}
+  .bc-avwrap{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .bc-av{font-size:34px;width:60px;height:60px;display:grid;place-items:center;background:var(--bg);border-radius:15px;flex:0 0 60px;border:1px solid var(--line)}
+  .bc-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+  .bc-hidden{margin-top:14px;background:#2a1412;border:1px solid #6a2a26;border-radius:10px;padding:10px 13px;color:#f0b8b0;font-size:13.5px;font-weight:600}
+  .bc-goal{display:flex;gap:10px;font-size:15px;padding:9px 0;border-bottom:1px solid var(--line)}.bc-goal:last-child{border-bottom:0}.bc-goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"Nanum Myeongjo",serif}
 
   /* ============ GM 마킹 보드 ============ */
   #s-gm{display:none;flex-direction:column;height:100vh}#s-gm.on{display:flex}
@@ -299,7 +328,7 @@
     <span class="me" id="pMe"></span>
     <span class="spacer"></span>
     <button class="btn sm" onclick="go('lobby')">배역</button>
-    <button class="btn sm" id="handBtn" onclick="showMyHand()">🃏 내 단서 <span id="handN">0</span></button>
+    <button class="btn gold sm" id="handBtn" onclick="showMyHand()">🃏 내 단서 <span id="handN">0</span></button>
     <button class="btn sm" id="sheetBtn" onclick="showMySheet()">내 큐카드</button>
     <button class="btn sm" id="advBtn" onclick="advance()">다음 페이즈 ›</button>
   </div>
@@ -715,33 +744,73 @@ async function humanSay(){ if(!myRoleValid())return; const inp=$("input"); const
 async function advance(){ if(!confirm("다음 페이즈로 넘어갈까요?"))return; await post("/api/advance",{}); await poll(); }
 function banner(m){ const b=$("banner"); if(m){b.textContent=m;b.classList.add("on");}else b.classList.remove("on"); }
 
-/* 내 큐카드 */
+/* ── 스와이프 카드 캐러셀 (실물카드처럼 옆으로 넘겨보기) ── */
+function buildSwipe(slides){
+  const track=slides.map(s=>`<div class="sw-slide">${s}</div>`).join("");
+  const dots=slides.map((_,i)=>`<span class="sw-dot${i===0?" on":""}" data-i="${i}"></span>`).join("");
+  const nav=slides.length>1?`<button class="sw-nav prev" aria-label="이전">‹</button><button class="sw-nav next" aria-label="다음">›</button>`:"";
+  return `<div class="swipe">${nav}<div class="sw-track">${track}</div>${slides.length>1?`<div class="sw-dots">${dots}</div><div class="sw-count"><b class="sw-cur">1</b> / ${slides.length} · 옆으로 넘겨보세요</div>`:""}</div>`;
+}
+function wireSwipe(box){
+  const sw=box.querySelector(".swipe"); if(!sw)return;
+  const track=sw.querySelector(".sw-track"); const slides=[...sw.querySelectorAll(".sw-slide")];
+  const dots=[...sw.querySelectorAll(".sw-dot")]; const prev=sw.querySelector(".sw-nav.prev"); const next=sw.querySelector(".sw-nav.next");
+  const cur=()=>Math.round(track.scrollLeft/track.clientWidth);
+  const upd=()=>{ const i=cur(); dots.forEach((d,j)=>d.classList.toggle("on",j===i)); const c=sw.querySelector(".sw-cur"); if(c)c.textContent=i+1; if(prev)prev.disabled=i<=0; if(next)next.disabled=i>=slides.length-1; };
+  const goTo=i=>{ i=Math.max(0,Math.min(slides.length-1,i)); track.scrollTo({left:i*track.clientWidth,behavior:"smooth"}); };
+  track.addEventListener("scroll",()=>{ clearTimeout(track._t); track._t=setTimeout(upd,60); },{passive:true});
+  if(prev)prev.onclick=()=>goTo(cur()-1);
+  if(next)next.onclick=()=>goTo(cur()+1);
+  dots.forEach(d=>d.onclick=()=>goTo(+d.dataset.i));
+  upd();
+}
+
+/* 내 큐카드 — 실물카드처럼 스와이프로 넘겨보기(큰 글씨) */
 async function showMySheet(){
   if(!myRoleValid())return;
   let s; try{ s=await (await fetch("/api/sheet/"+myRoleId+"?clientId="+encodeURIComponent(clientId))).json(); }catch(e){ banner("큐카드 로드 실패"); return; }
   if(s.error){ banner(s.error); return; }
   const curPhase=(STATE&&STATE.phase)?STATE.phase.name:"";
-  const frags=(s.fragments||[]).map((f,i,arr)=>`<div class="frag${(f.when===curPhase&&i===arr.length-1)?' newfrag':''}"><div class="w">기억의 파편 · ${esc(f.when)}${(f.when===curPhase&&i===arr.length-1)?' · NEW':''}</div>${esc(f.text)}</div>`).join("");
-  $("sheetBox").innerHTML=`<h2 style="color:${s.color}">${s.avatar} ${esc(s.name)} <span style="font-size:13px;color:var(--muted)">· ${esc(s.job)}</span></h2>
-    <div class="mlead">${esc(s.persona)}</div>
-    ${s.hidden?`<div class="hb">⚑ 스포일러 배역 — 정체를 숨기세요</div>`:``}
-    ${s.sheet.map(x=>`<div class="sec"><div class="h">${esc(x.h)}</div><div class="b">${esc(x.b).replace(/\n/g,"<br>")}</div></div>`).join("")}
-    ${frags?`<div class="sec"><div class="h">떠오른 기억</div>${frags}</div>`:``}
-    <div class="sec"><div class="h">나의 목표</div>${s.goals.map(g=>`<div class="goal"><span>${esc(g.t)}</span><span class="pt">+${g.p}</span></div>`).join("")}</div>
-    <div style="margin-top:16px;text-align:right"><button class="btn" onclick="closeModal('sheetModal')">확인</button></div>`;
-  openModal("sheetModal");
+  const slides=[];
+  // 1) 정체 슬라이드
+  slides.push(`<div class="bigcard role" style="--rc:${s.color}">
+    <div class="bc-eyebrow">나의 배역</div>
+    <div class="bc-avwrap"><div class="bc-av">${s.avatar}</div><div><div class="bc-title role">${esc(s.name)}</div><div class="bc-sub">${esc(s.age?s.age+" · ":"")}${esc(s.job)}</div></div></div>
+    <div class="bc-body">${esc(s.persona)}</div>
+    ${s.hidden?`<div class="bc-hidden">⚑ 스포일러 배역 — 정체를 들키지 마세요</div>`:``}</div>`);
+  // 2) 시트 항목 슬라이드
+  (s.sheet||[]).forEach(x=>{ slides.push(`<div class="bigcard role" style="--rc:${s.color}">
+    <div class="bc-eyebrow">큐카드</div><div class="bc-title" style="font-size:18px">${esc(x.h)}</div>
+    <div class="bc-body">${esc(x.b)}</div></div>`); });
+  // 3) 떠오른 기억
+  const frags=(s.fragments||[]);
+  if(frags.length){ const fh=frags.map((f,i,arr)=>{ const isNew=(f.when===curPhase&&i===arr.length-1); return `<div class="frag${isNew?" newfrag":""}"><div class="w">기억의 파편 · ${esc(f.when)}${isNew?" · NEW":""}</div>${esc(f.text)}</div>`; }).join("");
+    slides.push(`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">떠오른 기억</div><div class="bc-title" style="font-size:18px">기억의 파편</div><div style="margin-top:14px">${fh}</div></div>`); }
+  // 4) 나의 목표
+  slides.push(`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">나의 목표</div><div class="bc-title" style="font-size:18px">이번 밤, 내가 노리는 것</div>
+    <div style="margin-top:12px">${(s.goals||[]).map(g=>`<div class="bc-goal"><span>${esc(g.t)}</span><span class="pt">+${g.p}</span></div>`).join("")}</div></div>`);
+  $("sheetBox").innerHTML=`<h2 style="color:${s.color};font-size:18px">${s.avatar} ${esc(s.name)} <span style="font-size:12.5px;color:var(--muted)">· 내 큐카드</span></h2>
+    <div class="mlead">실물 카드처럼 <b>옆으로 넘겨</b> 확인하세요.</div>
+    ${buildSwipe(slides)}
+    <div style="margin-top:14px;text-align:right"><button class="btn" onclick="closeModal('sheetModal')">확인</button></div>`;
+  openModal("sheetModal"); wireSwipe($("sheetBox"));
 }
-/* 내 단서(손패) — 어느 페이즈에서든 다시 확인. 조사한 카드는 사라지지 않는다. */
+/* 내 단서(손패) — 어느 페이즈에서든 다시 확인. 조사한 카드는 사라지지 않는다. 큼지막하게 스와이프. */
 function showMyHand(){
   if(!myRoleValid()){ banner("배역을 맡아야 단서가 있어요"); return; }
   const cards=myHand.slice();
   let h=`<h2 style="font-size:18px">🃏 내 단서 <span style="font-size:13px;color:var(--muted)">· 손패 ${cards.length}장 (비공개)</span></h2>
-    <div class="mlead">내가 조사한 단서예요. <b>언제든 다시 확인</b>할 수 있고, 사라지지 않습니다. 남에게 알리려면 대화로 말하세요.</div>`;
-  if(!cards.length) h+=`<div class="panel-note">아직 조사한 단서가 없어요. 조사 페이즈에 카드를 열면 여기에 계속 쌓입니다.</div>`;
-  else h+=`<div style="display:flex;flex-direction:column;gap:9px">`+cards.map(c=>`<div class="sec" style="border-top:0;margin:0;padding:11px 12px;background:linear-gradient(160deg,#221c14,#171219);border:1px solid #5a4a2c;border-radius:11px"><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><b style="color:var(--gold-b);font-size:14px">${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</b><span class="pill">${esc(c.locName)} · R${c.round}</span></div><div class="b" style="font-size:13.5px;margin-top:6px">${esc(c.text)}</div></div>`).join("")+`</div>`;
-  h+=`<div style="margin-top:16px;text-align:right"><button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
+    <div class="mlead">내가 조사한 단서예요. <b>언제든 다시 확인</b>할 수 있고 사라지지 않아요. 알리려면 대화로 말하세요.</div>`;
+  if(!cards.length){ h+=`<div class="panel-note">아직 조사한 단서가 없어요. 조사 페이즈에 카드를 열면 여기에 계속 쌓입니다.</div>`; }
+  else{ const slides=cards.map(c=>`<div class="bigcard clue">
+      <div class="bc-eyebrow">손패 · 비공개</div>
+      <div class="bc-title" style="color:var(--gold-b)">${esc(c.title)}</div>
+      <div class="bc-tags"><span class="pill">${esc(c.locName)}</span><span class="pill">R${c.round}</span>${c.bait?'<span class="pill bad">※미끼일 수도</span>':''}</div>
+      <div class="bc-body">${esc(c.text)}</div></div>`);
+    h+=buildSwipe(slides); }
+  h+=`<div style="margin-top:14px;text-align:right"><button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
   $("handBox").innerHTML=h;
-  openModal("handModal");
+  openModal("handModal"); wireSwipe($("handBox"));
 }
 
 async function post(url,body){ try{ return await (await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json(); }catch(e){ banner("서버 연결 오류"); return {error:"network"}; } }
