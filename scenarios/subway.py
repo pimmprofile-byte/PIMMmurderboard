@@ -486,3 +486,15 @@ def compute_ending(grades: dict) -> dict | None:
     return {"key": key, "name": e["name"], "tone": e["tone"], "desc": e["desc"], "truth": TRUTH_FULL,
             "culpritId": CULPRIT_ID, "correctVotes": correct_votes, "guesses": guesses,
             "wrongTop": {"id": wrong_top_id, "n": wrong_top_n}}
+
+
+# ── AI 자동 조사 성향 프로파일 (server._ai_pick 참조) ──────────────────────────
+# home=자연히 향하는 구역, interest=카드 가중치(음수면 회피), role=normal/troll
+# 윤미래(yun)=진범. 수사를 이끄는 척하며 자기와 연결되는 카드는 피하고 미끼로 시선을 돌린다.
+INVEST_AI = {
+    "han": {"home": ["D"],       "interest": {"D1": 1.5, "D2": 2.0, "D3": 1.5, "B1": 1.5, "A1": 1.0}, "role": "normal"},
+    "ora": {"home": ["C"],       "interest": {"C1": 2.0, "C2": 1.5, "C3": 1.5, "A2": 1.0}, "role": "normal"},
+    "mun": {"home": ["B", "F"],  "interest": {"B3": 1.5, "F1": 1.5, "F3": 1.5, "A1": 1.0}, "role": "normal"},
+    "yun": {"home": ["A"],       "interest": {"E2": -3.0, "E3": -3.0, "F2": -2.5, "A6": -2.5, "A2": -2.0,
+                                              "B3": 1.5, "C2": 1.5, "D2": 1.5}, "role": "troll"},
+}

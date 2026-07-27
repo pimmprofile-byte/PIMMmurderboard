@@ -177,6 +177,9 @@ def public_state() -> dict:
         ph = SC.phase_by_seq(seq)
         g = ROOM["grades"]
         ending = SC.compute_ending(g)  # 준비 안 됐으면 시나리오가 None을 반환
+        # 진상(정답·범인)은 '진상 공개' 페이즈 전까지 클라이언트로 내보내지 않는다(스포일러 방지).
+        if ph.get("key") != "reveal":
+            ending = None
         cur = current_round(seq)
         ap = int(ph.get("ap", 0) or 0)
         # 내용 없는 마킹 현황(누가 어떤 카드를 조사했는지 id만) + 이번 턴 남은 조사 수
