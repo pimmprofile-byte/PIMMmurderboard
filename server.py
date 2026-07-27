@@ -134,6 +134,7 @@ def fresh_room() -> dict:
     return {
         "rev": 1, "seq": 1,
         "scenarioId": SC.ID,
+        "host": None,             # 방 권한자(호스트) clientId — 시나리오 선택·페이즈 진행 통제
         "roles": {c["id"]: {"mode": "open", "clientId": None} for c in SC.CHARACTERS},
         "table": [{"kind": "system", "text": f'{SC.PHASES[0]["name"]} — {SC.PHASES[0]["gm"]}'}],
         "revealed": [],           # 전체공개 card id
@@ -142,6 +143,7 @@ def fresh_room() -> dict:
         "grades": {},             # roleId -> grade dict (name 포함)
         "finalAnswers": {},       # roleId -> [answer str] (백엔드 미설정 시 진행자 수동채점용 보관)
         "typing": None,
+        "turn": None,             # 조사 페이즈 현재 차례 roleId (하이브리드 턴)
     }
 
 
@@ -154,8 +156,10 @@ def use_scenario(sid: str) -> bool:
     if sid not in scenarios.ids():
         return False
     with LOCK:
+        prev_host = ROOM.get("host")
         SC = scenarios.get(sid)
         ROOM = fresh_room()
+        ROOM["host"] = prev_host   # 호스트는 시나리오 전환 후에도 유지
     return True
 
 
@@ -187,6 +191,8 @@ def public_state() -> dict:
             "revealedIds": list(ROOM["revealed"]),
             "checked": checked,
             "usedAP": used,
+            "turn": ROOM.get("turn") if ap > 0 else None,
+            "turnOrder": _turn_order() if ap > 0 else [],
             "typing": ROOM["typing"],
             "grades": g,
             "ending": ending,
@@ -255,6 +261,17 @@ class KeyOnly(BaseModel):
 class SelectScenario(BaseModel):
     scenarioId: str
     key: str = ""
+    clientId: str = ""
+
+
+class HostReq(BaseModel):
+    clientId: str = ""
+
+
+class TurnReq(BaseModel):
+    clientId: str = ""
+    roleId: str = ""
+    key: str = ""
 
 
 class FinalAnswers(BaseModel):
@@ -282,18 +299,43 @@ def scenarios_list():
 
 @app.post("/api/select")
 def select_scenario(b: SelectScenario):
-    # GM-급 조작 — 배포본에선 AGENT_KEY로 보호, 로컬(미설정)은 개방
-    if not _agent_ok(b.key):
-        return JSONResponse({"error": "key"}, status_code=403)
+    # 호스트(또는 AGENT_KEY 보유 GM 콘솔)만 시나리오 전환 가능
+    if not (_is_host(b.clientId) or _agent_ok(b.key)):
+        return JSONResponse({"error": "host"}, status_code=403)
     if b.scenarioId not in scenarios.ids():
         return JSONResponse({"error": "없는 시나리오"}, status_code=400)
-    use_scenario(b.scenarioId)  # 방을 새 시나리오로 초기화(모두에게 반영)
+    use_scenario(b.scenarioId)  # 방을 새 시나리오로 초기화(호스트는 유지)
     return {"ok": True, "active": SC.ID}
 
 
 @app.get("/api/state")
-def state():
-    return public_state()
+def state(clientId: str = ""):
+    st = public_state()
+    with LOCK:
+        st["hasHost"] = ROOM.get("host") is not None
+        st["isHost"] = bool(clientId) and ROOM.get("host") == clientId
+    return st
+
+
+@app.post("/api/host/claim")
+def host_claim(b: HostReq):
+    with LOCK:
+        if not b.clientId:
+            return JSONResponse({"error": "clientId"}, status_code=400)
+        if ROOM.get("host") in (None, b.clientId):
+            ROOM["host"] = b.clientId
+            bump()
+            return {"ok": True, "isHost": True}
+        return {"ok": False, "isHost": False, "hasHost": True}
+
+
+@app.post("/api/host/release")
+def host_release(b: HostReq):
+    with LOCK:
+        if ROOM.get("host") == b.clientId:
+            ROOM["host"] = None
+            bump()
+        return {"ok": True}
 
 
 @app.post("/api/claim")
@@ -392,6 +434,10 @@ def _agent_ok(key: str) -> bool:
     return (not AGENT_KEY) or key == AGENT_KEY
 
 
+def _is_host(client_id: str) -> bool:
+    return bool(client_id) and ROOM.get("host") == client_id
+
+
 def _ap_for(seq: int) -> int:
     return int(SC.phase_by_seq(seq).get("ap", 0) or 0)
 
@@ -401,7 +447,112 @@ def _round_checks(role_id: str, rnd: int) -> int:
     return sum(1 for r in ROOM["checkedRound"].get(role_id, {}).values() if r == rnd)
 
 
-def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True) -> str | None:
+# ── 하이브리드 턴 (순번 강제 + 호스트/GM 넘기기·스킵) ─────────────────────────
+def _turn_order() -> list:
+    """턴 순번 = 시나리오가 정의한 TURN_ORDER, 없으면 배역 등장 순."""
+    order = list(getattr(SC, "TURN_ORDER", None) or [c["id"] for c in SC.CHARACTERS])
+    return [rid for rid in order if rid in ROOM["roles"]]
+
+
+def _reset_turn_for_seq(seq: int) -> None:
+    """조사 페이즈에 들어오면 순번 첫 배역으로, 아니면 턴 없음."""
+    ph = SC.phase_by_seq(seq)
+    order = _turn_order()
+    ROOM["turn"] = order[0] if (int(ph.get("ap", 0) or 0) > 0 and order) else None
+
+
+def _advance_turn() -> None:
+    """다음 순번으로. 이번 라운드 AP를 다 쓴 배역은 건너뛴다(한 바퀴 안에서)."""
+    order = _turn_order()
+    if not order:
+        ROOM["turn"] = None
+        return
+    ap = _ap_for(ROOM["seq"])
+    cur = current_round(ROOM["seq"])
+    start = order.index(ROOM["turn"]) if ROOM.get("turn") in order else -1
+    for step in range(1, len(order) + 1):
+        cand = order[(start + step) % len(order)]
+        if ap <= 0 or _round_checks(cand, cur) < ap:   # 아직 조사 여력이 있는 배역
+            ROOM["turn"] = cand
+            bump()
+            return
+    ROOM["turn"] = order[(start + 1) % len(order)]      # 전원 소진 → 그냥 다음 배역
+    bump()
+
+
+# ── AI 자동 조사 (API 없이 휴리스틱 · 인물답게 + 추리 따라가기) ────────────────
+def _openable_cards(role_id: str) -> list:
+    cur = current_round(ROOM["seq"])
+    mine = ROOM["hands"].get(role_id, [])
+    seen = set(ROOM["revealed"]) | set(mine)
+    out = []
+    for c in SC.CARDS:
+        if c["id"] in mine or c["id"] in ROOM["revealed"] or c["round"] > cur:
+            continue
+        req = c.get("requires")
+        if req and req not in seen:
+            continue
+        out.append(c)
+    return out
+
+
+def _hot_locs() -> dict:
+    """최근 대화·공개에서 언급된 구역 = 추리가 향하는 곳."""
+    locs = {}
+    for m in ROOM["table"][-8:]:
+        txt = m.get("text", "") or ""
+        for c in SC.CARDS:
+            if c["locName"] and c["locName"] in txt:
+                locs[c["loc"]] = locs.get(c["loc"], 0) + 1
+    for cid in ROOM["revealed"][-4:]:
+        c = SC.get_card(cid)
+        if c:
+            locs[c["loc"]] = locs.get(c["loc"], 0) + 1
+    return locs
+
+
+def _ai_pick(role_id: str, n: int) -> list:
+    """AI 배역이 성향+합리성에 따라 카드 n장을 자동으로 조사한다(즉시, API 0)."""
+    prof = (getattr(SC, "INVEST_AI", {}) or {}).get(role_id, {})
+    home = set(prof.get("home", []))
+    interest = prof.get("interest", {})   # cardId -> 가중치(음수면 회피)
+    role_kind = prof.get("role", "normal")
+    hot = _hot_locs()
+    cur = current_round(ROOM["seq"])
+    loc_count = {}
+    for cid in ROOM["hands"].get(role_id, []):
+        c = SC.get_card(cid)
+        if c:
+            loc_count[c["loc"]] = loc_count.get(c["loc"], 0) + 1
+    picks = []
+    for _ in range(max(0, n)):
+        cands = [c for c in _openable_cards(role_id) if c["id"] not in picks]
+        if not cands:
+            break
+
+        def score(c):
+            s = 1.0
+            if c["loc"] in home:
+                s += 3.0
+            s += interest.get(c["id"], 0)              # 관심(+)·회피(−)
+            if c["round"] == cur:
+                s += 1.2                                # 이번 라운드 새 카드
+            s += 1.0 * hot.get(c["loc"], 0)             # 추리 따라가기
+            s -= 0.8 * loc_count.get(c["loc"], 0)       # 같은 구역 과다 회피
+            if role_kind == "troll" and c.get("bait"):
+                s += 2.5                                # 진범: 미끼로 유도
+            s += (hash((ROOM["seq"], role_id, c["id"])) % 97) / 970.0   # 재현가능 tie-break
+            return s
+
+        best = max(cands, key=score)
+        if _try_investigate(role_id, best["id"], enforce_turn=False):
+            break
+        picks.append(best["id"])
+        loc_count[best["loc"]] = loc_count.get(best["loc"], 0) + 1
+    return picks
+
+
+def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforce_turn: bool = False) -> str | None:
     c = SC.get_card(card_id)
     if not c:
         return "없는 카드"
@@ -413,6 +564,9 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True) -> str
     if enforce_ap and not already:
         if ap <= 0:
             return "지금은 조사 턴이 아닙니다 (조사 페이즈에서만 열 수 있어요)"
+        if enforce_turn and ROOM.get("turn") and role_id != ROOM["turn"]:
+            t = SC.get_character(ROOM["turn"]) or {}
+            return f"지금은 {t.get('name', '다른 배역')} 차례예요 — 순서를 기다려 주세요"
         if _round_checks(role_id, cur) >= ap:
             return f"이번 조사 턴({cur}라운드)에 열 수 있는 {ap}장을 모두 사용했습니다"
     req = c.get("requires")
@@ -458,9 +612,13 @@ def investigate(b: Investigate):
         r = ROOM["roles"].get(b.roleId)
         if not r or r["clientId"] != b.clientId:
             return JSONResponse({"error": "그 배역으로 조사할 수 없습니다"}, status_code=403)
-        err = _try_investigate(b.roleId, b.cardId)
+        err = _try_investigate(b.roleId, b.cardId, enforce_turn=True)
         if err:
             return JSONResponse({"error": err}, status_code=409)
+        # 이번 턴 AP를 다 썼으면 자동으로 다음 차례로
+        ap = _ap_for(ROOM["seq"])
+        if ap > 0 and ROOM.get("turn") == b.roleId and _round_checks(b.roleId, current_round(ROOM["seq"])) >= ap:
+            _advance_turn()
     return {"card": SC.public_card(b.cardId)}
 
 
@@ -540,6 +698,59 @@ def agent_investigate(b: AgentCard):
     return {"card": SC.public_card(b.cardId)}
 
 
+@app.post("/api/turn/next")
+def turn_next(b: TurnReq):
+    """다음 조사 차례로 넘기기 — 호스트/GM, 또는 현재 차례 당사자. 호스트 미설정 시 통과."""
+    with LOCK:
+        role = ROOM["roles"].get(b.roleId) or {}
+        allowed = _agent_ok(b.key) or (b.roleId and b.roleId == ROOM.get("turn") and role.get("clientId") == b.clientId)
+        if ROOM.get("host") is not None:
+            allowed = allowed or _is_host(b.clientId)
+        else:
+            allowed = True
+        if not allowed:
+            return JSONResponse({"error": "권한 없음"}, status_code=403)
+        _advance_turn()
+        return {"ok": True, "turn": ROOM.get("turn")}
+
+
+@app.post("/api/ai-investigate")
+def ai_investigate_auto(b: TurnReq):
+    """AI 배역 자동 조사(휴리스틱, 즉시). 대상 미지정 시 현재 차례 배역."""
+    with LOCK:
+        rid = b.roleId or ROOM.get("turn")
+        if not rid or rid not in ROOM["roles"]:
+            return JSONResponse({"error": "대상 배역 없음"}, status_code=400)
+        allowed = _agent_ok(b.key) or (ROOM.get("host") is None) or _is_host(b.clientId)
+        if not allowed:
+            return JSONResponse({"error": "권한 없음"}, status_code=403)
+        if _ap_for(ROOM["seq"]) <= 0:
+            return JSONResponse({"error": "조사 페이즈가 아닙니다"}, status_code=409)
+        remaining = _ap_for(ROOM["seq"]) - _round_checks(rid, current_round(ROOM["seq"]))
+        picks = _ai_pick(rid, remaining)
+        if ROOM.get("turn") == rid:
+            _advance_turn()
+        cat = {c["id"]: c for c in SC.CARDS}
+    return {"ok": True, "roleId": rid,
+            "picked": [{"id": i, "title": cat[i]["title"], "loc": cat[i]["loc"], "locName": cat[i]["locName"]} for i in picks]}
+
+
+@app.get("/api/brief")
+def brief(key: str = ""):
+    """세션 에이전트(코워크 GM)용 브리핑 — 각 배역 손패의 '내용 포함' + 공개 카드. GM 전용."""
+    if not _agent_ok(key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    with LOCK:
+        cat = {c["id"]: c for c in SC.CARDS}
+        hands = {rid: [{"id": i, "title": cat[i]["title"], "locName": cat[i]["locName"], "text": cat[i].get("text", "")}
+                       for i in ids if i in cat]
+                 for rid, ids in ROOM["hands"].items() if ids}
+        revealed = [{"id": i, "title": cat[i]["title"], "text": cat[i].get("text", "")} for i in ROOM["revealed"] if i in cat]
+        ph = SC.phase_by_seq(ROOM["seq"])
+        return {"phase": ph["name"], "round": current_round(ROOM["seq"]), "turn": ROOM.get("turn"),
+                "turnOrder": _turn_order(), "hands": hands, "revealed": revealed}
+
+
 @app.post("/api/agent/reveal")
 def agent_reveal(b: AgentCard):
     if not _agent_ok(b.key):
@@ -553,7 +764,7 @@ def agent_reveal(b: AgentCard):
 def agent_advance(b: KeyOnly):
     if not _agent_ok(b.key):
         return JSONResponse({"error": "key"}, status_code=403)
-    return advance()
+    return _advance()
 
 
 @app.post("/api/agent/narrate")
@@ -567,7 +778,14 @@ def agent_narrate(b: AgentSay):  # roleId 무시, text=GM 내레이션(전체 �
 
 
 @app.post("/api/advance")
-def advance():
+def advance(b: HostReq):
+    # 호스트가 지정돼 있으면 호스트만, 없으면 누구나(현행 앱 호환)
+    if ROOM.get("host") is not None and not _is_host(b.clientId):
+        return JSONResponse({"error": "host"}, status_code=403)
+    return _advance()
+
+
+def _advance():
     with LOCK:
         if ROOM["seq"] < len(SC.PHASES):
             ROOM["seq"] += 1
@@ -577,6 +795,7 @@ def advance():
             if il:
                 ROOM["table"].append({"kind": "system", "broadcast": True, "text": f"📻 교내방송 — {il}"})
             ROOM["table"].append({"kind": "system", "text": f'{ph["name"]} — {ph["gm"]}'})
+            _reset_turn_for_seq(seq)   # 조사 페이즈면 순번 초기화
             _auto_reveal_obligatory()
             bump()
         return {"seq": ROOM["seq"]}
@@ -696,9 +915,11 @@ def ai_final(b: RoleOnly):
 
 
 @app.post("/api/reset")
-def reset():
+def reset(b: HostReq):
     global ROOM
     with LOCK:
+        if ROOM.get("host") not in (None, b.clientId):
+            return JSONResponse({"error": "host"}, status_code=403)
         ROOM = fresh_room()
     return {"ok": True}
 

@@ -463,3 +463,14 @@ def compute_ending(grades: dict) -> dict | None:
     e = ENDINGS[key]
     return {"key": key, "name": e["name"], "tone": e["tone"], "desc": e["desc"],
             "accused": accused, "truth": TRUTH_FULL}
+
+
+# ── AI 자동 조사 성향 프로파일 (server._ai_pick 참조) ──────────────────────────
+# home = 자연히 향하는 구역, interest = 카드 가중치(음수면 회피), role = normal/troll
+# 졸업사진은 '카드를 숨기는 진범'이 없다(셋 다 유죄·오세원=설계자 망령) → 전원 normal.
+INVEST_AI = {
+    "sim": {"home": ["C", "E"], "interest": {"C3": 2.0, "C1": 1.5, "C2": 1.5, "C4": 2.0, "A4": 1.5, "E2": 1.0}, "role": "normal"},
+    "yu":  {"home": ["D"],      "interest": {"D2": 2.0, "D4": 2.5, "D3": 1.5, "D5": 1.5, "D1": 1.0, "A4": 1.0}, "role": "normal"},
+    "lee": {"home": ["E", "F"], "interest": {"E2": 2.5, "E3": 2.0, "E1": 1.0, "F2": 1.5, "F3": 1.5, "E4": 1.5}, "role": "normal"},
+    "ose": {"home": ["A", "B"], "interest": {"B2": 2.0, "B4": 2.0, "B5": 2.5, "A2": 1.5, "A4": 1.5, "F4": 2.0, "F6": 1.5, "B3": 1.5}, "role": "normal"},
+}
