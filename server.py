@@ -925,7 +925,14 @@ def reset(b: HostReq):
 
 
 @app.get("/")
-def index():
+def landing():
+    # 노아르 허브(로고·포스터·호스트/참가자) — 여기서 사건을 골라 /play 로 진입
+    p = _HERE / "landing.html"
+    return FileResponse(p if p.exists() else _HERE / "index.html")
+
+
+@app.get("/play")
+def play():
     return FileResponse(_HERE / "index.html")
 
 
