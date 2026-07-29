@@ -18,6 +18,7 @@ import socket
 import threading
 import time
 import urllib.request
+import zlib
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -557,7 +558,8 @@ def _ai_pick(role_id: str, n: int) -> list:
             s -= 0.8 * loc_count.get(c["loc"], 0)       # 같은 구역 과다 회피
             if role_kind == "troll" and c.get("bait"):
                 s += 2.5                                # 진범: 미끼로 유도
-            s += (hash((ROOM["seq"], role_id, c["id"])) % 97) / 970.0   # 재현가능 tie-break
+            # 재현가능 tie-break — 파이썬 str hash()는 프로세스마다 값이 달라 재현이 안 된다.
+            s += (zlib.crc32(f'{ROOM["seq"]}|{role_id}|{c["id"]}'.encode()) % 97) / 970.0
             return s
 
         best = max(cands, key=score)
