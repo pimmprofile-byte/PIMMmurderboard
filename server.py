@@ -146,7 +146,6 @@ def fresh_room() -> dict:
         "typing": None,
         "turn": None,             # 조사 페이즈 현재 차례 roleId (하이브리드 턴)
         "interrogate": {"seq": None, "used": 0, "votes": [], "bonus": False},  # 토론 페이즈 심층심문 예산
-        "evasions": {},           # roleId -> 심문에서 방어(회피)한 횟수 (게임 전체 누적)
     }
 
 
@@ -203,7 +202,6 @@ def public_state() -> dict:
             "turn": ROOM.get("turn") if ap > 0 else None,
             "turnOrder": _turn_order() if ap > 0 else [],
             "interrogate": _interrogate_budget() if ph.get("key") == "talk" else None,
-            "evasions": dict(ROOM.get("evasions", {})),
             "typing": ROOM["typing"],
             "grades": g,
             "ending": ending,
@@ -257,7 +255,6 @@ class Interrogate(BaseModel):
     askerRoleId: str
     targetRoleId: str
     cardId: str
-    rebuttalCardId: str = ""
     clientId: str
 
 
@@ -837,8 +834,9 @@ def interrogate_vote(b: InterrogateVote):
 
 @app.post("/api/interrogate")
 def interrogate(b: Interrogate):
-    """심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다.
-    증거(반박 카드)를 함께 대면 「균열」, 아니면 「회피」. 결과 카드는 그 즉시 전체공개된다."""
+    """심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다. 증거를 들이미는 게
+    아니라, 예산(1회)을 쓰는 것 자체가 압박이다 — 쓰면 반드시 답이 나오고, 그 카드는
+    전체공개된다. 민감한 카드는 억지로 실토하는 말투(crack), 나머지는 순순히 답한다(plain)."""
     with LOCK:
         r = ROOM["roles"].get(b.askerRoleId)
         if not r or r["clientId"] != b.clientId or r["mode"] != "human":
@@ -861,43 +859,23 @@ def interrogate(b: Interrogate):
         asker = SC.get_character(b.askerRoleId) or {}
         entry = (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(b.cardId)
 
-        rebut_id = (b.rebuttalCardId or "").strip()
-        accepted = False
-        if entry and rebut_id:
-            allowed = entry.get("rebuttal") or []
-            has_access = rebut_id in ROOM["hands"].get(b.askerRoleId, []) or rebut_id in ROOM["revealed"]
-            if rebut_id in allowed and has_access:
-                accepted = True
-
-        if entry and accepted:
-            outcome, line = "crack", entry["crack"]
-        elif entry:
-            outcome, line = "defend", entry["defend"]
+        if entry:
+            outcome, line = "crack", entry
         else:
             intro = (getattr(SC, "INTERROGATE_PLAIN", {}) or {}).get(b.targetRoleId, "")
             outcome, line = "plain", f'{intro} 「{card["title"]}」— {card["text"]}'.strip()
 
         ROOM["interrogate"]["used"] += 1
-        if outcome == "defend":
-            ROOM["evasions"][b.targetRoleId] = ROOM["evasions"].get(b.targetRoleId, 0) + 1
-        else:
-            _publish(b.cardId)
-
-        rebut_published = False
-        if accepted and rebut_id in ROOM["hands"].get(b.askerRoleId, []):
-            _publish(rebut_id)
-            rebut_published = True
+        _publish(b.cardId)
 
         where = f'{card["locName"]} · {card["spot"]}' if card.get("spot") else card["locName"]
-        badge = {"crack": "🩸 균열", "defend": "🛡️ 회피", "plain": "💬 답변"}[outcome]
+        badge = "🩸 실토" if outcome == "crack" else "💬 답변"
         header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · [{where}] 「{card["title"]}」'
         ROOM["table"].append({"kind": "interrogate", "broadcast": True,
                               "askerRoleId": b.askerRoleId, "targetRoleId": b.targetRoleId,
                               "cardId": b.cardId, "outcome": outcome, "text": header, "line": line})
         bump()
-        return {"ok": True, "outcome": outcome, "line": line,
-                "cardPublished": outcome != "defend", "rebuttalPublished": rebut_published,
-                "budget": _interrogate_budget()}
+        return {"ok": True, "outcome": outcome, "line": line, "budget": _interrogate_budget()}
 
 
 @app.get("/api/hand/{role_id}")
