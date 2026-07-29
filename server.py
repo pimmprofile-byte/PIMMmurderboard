@@ -46,6 +46,10 @@ HOST = os.getenv("REUNION_HOST", "0.0.0.0")
 # 호스팅(Render 등)은 PORT를 주입 → 그걸 우선 사용, 로컬은 REUNION_PORT/기본값
 PORT = int(os.getenv("PORT") or os.getenv("REUNION_PORT", "8790"))
 AGENT_KEY = os.getenv("AGENT_KEY", "")  # 에이전트(코드 세션) 원격 조종 키(설정 시 그 키 필요, 미설정 시 개방)
+# 심층심문 — 민감한 카드는 진실을 말할 확률이 있을 뿐, 캐릭터가 거짓/얼버무림으로 넘어갈 수도 있다.
+# 증거(내 카드)를 함께 대면 확률이 오르지만 여전히 보장은 아니다.
+INTERROGATE_TRUTH_BASE = 0.35
+INTERROGATE_TRUTH_WITH_EVIDENCE = 0.70
 
 try:
     import anthropic
@@ -255,6 +259,7 @@ class Interrogate(BaseModel):
     askerRoleId: str
     targetRoleId: str
     cardId: str
+    evidenceCardId: str = ""
     clientId: str
 
 
@@ -834,9 +839,10 @@ def interrogate_vote(b: InterrogateVote):
 
 @app.post("/api/interrogate")
 def interrogate(b: Interrogate):
-    """심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다. 증거를 들이미는 게
-    아니라, 예산(1회)을 쓰는 것 자체가 압박이다 — 쓰면 반드시 답이 나오고, 그 카드는
-    전체공개된다. 민감한 카드는 억지로 실토하는 말투(crack), 나머지는 순순히 답한다(plain)."""
+    """심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다. 카드 자체는 공개되지
+    않는다 — 대답만 들을 뿐이고, 민감한 카드는 그 대답이 진실이 아닐 수도 있다(캐릭터가
+    거짓/얼버무림으로 넘어간다). 내 카드 하나를 증거로 함께 대면 진실이 나올 확률이 오르지만
+    보장은 아니다. 예산(1회)은 성패와 무관하게 소모된다."""
     with LOCK:
         r = ROOM["roles"].get(b.askerRoleId)
         if not r or r["clientId"] != b.clientId or r["mode"] != "human":
@@ -854,22 +860,29 @@ def interrogate(b: Interrogate):
         if b.cardId not in ROOM["hands"].get(b.targetRoleId, []):
             return JSONResponse({"error": "그 배역이 지금 들고 있는 카드가 아닙니다"}, status_code=409)
 
+        evid_id = (b.evidenceCardId or "").strip()
+        has_evidence = bool(evid_id) and (
+            evid_id in ROOM["hands"].get(b.askerRoleId, []) or evid_id in ROOM["revealed"]
+        )
+
         card = SC.get_card(b.cardId)
         target = SC.get_character(b.targetRoleId) or {}
         asker = SC.get_character(b.askerRoleId) or {}
         entry = (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(b.cardId)
 
         if entry:
-            outcome, line = "crack", entry
+            chance = INTERROGATE_TRUTH_WITH_EVIDENCE if has_evidence else INTERROGATE_TRUTH_BASE
+            told_truth = random.random() < chance
+            outcome = "truth" if told_truth else "evasive"
+            line = entry["truth"] if told_truth else entry["evasive"]
         else:
             intro = (getattr(SC, "INTERROGATE_PLAIN", {}) or {}).get(b.targetRoleId, "")
             outcome, line = "plain", f'{intro} 「{card["title"]}」— {card["text"]}'.strip()
 
         ROOM["interrogate"]["used"] += 1
-        _publish(b.cardId)
 
         where = f'{card["locName"]} · {card["spot"]}' if card.get("spot") else card["locName"]
-        badge = "🩸 실토" if outcome == "crack" else "💬 답변"
+        badge = {"truth": "🗣️ 실토", "evasive": "🌀 얼버무림", "plain": "💬 답변"}[outcome]
         header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · [{where}] 「{card["title"]}」'
         ROOM["table"].append({"kind": "interrogate", "broadcast": True,
                               "askerRoleId": b.askerRoleId, "targetRoleId": b.targetRoleId,
