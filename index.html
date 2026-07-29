@@ -137,6 +137,9 @@
   .gcard.face .q{font-size:26px;font-family:"Nanum Myeongjo",serif;color:#3c354c}
   .gcard.face .rb{position:absolute;bottom:7px;left:0;right:0;text-align:center}.gcard.face .tag{color:var(--gold-b)}
   .gcard.locked{cursor:default;opacity:.5}
+  .gcard.face.taken{border-color:var(--tc,#555);background:linear-gradient(160deg,#16131c,#100e14);opacity:.75;cursor:not-allowed}
+  .gcard.face.taken .q{font-size:20px;filter:grayscale(.2)}
+  .gcard.face.taken .rb{color:var(--tc,var(--muted));font-size:9.5px}
   .gcard.hand{border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219)}.gcard.hand .t{color:var(--gold-b)}
   .gcard.pub{border-color:var(--cold);background:linear-gradient(160deg,#111a22,#0e1620)}.gcard.pub.baitc{border-color:#5a4a2c}
   .gcard .tag{position:absolute;top:6px;right:6px;font-size:8.5px;padding:1px 5px;border-radius:6px;background:rgba(0,0,0,.45)}
@@ -701,7 +704,12 @@ function renderMap(el){
   const cardHTML=(c)=>{
     if(pub[c.id]) return `<div class="gcard pub${pub[c.id].bait?' baitc':''}" onclick="openCard('${c.id}')"><span class="tag">공개</span><div class="rb">R${c.round}</div><div class="t">${esc(pub[c.id].title)}</div></div>`;
     if(hand[c.id]) return `<div class="gcard hand${fresh.has(c.id)?' just-open':''}" onclick="openCard('${c.id}')"><span class="tag">손패</span><div class="rb">R${c.round}·비공개</div><div class="t">${esc(hand[c.id].title)}</div></div>`;
-    const reqOk=!c.requires||revIds.includes(c.requires)||handIds.includes(c.requires); const roundOk=c.round<=cr;
+    // 조사카드는 한 사람만 갖는다 — 남이 이미 가져간 카드는 그 배역 색으로 잠긴다.
+    const taker=Object.keys(STATE.checked||{}).find(rid=>rid!==myRoleId&&(STATE.checked[rid]||[]).includes(c.id));
+    if(taker){ const tc=roleById(taker)||{};
+      return `<div class="gcard face taken" style="--tc:${tc.color||'#777'}"><div class="q">${tc.avatar||'🔒'}</div><div class="rb">${esc(tc.name||'')} 조사함</div></div>`; }
+    const allIds=new Set(revIds); Object.values(STATE.checked||{}).forEach(a=>(a||[]).forEach(x=>allIds.add(x)));
+    const reqOk=!c.requires||allIds.has(c.requires); const roundOk=c.round<=cr;
     const turn=STATE.turn; const myTurn=(!turn)||turn===myRoleId;
     if(roundOk&&reqOk&&myRoleValid()&&!apOut&&myTurn) return `<div class="gcard face" onclick="investigate('${c.id}')"><span class="tag">조사</span><div class="q">?</div><div class="rb">R${c.round}</div></div>`;
     return `<div class="gcard face locked"><div class="q">🔒</div><div class="rb">${!roundOk?"R"+c.round:(!myRoleValid()?"관전":(!myTurn?"내 차례 아님":(apOut?"턴 소진":"선행 필요")))}</div></div>`;

@@ -71,7 +71,7 @@ DIFFICULTY = {"deduction_rate": 0.6, "self_disclosure_from": 2, "osewon_probe_ra
 # ── 라운드(80분, 9시퀀스) ──
 PHASES = [
     {"seq": 1, "key": "open",   "name": "오프닝",        "min": 8,  "ap": 0, "gm": "공통지문을 낭독하고, 각자 배역으로 자기소개(공개 정보만)한다."},
-    {"seq": 2, "key": "invest", "name": "조사 R1",       "min": 12, "ap": 3, "gm": "먼저, 이 시체가 누구인지부터. (각자 3장 조사)"},
+    {"seq": 2, "key": "invest", "name": "조사 R1",       "min": 12, "ap": 2, "gm": "먼저, 이 시체가 누구인지부터. (각자 3장 조사)"},
     {"seq": 3, "key": "talk",   "name": "토론 1",        "min": 10, "ap": 0, "gm": "물품 3점의 주인은 이 안에 있다. 오늘 밤 무슨 일이 있었나?"},
     {"seq": 4, "key": "invest", "name": "조사 R2",       "min": 12, "ap": 3, "gm": "학교가 기억하는 것을 찾아라. (각자 3장 조사)"},
     {"seq": 5, "key": "talk",   "name": "토론 2",        "min": 10, "ap": 0, "gm": "오승택은 10년 전에 죽었다. 그렇다면 — 그 겨울, 당신들은 무엇을 했나?"},
@@ -228,7 +228,7 @@ CARDS = [
      "title": "졸업대장", "text": "세 이름 위에 붉은 줄. 심상윤·유지호·이정민, '졸업 전 사망'."},
 ]
 
-AP_BY_ROUND = {1: 3, 2: 3, 3: 2}
+AP_BY_ROUND = {1: 2, 2: 3, 3: 2}
 
 MEMORY = {
     "sim": {

@@ -450,6 +450,14 @@ def _round_checks(role_id: str, rnd: int) -> int:
     return sum(1 for r in ROOM["checkedRound"].get(role_id, {}).values() if r == rnd)
 
 
+def _holder_of(card_id: str) -> str | None:
+    """그 카드를 이미 조사한 배역(없으면 None). 조사카드는 한 사람만 가진다."""
+    for rid, cids in ROOM["hands"].items():
+        if card_id in cids:
+            return rid
+    return None
+
+
 # ── 하이브리드 턴 (순번 강제 + 호스트/GM 넘기기·스킵) ─────────────────────────
 def _turn_order() -> list:
     """턴 순번 = 시나리오가 정의한 TURN_ORDER, 없으면 배역 등장 순."""
@@ -487,10 +495,14 @@ def _advance_turn() -> None:
 def _openable_cards(role_id: str) -> list:
     cur = current_round(ROOM["seq"])
     mine = ROOM["hands"].get(role_id, [])
-    seen = set(ROOM["revealed"]) | set(mine)
+    seen = set(ROOM["revealed"])
+    for cids in ROOM["hands"].values():
+        seen.update(cids)
     out = []
     for c in SC.CARDS:
         if c["id"] in mine or c["id"] in ROOM["revealed"] or c["round"] > cur:
+            continue
+        if _holder_of(c["id"]):          # 남이 이미 가져간 카드는 후보에서 제외
             continue
         req = c.get("requires")
         if req and req not in seen:
@@ -528,11 +540,6 @@ def _ai_pick(role_id: str, n: int) -> list:
         c = SC.get_card(cid)
         if c:
             loc_count[c["loc"]] = loc_count.get(c["loc"], 0) + 1
-    # 이미 누군가 들고 있는 카드 — 같은 카드에 전원이 몰리면 아무도 고유 정보를 못 갖는다.
-    taken = set(ROOM["revealed"])
-    for rid, cids in ROOM["hands"].items():
-        if rid != role_id:
-            taken.update(cids)
     picks = []
     for _ in range(max(0, n)):
         cands = [c for c in _openable_cards(role_id) if c["id"] not in picks]
@@ -548,8 +555,6 @@ def _ai_pick(role_id: str, n: int) -> list:
                 s += 1.2                                # 이번 라운드 새 카드
             s += 0.5 * hot.get(c["loc"], 0)             # 추리 따라가기(과하면 전원이 한 구역에 몰린다)
             s -= 0.8 * loc_count.get(c["loc"], 0)       # 같은 구역 과다 회피
-            if c["id"] in taken:
-                s -= 3.0                                # 남이 이미 본 카드보다 새 카드를 먼저
             if role_kind == "troll" and c.get("bait"):
                 s += 2.5                                # 진범: 미끼로 유도
             s += (hash((ROOM["seq"], role_id, c["id"])) % 97) / 970.0   # 재현가능 tie-break
@@ -572,6 +577,11 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
         return f"아직 조사할 수 없습니다 (조사 R{c['round']}에 열림)"
     ap = _ap_for(ROOM["seq"])
     already = card_id in ROOM["hands"].get(role_id, [])
+    holder = _holder_of(card_id)
+    if holder and holder != role_id:
+        # 조사카드는 한 사람만 가진다 — 먼저 조사한 사람에게 물어봐야 한다.
+        h = SC.get_character(holder) or {}
+        return f"이미 {h.get('name', '다른 배역')}가 조사한 카드예요 — 그 사람에게 물어보세요"
     if enforce_ap and not already:
         if ap <= 0:
             return "지금은 조사 턴이 아닙니다 (조사 페이즈에서만 열 수 있어요)"
@@ -580,8 +590,12 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
             return f"지금은 {t.get('name', '다른 배역')} 차례예요 — 순서를 기다려 주세요"
         if _round_checks(role_id, cur) >= ap:
             return f"이번 조사 턴({cur}라운드)에 열 수 있는 {ap}장을 모두 사용했습니다"
+    # 선행조건은 테이블 전체 기준 — 조사카드는 한 사람만 갖지만, 누군가 찾아낸 사실은
+    # 대화로 공유되므로 그 뒤를 다른 사람이 이어 팔 수 있어야 한다.
     req = c.get("requires")
-    seen = set(ROOM["revealed"]) | set(ROOM["hands"].get(role_id, []))
+    seen = set(ROOM["revealed"])
+    for cids in ROOM["hands"].values():
+        seen.update(cids)
     if req and req not in seen:
         rq = SC.get_card(req)
         return f"먼저 '{rq['title'] if rq else req}'가 필요합니다"
