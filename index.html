@@ -137,6 +137,19 @@
   .gcard.face .q{font-size:26px;font-family:"Nanum Myeongjo",serif;color:#3c354c}
   .gcard.face .rb{position:absolute;bottom:7px;left:0;right:0;text-align:center}.gcard.face .tag{color:var(--gold-b)}
   .gcard.locked{cursor:default;opacity:.5}
+  /* 손패 상한 정리 */
+  .trimgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:10px;margin-top:4px}
+  .trimcard{text-align:left;background:linear-gradient(160deg,#221c14,#171219);border:1px solid #5a4a2c;border-radius:12px;padding:12px;color:inherit;transition:.15s}
+  .trimcard:hover{border-color:var(--gold)}
+  .trimcard.on{border-color:var(--ember);box-shadow:0 0 0 1px var(--ember) inset,0 0 18px -6px var(--ember)}
+  .trimcard .tt{font-weight:800;color:var(--gold-b);font-size:14.5px;margin-bottom:6px}
+  .trimcard .tm{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+  .trimcard .tb{font-size:12.5px;color:#ded8ea;line-height:1.6}
+  .trimact{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .trimact .btn{margin-left:auto}
+  .handwarn{background:#3a1f10;border:1px solid #7a4520;color:#ffd9b0;border-radius:11px;padding:10px 13px;margin-bottom:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .handwarn b{color:#ffc078}
+  .handwarn .btn{margin-left:auto}
   .gcard.face.taken{border-color:var(--tc,#555);background:linear-gradient(160deg,#16131c,#100e14);opacity:.75;cursor:not-allowed}
   .gcard.face.taken .q{font-size:20px;filter:grayscale(.2)}
   .gcard.face.taken .rb{color:var(--tc,var(--muted));font-size:9.5px}
@@ -400,6 +413,7 @@
 <div class="modal" id="sheetModal"><div class="box" id="sheetBox"></div></div>
 <div class="modal" id="cardModal"><div class="box" id="cardBox"></div></div>
 <div class="modal" id="handModal"><div class="box" id="handBox"></div></div>
+<div class="modal" id="trimModal"><div class="box" id="trimBox"></div></div>
 <div id="phaseFx"><div class="fx-in"><div class="fx-kick" id="fxKick"></div><div class="fx-name serif" id="fxName"></div><div class="fx-line" id="fxLine"></div></div></div>
 
 <script>
@@ -682,11 +696,11 @@ function renderPanel(ph){
     <div class="card"><h2>피해자</h2><div class="panel-note">${esc(SCEN.victim||"")}</div></div>
     <div class="panel-note" style="text-align:center">각자 <b>내 큐카드</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`; }
   else if(k==="invest"){ const ap=ph.ap||0; const u=(STATE.usedAP||{})[myRoleId]||0; const left=Math.max(0,ap-u); const apPill=myRoleValid()?`<span class="pill" style="color:${left>0?'var(--good)':'var(--ember-b)'}">이번 턴 조사 ${u}/${ap}</span>`:"";
-    p.innerHTML=`${turnBar()}<div class="clue-h"><h3>조사 맵</h3>${apPill}<span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">${myRoleValid()?`내 차례에 <b>${ap}장</b>까지 조사할 수 있어요. 카드를 눌러 <b>조사</b>하면 <b>손패(비공개)</b>로 들어옵니다. 알아낸 것은 <b>대화로만</b> 공유하세요(감춰도 됩니다).`:`관전 중 — 배역을 맡아야 조사할 수 있어요.`}</div><div id="cmap"></div>`;
+    p.innerHTML=`${handWarn()}${turnBar()}<div class="clue-h"><h3>조사 맵</h3>${apPill}<span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">${myRoleValid()?`내 차례에 <b>${ap}장</b>까지 조사할 수 있어요. 카드를 눌러 <b>조사</b>하면 <b>손패(비공개)</b>로 들어옵니다. 알아낸 것은 <b>대화로만</b> 공유하세요(감춰도 됩니다).`:`관전 중 — 배역을 맡아야 조사할 수 있어요.`}</div><div id="cmap"></div>`;
     renderMap($("cmap")); }
   else if(k==="talk"){
     const hcards=myRoleValid()?myHand:[];
-    p.innerHTML=`<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 단서 ${hcards.length}</span></div><div class="panel-note">아래 대화창에서 서로를 취조하세요. 내가 조사한 단서는 아래(비공개)에 있고, <b>내 단서</b> 버튼으로도 언제든 봅니다. 알릴지 감출지는 자유예요.</div>
+    p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 단서 ${hcards.length}</span></div><div class="panel-note">아래 대화창에서 서로를 취조하세요. 내가 조사한 단서는 아래(비공개)에 있고, <b>내 단서</b> 버튼으로도 언제든 봅니다. 알릴지 감출지는 자유예요.</div>
     <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219);cursor:pointer" onclick="showMyHand()"><b style="color:var(--gold-b)">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}·R${c.round}</span><div class="lead" style="margin:4px 0 0;font-size:12.5px">${esc(c.text)}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`; }
   else if(k==="final"){ renderFinal(p); }
   else if(k==="reveal"){ renderReveal(p); }
@@ -760,6 +774,52 @@ function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const 
 }
 async function publish(id){ closeModal("cardModal"); const r=await post("/api/publish",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error)banner(r.error); await poll(); }
 
+function handWarn(){
+  const n=overLimit(); if(n<=0) return "";
+  return `<div class="handwarn">🃏 손패가 <b>${myHand.length}장</b>이에요. <b>${handLimit()}장</b>까지만 들 수 있어서 <b>${n}장</b>을 공개해야 합니다.
+    <button class="btn ember sm" onclick="showHandTrim()">지금 정리하기</button></div>`;
+}
+
+/* ── 손패 상한 — 넘치면 남길 카드를 고르고, 고르지 않은 카드는 전체공개로 내려놓는다 ── */
+function handLimit(){ return (STATE&&STATE.handLimit)||3; }
+function overLimit(){ return myRoleValid()? Math.max(0, myHand.length-handLimit()) : 0; }
+let trimPick=null;
+function showHandTrim(){
+  const need=overLimit(); if(need<=0) return;
+  trimPick=null;
+  const cards=myHand.slice();
+  $("trimBox").innerHTML=`<h2 style="font-size:18px">손패 정리</h2>
+    <div class="mlead">손패에는 <b>${handLimit()}장</b>까지만 둘 수 있어요. <b>${need}장</b>을 골라 전체공개로 내려놓아야 합니다.<br>
+      내려놓은 카드는 <b>모두가 보게</b> 되고, 남긴 카드는 계속 나만 봅니다.</div>
+    <div class="trimgrid">${cards.map(c=>`
+      <button class="trimcard" data-id="${c.id}" onclick="trimSelect('${c.id}')">
+        <div class="tt">${esc(c.title)}</div>
+        <div class="tm"><span class="pill">${esc(c.locName)}</span><span class="pill">R${c.round}</span></div>
+        <div class="tb">${esc(c.text)}</div>
+      </button>`).join("")}</div>
+    <div class="trimact">
+      <span class="lead" id="trimHint" style="margin:0;font-size:12.5px">공개할 카드를 하나 고르세요</span>
+      <button class="btn ember" id="trimGo" disabled onclick="trimConfirm()">전체공개</button>
+    </div>`;
+  openModal("trimModal");
+}
+function trimSelect(id){
+  trimPick=id;
+  document.querySelectorAll("#trimBox .trimcard").forEach(b=>b.classList.toggle("on",b.dataset.id===id));
+  const c=myHand.find(x=>x.id===id);
+  $("trimHint").innerHTML=`<b style="color:var(--ember-b)">${esc(c?c.title:"")}</b> 을(를) 공개합니다`;
+  $("trimGo").disabled=false;
+}
+async function trimConfirm(){
+  if(!trimPick) return;
+  const c=myHand.find(x=>x.id===trimPick);
+  if(!confirm(`해당 카드를 전체공개로 전환합니다.\n손패에는 총 ${handLimit()}장의 카드만 소지할 수 있습니다.\n\n「${c?c.title:""}」\n\n진행하시겠습니까?`)) return;
+  const r=await post("/api/publish",{cardId:trimPick,roleId:myRoleId,clientId});
+  if(r&&r.error){ banner(r.error); return; }
+  trimPick=null; await poll();
+  if(overLimit()>0) showHandTrim(); else { closeModal("trimModal"); banner("공개했습니다."); }
+}
+
 /* 종막 질문지 */
 function renderFinal(p){
   const g=myRoleId?STATE.grades[myRoleId]:null; const mine=myRoleValid();
@@ -808,7 +868,8 @@ function updateComposer(){
   const ok=myRoleValid(); const c=ok?roleById(myRoleId):null;
   $("melab").textContent=ok?("나: "+c.name):"관전 중"; $("melab").style.color=ok?c.color:"var(--sub)";
   $("input").disabled=!ok; $("sendBtn").disabled=!ok; $("sheetBtn").style.display=ok?"":"none";
-  $("handBtn").style.display=ok?"":"none"; $("handN").textContent=myHand.length;
+  $("handBtn").style.display=ok?"":"none"; $("handN").textContent=myHand.length+"/"+handLimit();
+  $("handBtn").classList.toggle("ember",overLimit()>0);
   $("input").placeholder=ok?"배역이 되어 말하세요…  (Enter 전송)":"로비에서 배역을 골라야 말할 수 있어요";
   $("pMe").textContent=ok?(c.avatar+" "+c.name):"";
 }

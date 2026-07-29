@@ -195,6 +195,8 @@ def public_state() -> dict:
             "revealedIds": list(ROOM["revealed"]),
             "checked": checked,
             "usedAP": used,
+            "handLimit": _hand_limit(),
+            "overLimit": {rid: max(0, len(cs) - _hand_limit()) for rid, cs in ROOM["hands"].items() if len(cs) > _hand_limit()},
             "turn": ROOM.get("turn") if ap > 0 else None,
             "turnOrder": _turn_order() if ap > 0 else [],
             "typing": ROOM["typing"],
@@ -451,6 +453,15 @@ def _round_checks(role_id: str, rnd: int) -> int:
     return sum(1 for r in ROOM["checkedRound"].get(role_id, {}).values() if r == rnd)
 
 
+def _hand_limit() -> int:
+    """손패 상한 — 넘치면 넘치는 만큼 골라서 전체공개로 내려놓아야 한다."""
+    return int(getattr(SC, "HAND_LIMIT", 3))
+
+
+def _over_limit(role_id: str) -> int:
+    return max(0, len(ROOM["hands"].get(role_id, [])) - _hand_limit())
+
+
 def _holder_of(card_id: str) -> str | None:
     """그 카드를 이미 조사한 배역(없으면 None). 조사카드는 한 사람만 가진다."""
     for rid, cids in ROOM["hands"].items():
@@ -567,7 +578,28 @@ def _ai_pick(role_id: str, n: int) -> list:
             break
         picks.append(best["id"])
         loc_count[best["loc"]] = loc_count.get(best["loc"], 0) + 1
+    _ai_trim_hand(role_id)
     return picks
+
+
+def _ai_trim_hand(role_id: str) -> list:
+    """손패 상한을 넘으면 AI가 알아서 내려놓는다.
+    자기에게 불리한 카드(interest 음수 = 감추고 싶은 것)는 끝까지 쥐고, 무해하거나 공유해도 될 것부터 공개한다."""
+    prof = (getattr(SC, "INVEST_AI", {}) or {}).get(role_id, {})
+    interest = prof.get("interest", {})
+    hide = set(prof.get("hide", []))     # 손에 들어오면 끝까지 감추는 카드
+    out = []
+    while _over_limit(role_id) > 0:
+        hand = list(ROOM["hands"].get(role_id, []))
+        if not hand:
+            break
+        # hide 목록은 마지막까지 쥔다. 그 밖에서는 interest 가 높을수록 먼저 내려놓는다.
+        drop = max(hand, key=lambda cid: (-1 if cid in hide else 0,
+                                          interest.get(cid, 0.0),
+                                          zlib.crc32(f"{role_id}|{cid}".encode()) % 97))
+        _publish_from(role_id, drop)
+        out.append(drop)
+    return out
 
 
 def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforce_turn: bool = False) -> str | None:
@@ -607,13 +639,6 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
     if card_id not in h:
         h.append(card_id)
         ROOM["checkedRound"].setdefault(role_id, {})[card_id] = cur
-        # 공개의무 카드는 찾는 즉시 전원에게 공개된다 — 모두가 반쪽만 쥐고 있으면 조합이 안 되므로,
-        # 판의 뼈대가 되는 사실은 감출 수 없게 하고 '비공개' 카드만 협상 카드로 남긴다.
-        if c.get("reveal") == "obligatory" and card_id not in ROOM["revealed"]:
-            ROOM["revealed"].append(card_id)
-            who = SC.get_character(role_id) or {}
-            ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": f'📌 {who.get("name", role_id)}가 「{c["title"]}」을(를) 찾아 모두에게 공개했습니다.'})
         bump()
     return None
 
@@ -629,6 +654,26 @@ def _mark_toggle(role_id: str, card_id: str) -> str | None:
         bump()
         return None
     return _try_investigate(role_id, card_id)
+
+
+def _subj(name: str) -> str:
+    """이름 뒤 조사 — 받침이 있으면 '이', 없으면 '가'."""
+    if not name:
+        return "가"
+    ch = name[-1]
+    return "이" if ("가" <= ch <= "힣" and (ord(ch) - 0xAC00) % 28) else "가"
+
+
+def _publish_from(role_id: str, card_id: str) -> None:
+    """그 배역의 손패에서 카드를 빼 전체공개로 돌리고 테이블에 알린다."""
+    c = SC.get_card(card_id)
+    who = SC.get_character(role_id) or {}
+    _publish(card_id)
+    if c:
+        nm = who.get("name", role_id)
+        ROOM["table"].append({"kind": "system", "broadcast": True,
+                              "text": f'📌 {nm}{_subj(nm)} 「{c["title"]}」을(를) 전체공개했습니다.'})
+        bump()
 
 
 def _publish(card_id: str) -> None:
@@ -673,12 +718,15 @@ def mark(b: AgentCard):
 
 @app.post("/api/publish")
 def publish_card(b: Investigate):
+    """손패에서 카드 한 장을 전체공개로 내려놓는다(손패 상한 정리)."""
     with LOCK:
         r = ROOM["roles"].get(b.roleId)
         if not r or r["clientId"] != b.clientId:
             return JSONResponse({"error": "권한 없음"}, status_code=403)
-        _publish(b.cardId)
-    return {"ok": True}
+        if b.cardId not in ROOM["hands"].get(b.roleId, []):
+            return JSONResponse({"error": "내 손패에 없는 카드입니다"}, status_code=409)
+        _publish_from(b.roleId, b.cardId)
+    return {"ok": True, "over": _over_limit(b.roleId)}
 
 
 @app.get("/api/hand/{role_id}")
