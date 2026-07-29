@@ -92,6 +92,24 @@
   .msg .bub{background:var(--panel);border:1px solid var(--line);border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
   .msg.own .bub{background:linear-gradient(135deg,#8a7038,var(--gold));color:#1a1509;border-radius:12px 4px 12px 12px}
   .tag-me{font-size:9px;color:var(--gold);border:1px solid var(--gold);border-radius:5px;padding:0 4px;margin-left:4px}
+  /* 심층심문(취조) — 채팅 로그 안의 결과 카드 */
+  .interrog{align-self:center;max-width:94%;border-radius:12px;padding:9px 13px;margin:2px 0;font-size:13px;border:1px solid var(--line);background:var(--panel)}
+  .interrog .ig-head{font-weight:700;font-size:11.5px;color:var(--muted);margin-bottom:4px}
+  .interrog .ig-line{line-height:1.6;white-space:pre-wrap;font-size:13.5px}
+  .interrog.crack{border-color:#7a2c2c;background:#2a1214}.interrog.crack .ig-head{color:#ff8a8a}
+  .interrog.defend{border-color:#3a3a3a;background:#181818}.interrog.defend .ig-head{color:var(--muted)}
+  .interrog.plain{border-color:#2c465a;background:#0e1620}.interrog.plain .ig-head{color:var(--cold)}
+  /* 심층심문 패널 — 토론 페이즈 */
+  .ig-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .ig-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 11px;border:1px solid var(--line);border-radius:11px;background:var(--panel2)}
+  .ig-who{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;min-width:96px}
+  .ig-cards{display:flex;gap:6px;flex-wrap:wrap}
+  .ig-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:5px 12px;font-size:12px;cursor:pointer;color:inherit;font-family:inherit}
+  .ig-card:hover{border-color:var(--gold)}
+  .ig-card:disabled{opacity:.4;cursor:not-allowed}
+  .ig-evlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .ig-ev{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:6px 12px;font-size:12px;cursor:pointer;color:inherit;font-family:inherit;text-align:left}
+  .ig-ev.on{border-color:var(--ember);color:var(--ember-b)}
   .composer{display:flex;gap:8px;padding:9px 12px;border-top:1px solid var(--line);background:var(--bg2);align-items:flex-end}
   .composer .melab{font-size:12px;color:var(--sub);align-self:center;white-space:nowrap;max-width:88px;overflow:hidden;text-overflow:ellipsis}
   .composer textarea{flex:1;resize:none;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:9px 12px;font-size:14px;font-family:inherit;line-height:1.5;max-height:96px}
@@ -435,6 +453,7 @@
 <div class="modal" id="cardModal"><div class="box" id="cardBox"></div></div>
 <div class="modal" id="handModal"><div class="box" id="handBox"></div></div>
 <div class="modal" id="trimModal"><div class="box" id="trimBox"></div></div>
+<div class="modal" id="interrogModal"><div class="box" id="interrogBox"></div></div>
 <div id="phaseFx"><div class="fx-in"><div class="fx-kick" id="fxKick"></div><div class="fx-name serif" id="fxName"></div><div class="fx-line" id="fxLine"></div></div></div>
 
 <script>
@@ -707,7 +726,7 @@ function renderPanel(ph){
   const p=$("ppanel"); const k=ph.key;
   // 매 폴링마다 통째로 다시 그리면 방 카드 애니메이션이 계속 재생돼 '깜빡임'이 생긴다.
   // 실제로 바뀐 게 있을 때만 다시 그린다.
-  const sig=JSON.stringify([k,STATE.seq,STATE.round,STATE.turn,ph.ap,myRoleId,myHand.map(c=>c.id),STATE.revealedIds,STATE.usedAP,STATE.grades,STATE.ending&&STATE.ending.name]);
+  const sig=JSON.stringify([k,STATE.seq,STATE.round,STATE.turn,ph.ap,myRoleId,myHand.map(c=>c.id),STATE.revealedIds,STATE.usedAP,STATE.grades,STATE.ending&&STATE.ending.name,STATE.interrogate,STATE.evasions,STATE.checked]);
   if(sig===renderPanel._sig) return;
   renderPanel._sig=sig;
   if(k==="open"){
@@ -723,7 +742,8 @@ function renderPanel(ph){
   else if(k==="talk"){
     const hcards=myRoleValid()?myHand:[];
     p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 단서 ${hcards.length}</span></div><div class="panel-note">아래 대화창에서 서로를 취조하세요. 내가 조사한 단서는 아래(비공개)에 있고, <b>내 단서</b> 버튼으로도 언제든 봅니다. 알릴지 감출지는 자유예요.</div>
-    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219);cursor:pointer" onclick="showMyHand()"><b style="color:var(--gold-b)">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span><div class="lead" style="margin:4px 0 0;font-size:12.5px">${esc(c.text)}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`; }
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219);cursor:pointer" onclick="showMyHand()"><b style="color:var(--gold-b)">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span><div class="lead" style="margin:4px 0 0;font-size:12.5px">${esc(c.text)}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
+    +interrogPanelHTML(); }
   else if(k==="final"){ renderFinal(p); }
   else if(k==="reveal"){ renderReveal(p); }
   else p.innerHTML="";
@@ -758,6 +778,53 @@ function renderMap(el){
   const zones=(SCEN.map&&SCEN.map.length)?SCEN.map:[];
   const room=(z)=>{ const cards=cardsOf(z.loc); return cards.length?`<div class="room"><div class="rmh">${z.icon||"📍"} ${esc(z.name||z.loc)}</div><div class="cardmap">${cards.map(cardHTML).join("")}</div></div>`:""; };
   el.innerHTML=`<div class="floormap generic">${zones.map(room).join("")}</div>`;
+}
+/* ── 심층심문(취조) — 토론 페이즈에서 증거를 들이밀며 압박한다 ── */
+function heldCardsOf(roleId){ return ((STATE.checked||{})[roleId]||[]).map(id=>cardCat(id)).filter(Boolean); }
+function myEvidence(){ return [...myHand, ...(STATE.revealed||[])]; }
+function interrogPanelHTML(){
+  if(!myRoleValid()) return `<div class="card" style="margin-top:14px"><h2>🔦 심층심문</h2><div class="panel-note">배역을 맡아야 심문할 수 있어요.</div></div>`;
+  const ig=STATE.interrogate; if(!ig) return "";
+  const targets=SCEN.characters.filter(c=>c.id!==myRoleId).map(c=>({c,cards:heldCardsOf(c.id)})).filter(x=>x.cards.length);
+  const ev=STATE.evasions||{};
+  const voteBtn=(!ig.bonusGranted&&ig.voteNeed>0)?`<button class="btn sm" onclick="interrogVote()">🗳️ 추가 심문 신청 (${ig.voteHave}/${ig.voteNeed})</button>`:(ig.bonusGranted?`<span class="pill" style="color:var(--good)">추가 심문 승인됨</span>`:"");
+  let h=`<div class="card" style="margin-top:14px"><h2>🔦 심층심문</h2>
+    <div class="panel-note">증거를 들이밀며 캐릭터를 압박합니다. 증거 없이 물으면 대개 방어만 하고 넘어가요 — 반박이 될 만한 카드를 함께 대야 균열이 납니다. 제시한 반박 카드는 그 자리에서 전체공개됩니다.</div>
+    <div class="panel-note" style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">이번 토론 남은 심문 <b style="color:var(--gold-b)">${ig.remaining}</b>/${ig.total}회 ${voteBtn}</div>`;
+  if(!targets.length) h+=`<div class="panel-note" style="margin-top:8px">지금은 심문할 대상이 없어요 — 다들 손패가 비어 있거나 전부 공개했습니다.</div>`;
+  else h+=`<div class="ig-list">${targets.map(({c,cards})=>`
+    <div class="ig-row">
+      <div class="ig-who"><span style="color:${c.color}">${c.avatar} ${esc(c.name)}</span>${ev[c.id]?`<span class="pill bad">회피 ${ev[c.id]}</span>`:""}</div>
+      <div class="ig-cards">${cards.map(cd=>`<button class="ig-card" ${ig.remaining<=0?"disabled":""} onclick="openInterrog('${c.id}','${cd.id}')">${esc(cd.spot||cd.locName)}</button>`).join("")}</div>
+    </div>`).join("")}</div>`;
+  return h+`</div>`;
+}
+async function interrogVote(){ const r=await post("/api/interrogate/vote",{roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); }
+let igPick={target:null,card:null,rebuttal:""};
+function openInterrog(targetRoleId,cardId){
+  igPick={target:targetRoleId,card:cardId,rebuttal:""};
+  const c=roleById(targetRoleId)||{}; const cd=cardCat(cardId)||{};
+  const evid=myEvidence();
+  $("interrogBox").innerHTML=`<h2 style="font-size:18px">${c.avatar||""} ${esc(c.name||"")} 심문 — ${esc(cd.spot||cd.locName||"")}</h2>
+    <div class="mlead">증거 없이 물으면 대개 방어만 합니다. 내 카드 중 하나를 반박으로 제시하면 균열이 날 수도 있어요.</div>
+    <div class="ig-evlist">
+      <button class="ig-ev on" data-id="" onclick="igPickEv('')">증거 없이 묻기</button>
+      ${evid.map(e=>`<button class="ig-ev" data-id="${e.id}" onclick="igPickEv('${e.id}')">${esc(e.title)}</button>`).join("")}
+    </div>
+    <div style="margin-top:14px;text-align:right;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="closeModal('interrogModal')">취소</button>
+      <button class="btn ember" onclick="submitInterrog()">추궁</button>
+    </div>
+    <div id="igResult" style="margin-top:12px"></div>`;
+  openModal("interrogModal");
+}
+function igPickEv(id){ igPick.rebuttal=id; document.querySelectorAll("#interrogBox .ig-ev").forEach(b=>b.classList.toggle("on",b.dataset.id===id)); }
+async function submitInterrog(){
+  const r=await post("/api/interrogate",{askerRoleId:myRoleId,targetRoleId:igPick.target,cardId:igPick.card,rebuttalCardId:igPick.rebuttal,clientId});
+  if(r&&r.error){ banner(r.error); return; }
+  const badge=r.outcome==="crack"?'<span class="pill" style="color:var(--ember-b)">🩸 균열</span>':(r.outcome==="defend"?'<span class="pill">🛡️ 회피</span>':'<span class="pill" style="color:var(--cold)">💬 답변</span>');
+  $("igResult").innerHTML=`${badge}<div class="mlead" style="margin-top:8px">${esc(r.line)}</div>`;
+  await poll();
 }
 /* ── 조사 턴 (하이브리드: 순번 강제 + 넘기기·AI 자동조사) ── */
 function turnBar(){
@@ -899,6 +966,8 @@ function renderChat(boxId){
   const box=$(boxId||"chat"); const near=box.scrollHeight-box.scrollTop-box.clientHeight<120; box.innerHTML="";
   (STATE.table||[]).forEach(m=>{
     if(m.kind==="system"){ const s=document.createElement("div"); s.className="sys"+(m.broadcast?" bc":""); s.textContent=m.text; box.appendChild(s); return; }
+    if(m.kind==="interrogate"){ const s=document.createElement("div"); s.className="interrog "+(m.outcome||"plain");
+      s.innerHTML=`<div class="ig-head">${esc(m.text)}</div><div class="ig-line">${esc(m.line||"")}</div>`; box.appendChild(s); return; }
     const c=roleById(m.roleId); const own=m.roleId===myRoleId;
     const row=document.createElement("div"); row.className="msg"+(own?" own":"");
     row.innerHTML=`<div class="av">${c?c.avatar:"❔"}</div><div><div class="nm" style="color:${c?c.color:"#999"}">${esc(m.speaker)}${m.kind==="human"?'<span class="tag-me">사람</span>':''}</div><div class="bub">${esc(m.text)}</div></div>`;

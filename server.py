@@ -145,6 +145,8 @@ def fresh_room() -> dict:
         "finalAnswers": {},       # roleId -> [answer str] (백엔드 미설정 시 진행자 수동채점용 보관)
         "typing": None,
         "turn": None,             # 조사 페이즈 현재 차례 roleId (하이브리드 턴)
+        "interrogate": {"seq": None, "used": 0, "votes": [], "bonus": False},  # 토론 페이즈 심층심문 예산
+        "evasions": {},           # roleId -> 심문에서 방어(회피)한 횟수 (게임 전체 누적)
     }
 
 
@@ -200,6 +202,8 @@ def public_state() -> dict:
             "overLimit": {rid: max(0, len(cs) - _hand_limit()) for rid, cs in ROOM["hands"].items() if len(cs) > _hand_limit()},
             "turn": ROOM.get("turn") if ap > 0 else None,
             "turnOrder": _turn_order() if ap > 0 else [],
+            "interrogate": _interrogate_budget() if ph.get("key") == "talk" else None,
+            "evasions": dict(ROOM.get("evasions", {})),
             "typing": ROOM["typing"],
             "grades": g,
             "ending": ending,
@@ -245,6 +249,19 @@ class ClientOnly(BaseModel):
 
 class Investigate(BaseModel):
     cardId: str
+    roleId: str
+    clientId: str
+
+
+class Interrogate(BaseModel):
+    askerRoleId: str
+    targetRoleId: str
+    cardId: str
+    rebuttalCardId: str = ""
+    clientId: str
+
+
+class InterrogateVote(BaseModel):
     roleId: str
     clientId: str
 
@@ -477,6 +494,33 @@ def _hand_limit() -> int:
 
 def _over_limit(role_id: str) -> int:
     return max(0, len(ROOM["hands"].get(role_id, [])) - _hand_limit())
+
+
+def _human_roles() -> list:
+    return [rid for rid, r in ROOM["roles"].items() if r["mode"] == "human" and r["clientId"]]
+
+
+def _ensure_interrogate_seq() -> None:
+    """토론 페이즈에 새로 들어오면 심문 예산·투표를 초기화한다(페이즈당 예산)."""
+    seq = ROOM["seq"]
+    ph = SC.phase_by_seq(seq)
+    ig = ROOM["interrogate"]
+    if ph.get("key") == "talk" and ig.get("seq") != seq:
+        ROOM["interrogate"] = {"seq": seq, "used": 0, "votes": [], "bonus": False}
+
+
+def _interrogate_budget() -> dict:
+    """1인당 2회 + 과반수(2인이면 만장일치) 투표로 +1. 토론 페이즈마다 리셋."""
+    _ensure_interrogate_seq()
+    ig = ROOM["interrogate"]
+    n = len(_human_roles())
+    base = 2 * n
+    bonus = 1 if ig["bonus"] else 0
+    total = base + bonus
+    need = (n // 2 + 1) if n else 0
+    return {"base": base, "bonus": bonus, "total": total, "used": ig["used"],
+            "remaining": max(0, total - ig["used"]), "voteNeed": need,
+            "voteHave": len(ig["votes"]), "bonusGranted": ig["bonus"]}
 
 
 def _holder_of(card_id: str) -> str | None:
@@ -764,6 +808,96 @@ def publish_card(b: Investigate):
             return JSONResponse({"error": "내 손패에 없는 카드입니다"}, status_code=409)
         _publish_from(b.roleId, b.cardId)
     return {"ok": True, "over": _over_limit(b.roleId)}
+
+
+@app.post("/api/interrogate/vote")
+def interrogate_vote(b: InterrogateVote):
+    """토론 페이즈 추가 심문 1회 신청 — 과반수(2인이면 만장일치) 찬성 시 부여된다."""
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "그 배역으로 투표할 수 없습니다"}, status_code=403)
+        ph = SC.phase_by_seq(ROOM["seq"])
+        if ph.get("key") != "talk":
+            return JSONResponse({"error": "토론 페이즈에서만 신청할 수 있습니다"}, status_code=409)
+        budget = _interrogate_budget()
+        if budget["bonusGranted"]:
+            return {"ok": True, "budget": budget}
+        votes = ROOM["interrogate"]["votes"]
+        if b.roleId not in votes:
+            votes.append(b.roleId)
+        budget = _interrogate_budget()
+        if budget["voteNeed"] > 0 and len(votes) >= budget["voteNeed"]:
+            ROOM["interrogate"]["bonus"] = True
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": "🗳️ 추가 심문 1회가 승인됐습니다."})
+        bump()
+        return {"ok": True, "budget": _interrogate_budget()}
+
+
+@app.post("/api/interrogate")
+def interrogate(b: Interrogate):
+    """심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다.
+    증거(반박 카드)를 함께 대면 「균열」, 아니면 「회피」. 결과 카드는 그 즉시 전체공개된다."""
+    with LOCK:
+        r = ROOM["roles"].get(b.askerRoleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "그 배역으로 심문할 수 없습니다"}, status_code=403)
+        ph = SC.phase_by_seq(ROOM["seq"])
+        if ph.get("key") != "talk":
+            return JSONResponse({"error": "심층심문은 토론 페이즈에서만 할 수 있습니다"}, status_code=409)
+        if b.askerRoleId == b.targetRoleId:
+            return JSONResponse({"error": "자기 자신은 심문할 수 없습니다"}, status_code=409)
+        if b.targetRoleId not in ROOM["roles"]:
+            return JSONResponse({"error": "없는 배역"}, status_code=404)
+        budget = _interrogate_budget()
+        if budget["remaining"] <= 0:
+            return JSONResponse({"error": "이번 토론에서 쓸 수 있는 심문 횟수를 다 썼습니다"}, status_code=409)
+        if b.cardId not in ROOM["hands"].get(b.targetRoleId, []):
+            return JSONResponse({"error": "그 배역이 지금 들고 있는 카드가 아닙니다"}, status_code=409)
+
+        card = SC.get_card(b.cardId)
+        target = SC.get_character(b.targetRoleId) or {}
+        asker = SC.get_character(b.askerRoleId) or {}
+        entry = (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(b.cardId)
+
+        rebut_id = (b.rebuttalCardId or "").strip()
+        accepted = False
+        if entry and rebut_id:
+            allowed = entry.get("rebuttal") or []
+            has_access = rebut_id in ROOM["hands"].get(b.askerRoleId, []) or rebut_id in ROOM["revealed"]
+            if rebut_id in allowed and has_access:
+                accepted = True
+
+        if entry and accepted:
+            outcome, line = "crack", entry["crack"]
+        elif entry:
+            outcome, line = "defend", entry["defend"]
+        else:
+            intro = (getattr(SC, "INTERROGATE_PLAIN", {}) or {}).get(b.targetRoleId, "")
+            outcome, line = "plain", f'{intro} 「{card["title"]}」— {card["text"]}'.strip()
+
+        ROOM["interrogate"]["used"] += 1
+        if outcome == "defend":
+            ROOM["evasions"][b.targetRoleId] = ROOM["evasions"].get(b.targetRoleId, 0) + 1
+        else:
+            _publish(b.cardId)
+
+        rebut_published = False
+        if accepted and rebut_id in ROOM["hands"].get(b.askerRoleId, []):
+            _publish(rebut_id)
+            rebut_published = True
+
+        where = f'{card["locName"]} · {card["spot"]}' if card.get("spot") else card["locName"]
+        badge = {"crack": "🩸 균열", "defend": "🛡️ 회피", "plain": "💬 답변"}[outcome]
+        header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · [{where}] 「{card["title"]}」'
+        ROOM["table"].append({"kind": "interrogate", "broadcast": True,
+                              "askerRoleId": b.askerRoleId, "targetRoleId": b.targetRoleId,
+                              "cardId": b.cardId, "outcome": outcome, "text": header, "line": line})
+        bump()
+        return {"ok": True, "outcome": outcome, "line": line,
+                "cardPublished": outcome != "defend", "rebuttalPublished": rebut_published,
+                "budget": _interrogate_budget()}
 
 
 @app.get("/api/hand/{role_id}")
