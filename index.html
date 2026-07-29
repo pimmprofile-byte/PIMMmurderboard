@@ -208,6 +208,10 @@
   .bc-title.role{color:var(--rc,#f2ecdf)}
   .bc-sub{font-size:13px;color:var(--sub);margin-top:4px}
   .bc-body{font-size:15.5px;line-height:1.8;color:#e2dcef;margin-top:14px;white-space:pre-wrap}
+  /* 해석 노트 — 카드가 무슨 뜻인지 한 줄로 짚어준다(결론은 말하지 않는다) */
+  .cnote{margin-top:12px;padding:9px 11px;border-left:2px solid #5a4a2c;background:rgba(200,160,80,.07);
+    border-radius:0 8px 8px 0;color:#cbbf9f;font-size:13px;line-height:1.7}
+  .cnote b{color:var(--gold-b);font-weight:700;font-size:11.5px;letter-spacing:.06em;display:block;margin-bottom:2px}
   .bc-avwrap{display:flex;align-items:center;gap:14px;margin-bottom:6px}
   .bc-av{font-size:34px;width:60px;height:60px;display:grid;place-items:center;background:var(--bg);border-radius:15px;flex:0 0 60px;border:1px solid var(--line)}
   .bc-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
@@ -767,12 +771,14 @@ function gmTurnBar(){
 async function turnNext(){ const bn=(scr==="gm")?gmBanner:banner; const r=await post("/api/turn/next",{clientId,roleId:myRoleId,key:gmKey}); if(r&&r.error)bn(r.error); await poll(); }
 async function aiInvestigateNow(rid){ const r=await post("/api/ai-investigate",{roleId:rid||"",clientId,key:gmKey}); if(r&&r.error){gmBanner(r.error);return;} if(r&&r.picked){ const c=roleById(rid)||{}; gmBanner(`${c.name||'AI'} 자동 조사 — ${r.picked.map(p=>p.title).join(", ")||'열 카드 없음'}`);} await poll(); }
 
+function cnote(c){ return c&&c.hint?`<div class="cnote"><b>해석</b>${esc(c.hint)}</div>`:""; }
 async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); openCard(id); }
 function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const hand=myHand.find(c=>c.id===id); const c=pub||hand; if(!c)return;
   const inHand=!!hand&&!pub;
   $("cardBox").innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:8px">${esc(c.locName)} · R${c.round}${pub?' · 공개':' · 손패(비공개)'}</div>
     <h2 style="font-size:18px">${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
     <div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>
+    ${cnote(c)}
     <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end"><span class="lead" style="margin:0 auto 0 0;font-size:12px">이 단서는 <b>당신 손패(비공개)</b>입니다. 알리려면 대화로 말하세요.</span><button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
   const box=$("cardBox");
   box.classList.remove("reveal","shock","bait","clue");
@@ -804,6 +810,7 @@ function showHandTrim(){
         <div class="tt">${esc(c.title)}</div>
         <div class="tm"><span class="pill">${esc(c.locName)}</span><span class="pill">R${c.round}</span></div>
         <div class="tb">${esc(c.text)}</div>
+        ${c.hint?`<div class="cnote" style="margin-top:8px;font-size:12px"><b>해석</b>${esc(c.hint)}</div>`:""}
       </button>`).join("")}</div>
     <div class="trimact">
       <span class="lead" id="trimHint" style="margin:0;font-size:12.5px">공개할 카드를 하나 고르세요</span>
@@ -957,7 +964,7 @@ function showMyHand(){
       <div class="bc-eyebrow">손패 · 비공개</div>
       <div class="bc-title" style="color:var(--gold-b)">${esc(c.title)}</div>
       <div class="bc-tags"><span class="pill">${esc(c.locName)}</span><span class="pill">R${c.round}</span>${c.bait?'<span class="pill bad">※미끼일 수도</span>':''}</div>
-      <div class="bc-body">${esc(c.text)}</div></div>`);
+      <div class="bc-body">${esc(c.text)}</div>${cnote(c)}</div>`);
     h+=buildSwipe(slides); }
   h+=`<div style="margin-top:14px;text-align:right"><button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
   $("handBox").innerHTML=h;
