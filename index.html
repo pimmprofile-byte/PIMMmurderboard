@@ -127,7 +127,7 @@
   .room.class{grid-area:class;border-color:#553236;background:linear-gradient(160deg,#1d1417,#140f13)}
   .room.class .scene{border:1px solid #6e3a3a;border-radius:10px;padding:8px;background:rgba(120,42,42,.14);margin-bottom:8px}
   .room.class .scene .sh{font-size:11px;font-weight:700;color:#f0a99e;margin-bottom:6px;letter-spacing:.02em}
-  .room .cardmap .gcard{aspect-ratio:auto;min-height:74px}
+  .room .cardmap .gcard{aspect-ratio:auto;min-height:100px}
   @media(max-width:640px){ .floormap{grid-template-columns:1fr;grid-template-areas:"roof" "art" "bcast" "staff" "class"} }
   .gcard{aspect-ratio:3/4;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(160deg,#1a1722,#141119);transition:.15s}
   .gcard:hover{transform:translateY(-2px);border-color:var(--gold)}
@@ -135,6 +135,15 @@
   .gcard .t{font-size:12px;font-weight:700;margin-top:auto;line-height:1.3}
   .gcard.face{align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#181521,#181521 6px,#15121d 6px,#15121d 12px)}
   .gcard.face .q{font-size:26px;font-family:"Nanum Myeongjo",serif;color:#3c354c}
+  /* 뒤집힌 카드는 '어디를 뒤지는지'로 고른다 — 라벨 번호 대신 자리 이름 */
+  .gcard.face{padding:20px 6px 22px}
+  .gcard.face .sp{font-size:11.5px;font-weight:700;line-height:1.35;color:#9b93ad;text-align:center;
+    word-break:keep-all;text-wrap:balance}
+  .gcard.face:hover .sp{color:var(--gold-b)}
+  .gcard.locked .sp{color:#5d5670}
+  .gcard.face.taken .q{font-size:16px;margin-bottom:3px}
+  .gcard.face.taken .sp{font-size:10.5px;font-weight:600}
+  .gcard .spot{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.3;word-break:keep-all}
   .gcard.face .rb{position:absolute;bottom:7px;left:0;right:0;text-align:center}.gcard.face .tag{color:var(--gold-b)}
   .gcard.locked{cursor:default;opacity:.5}
   /* 손패 상한 정리 */
@@ -376,7 +385,7 @@
 
 <div id="s-play" class="screen">
   <div class="chead">
-    <span class="rt"><span class="mk">◈</span> 졸업사진</span>
+    <span class="rt"><span class="mk">◈</span> <span id="pTitle">졸업사진</span></span>
     <span class="ph" id="pPhase"></span>
     <span class="me" id="pMe"></span>
     <span class="spacer"></span>
@@ -449,6 +458,7 @@ function applyLanding(){
   if(!SCEN)return;
   // 랜딩/로비 문안을 선택된 시나리오에서 채운다
   $("lTitle").textContent=SCEN.title; $("lSub").textContent=SCEN.subtitle; $("lIntro").textContent=SCEN.intro;
+  $("pTitle").textContent=SCEN.title; document.title=SCEN.title+" — PIMMmurderboard";
   $("lobbyScenName").textContent=SCEN.title;
   const be=SCEN.backend||{ok:false,label:"?"};
   $("beChip").className="be-chip"+(be.ok?" ok":""); $("beTxt").textContent="AI 백엔드 · "+be.label;
@@ -644,7 +654,7 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
     locs.forEach(loc=>{
       const cards=byLoc[loc]; let cc="";
       cards.forEach(cd=>{ const on=ck.includes(cd.id); const jm=fresh&&fresh.has(c.id+":"+cd.id);
-        cc+=`<div class="cell${on?' on':''}${jm?' justmark':''}" style="--cc:${c.color}" onclick="gmMark('${c.id}','${cd.id}')" title="${esc(cd.locName)} · R${cd.round}${cd.requires?' · '+cd.requires+' 선행':''}">${cd.id}${cd.requires?`<span class="rq">${cd.requires}▶</span>`:""}</div>`;
+        cc+=`<div class="cell${on?' on':''}${jm?' justmark':''}" style="--cc:${c.color}" onclick="gmMark('${c.id}','${cd.id}')" title="${esc(cd.locName)}${cd.spot?' · '+esc(cd.spot):''} · R${cd.round}${cd.requires?' · '+cd.requires+' 선행':''}">${cd.id}${cd.requires?`<span class="rq">${cd.requires}▶</span>`:""}</div>`;
       });
       cells+=`<div class="gm-loc"><div class="lh">${loc} · ${esc(cards[0].locName)}</div><div class="cs">${cc}</div></div>`;
     });
@@ -713,7 +723,7 @@ function renderPanel(ph){
   else if(k==="talk"){
     const hcards=myRoleValid()?myHand:[];
     p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 단서 ${hcards.length}</span></div><div class="panel-note">아래 대화창에서 서로를 취조하세요. 내가 조사한 단서는 아래(비공개)에 있고, <b>내 단서</b> 버튼으로도 언제든 봅니다. 알릴지 감출지는 자유예요.</div>
-    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219);cursor:pointer" onclick="showMyHand()"><b style="color:var(--gold-b)">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}·R${c.round}</span><div class="lead" style="margin:4px 0 0;font-size:12.5px">${esc(c.text)}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`; }
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219);cursor:pointer" onclick="showMyHand()"><b style="color:var(--gold-b)">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span><div class="lead" style="margin:4px 0 0;font-size:12.5px">${esc(c.text)}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`; }
   else if(k==="final"){ renderFinal(p); }
   else if(k==="reveal"){ renderReveal(p); }
   else p.innerHTML="";
@@ -727,18 +737,20 @@ function renderMap(el){
   // 새로 손패에 들어온 카드 = 뒤집힘 애니메이션 1회
   const curHand=new Set(handIds); let fresh=new Set();
   if(handSeen===null) handSeen=curHand; else { curHand.forEach(id=>{ if(!handSeen.has(id))fresh.add(id); }); handSeen=curHand; }
+  const spotOf=(c)=>c.spot||"";
   const cardHTML=(c)=>{
-    if(pub[c.id]) return `<div class="gcard pub${pub[c.id].bait?' baitc':''}" onclick="openCard('${c.id}')"><span class="tag">공개</span><div class="rb">R${c.round}</div><div class="t">${esc(pub[c.id].title)}</div></div>`;
-    if(hand[c.id]) return `<div class="gcard hand${fresh.has(c.id)?' just-open':''}" onclick="openCard('${c.id}')"><span class="tag">손패</span><div class="rb">R${c.round}·비공개</div><div class="t">${esc(hand[c.id].title)}</div></div>`;
+    const sp=spotOf(c), spl=sp?`<div class="spot">${esc(sp)}</div>`:"";
+    if(pub[c.id]) return `<div class="gcard pub${pub[c.id].bait?' baitc':''}" onclick="openCard('${c.id}')"><span class="tag">공개</span><div class="rb">R${c.round}</div><div class="t">${esc(pub[c.id].title)}${spl}</div></div>`;
+    if(hand[c.id]) return `<div class="gcard hand${fresh.has(c.id)?' just-open':''}" onclick="openCard('${c.id}')"><span class="tag">손패</span><div class="rb">R${c.round}·비공개</div><div class="t">${esc(hand[c.id].title)}${spl}</div></div>`;
     // 조사카드는 한 사람만 갖는다 — 남이 이미 가져간 카드는 그 배역 색으로 잠긴다.
     const taker=Object.keys(STATE.checked||{}).find(rid=>rid!==myRoleId&&(STATE.checked[rid]||[]).includes(c.id));
     if(taker){ const tc=roleById(taker)||{};
-      return `<div class="gcard face taken" style="--tc:${tc.color||'#777'}"><div class="q">${tc.avatar||'🔒'}</div><div class="rb">${esc(tc.name||'')} 조사함</div></div>`; }
+      return `<div class="gcard face taken" style="--tc:${tc.color||'#777'}"><div class="q">${tc.avatar||'🔒'}</div>${sp?`<div class="sp">${esc(sp)}</div>`:""}<div class="rb">${esc(tc.name||'')} 조사함</div></div>`; }
     const allIds=new Set(revIds); Object.values(STATE.checked||{}).forEach(a=>(a||[]).forEach(x=>allIds.add(x)));
     const reqOk=!c.requires||allIds.has(c.requires); const roundOk=c.round<=cr;
     const turn=STATE.turn; const myTurn=(!turn)||turn===myRoleId;
-    if(roundOk&&reqOk&&myRoleValid()&&!apOut&&myTurn) return `<div class="gcard face" onclick="investigate('${c.id}')"><span class="tag">조사</span><div class="q">?</div><div class="rb">R${c.round}</div></div>`;
-    return `<div class="gcard face locked"><div class="q">🔒</div><div class="rb">${!roundOk?"R"+c.round:(!myRoleValid()?"관전":(!myTurn?"내 차례 아님":(apOut?"턴 소진":"선행 필요")))}</div></div>`;
+    if(roundOk&&reqOk&&myRoleValid()&&!apOut&&myTurn) return `<div class="gcard face" onclick="investigate('${c.id}')"><span class="tag">조사</span>${sp?`<div class="sp">${esc(sp)}</div>`:`<div class="q">?</div>`}<div class="rb">R${c.round}</div></div>`;
+    return `<div class="gcard face locked">${sp?`<div class="sp">${esc(sp)}</div>`:`<div class="q">🔒</div>`}<div class="rb">${!roundOk?"R"+c.round:(!myRoleValid()?"관전":(!myTurn?"내 차례 아님":(apOut?"턴 소진":"선행 필요")))}</div></div>`;
   };
   // 이번 라운드에 열린 카드만(+이미 가진 것) — 아직 안 열린 카드는 감춰 정보 과부하 방지
   const cardsOf=(loc)=>SCEN.cardCatalog.filter(c=>c.loc===loc && (c.round<=cr || pub[c.id] || hand[c.id]));
@@ -772,10 +784,13 @@ async function turnNext(){ const bn=(scr==="gm")?gmBanner:banner; const r=await 
 async function aiInvestigateNow(rid){ const r=await post("/api/ai-investigate",{roleId:rid||"",clientId,key:gmKey}); if(r&&r.error){gmBanner(r.error);return;} if(r&&r.picked){ const c=roleById(rid)||{}; gmBanner(`${c.name||'AI'} 자동 조사 — ${r.picked.map(p=>p.title).join(", ")||'열 카드 없음'}`);} await poll(); }
 
 function cnote(c){ return c&&c.hint?`<div class="cnote"><b>해석</b>${esc(c.hint)}</div>`:""; }
+/* 목적격 조사 — 받침이 있으면 '을', 없으면 '를' */
+function objp(w){ if(!w) return "를"; const cd=w.charCodeAt(w.length-1);
+  return (cd>=0xAC00&&cd<=0xD7A3&&(cd-0xAC00)%28)?"을":"를"; }
 async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); openCard(id); }
 function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const hand=myHand.find(c=>c.id===id); const c=pub||hand; if(!c)return;
   const inHand=!!hand&&!pub;
-  $("cardBox").innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:8px">${esc(c.locName)} · R${c.round}${pub?' · 공개':' · 손패(비공개)'}</div>
+  $("cardBox").innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:8px">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""} · R${c.round}${pub?' · 공개':' · 손패(비공개)'}</div>
     <h2 style="font-size:18px">${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
     <div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>
     ${cnote(c)}
@@ -808,7 +823,7 @@ function showHandTrim(){
     <div class="trimgrid">${cards.map(c=>`
       <button class="trimcard" data-id="${c.id}" onclick="trimSelect('${c.id}')">
         <div class="tt">${esc(c.title)}</div>
-        <div class="tm"><span class="pill">${esc(c.locName)}</span><span class="pill">R${c.round}</span></div>
+        <div class="tm"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span></div>
         <div class="tb">${esc(c.text)}</div>
         ${c.hint?`<div class="cnote" style="margin-top:8px;font-size:12px"><b>해석</b>${esc(c.hint)}</div>`:""}
       </button>`).join("")}</div>
@@ -822,13 +837,15 @@ function trimSelect(id){
   trimPick=id;
   document.querySelectorAll("#trimBox .trimcard").forEach(b=>b.classList.toggle("on",b.dataset.id===id));
   const c=myHand.find(x=>x.id===id);
-  $("trimHint").innerHTML=`<b style="color:var(--ember-b)">${esc(c?c.title:"")}</b> 을(를) 공개합니다`;
+  const t=c?c.title:"";
+  $("trimHint").innerHTML=`<b style="color:var(--ember-b)">${esc(t)}</b>${objp(t)} 공개합니다`;
   $("trimGo").disabled=false;
 }
 async function trimConfirm(){
   if(!trimPick) return;
   const c=myHand.find(x=>x.id===trimPick);
-  if(!confirm(`해당 카드를 전체공개로 전환합니다.\n손패에는 총 ${handLimit()}장의 카드만 소지할 수 있습니다.\n\n「${c?c.title:""}」\n\n진행하시겠습니까?`)) return;
+  const w=c?(c.locName+(c.spot?" · "+c.spot:"")):"";
+  if(!confirm(`해당 카드를 전체공개로 전환합니다.\n손패에는 총 ${handLimit()}장의 카드만 소지할 수 있습니다.\n\n「${c?c.title:""}」\n${w}\n\n진행하시겠습니까?`)) return;
   const r=await post("/api/publish",{cardId:trimPick,roleId:myRoleId,clientId});
   if(r&&r.error){ banner(r.error); return; }
   trimPick=null; await poll();
@@ -963,7 +980,7 @@ function showMyHand(){
   else{ const slides=cards.map(c=>`<div class="bigcard clue">
       <div class="bc-eyebrow">손패 · 비공개</div>
       <div class="bc-title" style="color:var(--gold-b)">${esc(c.title)}</div>
-      <div class="bc-tags"><span class="pill">${esc(c.locName)}</span><span class="pill">R${c.round}</span>${c.bait?'<span class="pill bad">※미끼일 수도</span>':''}</div>
+      <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${c.bait?'<span class="pill bad">※미끼일 수도</span>':''}</div>
       <div class="bc-body">${esc(c.text)}</div>${cnote(c)}</div>`);
     h+=buildSwipe(slides); }
   h+=`<div style="margin-top:14px;text-align:right"><button class="btn" onclick="closeModal('handModal')">확인</button></div>`;

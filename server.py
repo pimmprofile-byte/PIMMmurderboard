@@ -294,6 +294,7 @@ def scenario():
     d["backend"] = {"ok": ok, "label": label}
     # 조사카드 카탈로그(제목·본문 제외 — 미공개 슬롯 구조만)
     d["cardCatalog"] = [{"id": c["id"], "loc": c["loc"], "locName": c["locName"], "round": c["round"],
+                         "spot": c.get("spot", ""),
                          "requires": c.get("requires"), "obligatory": c.get("reveal") == "obligatory"}
                         for c in SC.CARDS]
     return d
@@ -488,15 +489,25 @@ def _holder_of(card_id: str) -> str | None:
 
 # ── 하이브리드 턴 (순번 강제 + 호스트/GM 넘기기·스킵) ─────────────────────────
 def _turn_order() -> list:
-    """턴 순번 = 시나리오가 정의한 TURN_ORDER, 없으면 배역 등장 순."""
-    order = list(getattr(SC, "TURN_ORDER", None) or [c["id"] for c in SC.CHARACTERS])
-    return [rid for rid in order if rid in ROOM["roles"]]
+    """턴 순번 = 시나리오가 정의한 TURN_ORDER, 없으면 배역 등장 순.
+
+    라운드마다 선두를 한 칸씩 돌린다 — 고정 순번이면 첫 배역이 매 라운드 먼저
+    고르게 되어, 경쟁 카드(예: 보유 목표 카드)를 늘 같은 사람이 가져간다.
+    """
+    order = [rid for rid in (list(getattr(SC, "TURN_ORDER", None) or [c["id"] for c in SC.CHARACTERS]))
+             if rid in ROOM["roles"]]
+    if not order:
+        return order
+    shift = max(0, current_round(ROOM["seq"]) - 1) % len(order)
+    return order[shift:] + order[:shift]
 
 
 def _reset_turn_for_seq(seq: int) -> None:
     """조사 페이즈에 들어오면 순번 첫 배역으로, 아니면 턴 없음."""
     ph = SC.phase_by_seq(seq)
+    prev, ROOM["seq"] = ROOM["seq"], seq          # 순번 회전은 새 seq 기준으로 계산한다
     order = _turn_order()
+    ROOM["seq"] = prev
     ROOM["turn"] = order[0] if (int(ph.get("ap", 0) or 0) > 0 and order) else None
 
 
@@ -680,6 +691,14 @@ def _subj(name: str) -> str:
     return "이" if ("가" <= ch <= "힣" and (ord(ch) - 0xAC00) % 28) else "가"
 
 
+def _obj(word: str) -> str:
+    """목적격 조사 — 받침이 있으면 '을', 없으면 '를'."""
+    if not word:
+        return "를"
+    ch = word[-1]
+    return "을" if ("가" <= ch <= "힣" and (ord(ch) - 0xAC00) % 28) else "를"
+
+
 def _publish_from(role_id: str, card_id: str) -> None:
     """그 배역의 손패에서 카드를 빼 전체공개로 돌리고 테이블에 알린다."""
     c = SC.get_card(card_id)
@@ -687,8 +706,10 @@ def _publish_from(role_id: str, card_id: str) -> None:
     _publish(card_id)
     if c:
         nm = who.get("name", role_id)
+        where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c["locName"]
+        ttl = c["title"]
         ROOM["table"].append({"kind": "system", "broadcast": True,
-                              "text": f'📌 {nm}{_subj(nm)} 「{c["title"]}」을(를) 전체공개했습니다.'})
+                              "text": f'📌 {nm}{_subj(nm)} [{where}] 「{ttl}」{_obj(ttl)} 전체공개했습니다.'})
         bump()
 
 
