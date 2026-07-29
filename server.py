@@ -46,10 +46,10 @@ HOST = os.getenv("REUNION_HOST", "0.0.0.0")
 # 호스팅(Render 등)은 PORT를 주입 → 그걸 우선 사용, 로컬은 REUNION_PORT/기본값
 PORT = int(os.getenv("PORT") or os.getenv("REUNION_PORT", "8790"))
 AGENT_KEY = os.getenv("AGENT_KEY", "")  # 에이전트(코드 세션) 원격 조종 키(설정 시 그 키 필요, 미설정 시 개방)
-# 심층심문 — 민감한 카드는 진실을 말할 확률이 있을 뿐, 캐릭터가 거짓/얼버무림으로 넘어갈 수도 있다.
-# 증거(내 카드)를 함께 대면 확률이 오르지만 여전히 보장은 아니다.
-INTERROGATE_TRUTH_BASE = 0.35
-INTERROGATE_TRUTH_WITH_EVIDENCE = 0.70
+# 심층심문 — 어떤 카드를 증거로 대는지가 추리다. 증거 없이 60%, 엉뚱한 카드면 오히려 20%로
+# 떨어지고(허를 찔러 얼버무릴 여지를 준다), 정확한 카드(시나리오의 rebuttal)면 100% 실토.
+INTERROGATE_TRUTH_BASE = 0.60
+INTERROGATE_TRUTH_WRONG_EVIDENCE = 0.20
 
 try:
     import anthropic
@@ -841,8 +841,9 @@ def interrogate_vote(b: InterrogateVote):
 def interrogate(b: Interrogate):
     """심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다. 카드 자체는 공개되지
     않는다 — 대답만 들을 뿐이고, 민감한 카드는 그 대답이 진실이 아닐 수도 있다(캐릭터가
-    거짓/얼버무림으로 넘어간다). 내 카드 하나를 증거로 함께 대면 진실이 나올 확률이 오르지만
-    보장은 아니다. 예산(1회)은 성패와 무관하게 소모된다."""
+    거짓/얼버무림으로 넘어간다). 어떤 증거를 대는지가 곧 추리다 — 증거 없이 물으면 기본
+    확률, 엉뚱한 카드를 대면 오히려 확률이 떨어지고(허 찔러 넘어갈 여지를 준다), 시나리오가
+    정한 정확한 카드를 짚으면 반드시 실토한다. 예산(1회)은 성패와 무관하게 소모된다."""
     with LOCK:
         r = ROOM["roles"].get(b.askerRoleId)
         if not r or r["clientId"] != b.clientId or r["mode"] != "human":
@@ -861,9 +862,10 @@ def interrogate(b: Interrogate):
             return JSONResponse({"error": "그 배역이 지금 들고 있는 카드가 아닙니다"}, status_code=409)
 
         evid_id = (b.evidenceCardId or "").strip()
-        has_evidence = bool(evid_id) and (
-            evid_id in ROOM["hands"].get(b.askerRoleId, []) or evid_id in ROOM["revealed"]
-        )
+        if evid_id:
+            has_access = evid_id in ROOM["hands"].get(b.askerRoleId, []) or evid_id in ROOM["revealed"]
+            if not has_access:
+                return JSONResponse({"error": "내가 갖고 있지 않은 카드는 증거로 댈 수 없습니다"}, status_code=409)
 
         card = SC.get_card(b.cardId)
         target = SC.get_character(b.targetRoleId) or {}
@@ -871,8 +873,12 @@ def interrogate(b: Interrogate):
         entry = (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(b.cardId)
 
         if entry:
-            chance = INTERROGATE_TRUTH_WITH_EVIDENCE if has_evidence else INTERROGATE_TRUTH_BASE
-            told_truth = random.random() < chance
+            if evid_id and evid_id == entry.get("rebuttal"):
+                told_truth = True
+            elif evid_id:
+                told_truth = random.random() < INTERROGATE_TRUTH_WRONG_EVIDENCE
+            else:
+                told_truth = random.random() < INTERROGATE_TRUTH_BASE
             outcome = "truth" if told_truth else "evasive"
             line = entry["truth"] if told_truth else entry["evasive"]
         else:

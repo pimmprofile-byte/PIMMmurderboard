@@ -805,7 +805,7 @@ function openInterrog(targetRoleId,cardId){
   const ig=STATE.interrogate||{};
   const evid=[...myHand,...(STATE.revealed||[])];
   $("interrogBox").innerHTML=`<h2 style="font-size:18px">${c.avatar||""} ${esc(c.name||"")} 심문 — ${esc(cd.spot||cd.locName||"")}</h2>
-    <div class="mlead">심문 1회를 씁니다(남은 ${ig.remaining||0}회). 증거 없이 물으면 대개 얼버무리고 넘어가요. 내 카드를 하나 함께 대면 실토할 확률이 오르지만, 그래도 가끔은 엉뚱한 대답이 돌아올 수 있어요.</div>
+    <div class="mlead">심문 1회를 씁니다(남은 ${ig.remaining||0}회). 증거 없이 물어도 어느 정도는 넘어가지만, <b>엉뚱한 카드</b>를 대면 오히려 더 잘 둘러댈 여지를 줘요 — 아무 카드나 대는 게 능사가 아닙니다. <b>정확한 카드</b>를 짚으면 반드시 실토합니다. 어떤 카드가 정확한지는 알려주지 않아요 — 그게 추리니까요.</div>
     <div class="ig-evlist">
       <button class="ig-ev on" data-id="" onclick="igPickEv('')">증거 없이 묻기</button>
       ${evid.map(e=>`<button class="ig-ev" data-id="${e.id}" onclick="igPickEv('${e.id}')">${esc(e.title)}</button>`).join("")}
