@@ -527,6 +527,11 @@ def _ai_pick(role_id: str, n: int) -> list:
         c = SC.get_card(cid)
         if c:
             loc_count[c["loc"]] = loc_count.get(c["loc"], 0) + 1
+    # 이미 누군가 들고 있는 카드 — 같은 카드에 전원이 몰리면 아무도 고유 정보를 못 갖는다.
+    taken = set(ROOM["revealed"])
+    for rid, cids in ROOM["hands"].items():
+        if rid != role_id:
+            taken.update(cids)
     picks = []
     for _ in range(max(0, n)):
         cands = [c for c in _openable_cards(role_id) if c["id"] not in picks]
@@ -540,8 +545,10 @@ def _ai_pick(role_id: str, n: int) -> list:
             s += interest.get(c["id"], 0)              # 관심(+)·회피(−)
             if c["round"] == cur:
                 s += 1.2                                # 이번 라운드 새 카드
-            s += 1.0 * hot.get(c["loc"], 0)             # 추리 따라가기
+            s += 0.5 * hot.get(c["loc"], 0)             # 추리 따라가기(과하면 전원이 한 구역에 몰린다)
             s -= 0.8 * loc_count.get(c["loc"], 0)       # 같은 구역 과다 회피
+            if c["id"] in taken:
+                s -= 3.0                                # 남이 이미 본 카드보다 새 카드를 먼저
             if role_kind == "troll" and c.get("bait"):
                 s += 2.5                                # 진범: 미끼로 유도
             s += (hash((ROOM["seq"], role_id, c["id"])) % 97) / 970.0   # 재현가능 tie-break
