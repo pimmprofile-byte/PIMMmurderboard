@@ -218,7 +218,7 @@ const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").rep
 const card=id=>D.cards.find(c=>c.id===id);
 const roundOf=seq=> seq>=6?3:seq>=4?2:seq>=2?1:0;
 
-function autoReveal(){ const cr=roundOf(S.seq); D.cards.forEach(c=>{ if(c.ob&&c.r<=cr&&!S.revealed.includes(c.id))S.revealed.push(c.id); }); }
+function autoReveal(){ const cr=roundOf(S.seq); let go=true; while(go){ go=false; D.cards.forEach(c=>{ if(c.ob&&c.r<=cr&&!S.revealed.includes(c.id)&&(!c.req||S.revealed.includes(c.req))){ S.revealed.push(c.id); go=true; } }); } }
 
 /* ============ 렌더 ============ */
 const TABS=[["run","진행 · 조사"],["cast","배역"],["log","진행 로그"],["final","종막"]];

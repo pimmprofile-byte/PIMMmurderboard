@@ -504,9 +504,10 @@ def _hot_locs() -> dict:
     locs = {}
     for m in ROOM["table"][-8:]:
         txt = m.get("text", "") or ""
-        for c in SC.CARDS:
-            if c["locName"] and c["locName"] in txt:
-                locs[c["loc"]] = locs.get(c["loc"], 0) + 1
+        # 한 발언에서 같은 구역은 한 번만 센다 — 구역별로 카드 수만큼 가산되면
+        # 카드가 많은 구역이 과열돼 전원이 그리로 몰린다.
+        for loc in {c["loc"] for c in SC.CARDS if c["locName"] and c["locName"] in txt}:
+            locs[loc] = locs.get(loc, 0) + 1
     for cid in ROOM["revealed"][-4:]:
         c = SC.get_card(cid)
         if c:
