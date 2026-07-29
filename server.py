@@ -607,6 +607,13 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
     if card_id not in h:
         h.append(card_id)
         ROOM["checkedRound"].setdefault(role_id, {})[card_id] = cur
+        # 공개의무 카드는 찾는 즉시 전원에게 공개된다 — 모두가 반쪽만 쥐고 있으면 조합이 안 되므로,
+        # 판의 뼈대가 되는 사실은 감출 수 없게 하고 '비공개' 카드만 협상 카드로 남긴다.
+        if c.get("reveal") == "obligatory" and card_id not in ROOM["revealed"]:
+            ROOM["revealed"].append(card_id)
+            who = SC.get_character(role_id) or {}
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": f'📌 {who.get("name", role_id)}가 「{c["title"]}」을(를) 찾아 모두에게 공개했습니다.'})
         bump()
     return None
 
