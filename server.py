@@ -196,6 +196,7 @@ def public_state() -> dict:
             "checked": checked,
             "usedAP": used,
             "handLimit": _hand_limit(),
+            "keepGoals": _keep_goal_results() if ph.get("key") in ("final", "reveal") else [],
             "overLimit": {rid: max(0, len(cs) - _hand_limit()) for rid, cs in ROOM["hands"].items() if len(cs) > _hand_limit()},
             "turn": ROOM.get("turn") if ap > 0 else None,
             "turnOrder": _turn_order() if ap > 0 else [],
@@ -451,6 +452,21 @@ def _ap_for(seq: int) -> int:
 def _round_checks(role_id: str, rnd: int) -> int:
     """이번 조사 라운드에 이 배역이 조사한 카드 수."""
     return sum(1 for r in ROOM["checkedRound"].get(role_id, {}).values() if r == rnd)
+
+
+def _keep_goal_results() -> list:
+    """'카드를 끝까지 쥐기' 목표를 쓰는 시나리오에서, 종막 시점 달성 여부를 계산한다."""
+    fn = getattr(SC, "keep_goal_result", None)
+    if not fn:
+        return []
+    out = []
+    for c in SC.CHARACTERS:
+        r = fn(c["id"], ROOM["hands"].get(c["id"], []), ROOM["revealed"])
+        if r:
+            r["name"] = c["name"]
+            r["color"] = c.get("color")
+            out.append(r)
+    return out
 
 
 def _hand_limit() -> int:

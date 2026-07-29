@@ -147,6 +147,14 @@
   .trimcard .tb{font-size:12.5px;color:#ded8ea;line-height:1.6}
   .trimact{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
   .trimact .btn{margin-left:auto}
+  .keeprow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .keeprow:last-child{border-bottom:0}
+  .keeprow .nm{font-weight:800}
+  .keeprow .lb{color:var(--sub);flex:1;min-width:160px}
+  .keeprow .rs{font-family:"SF Mono",Consolas,monospace;font-size:11.5px;padding:2px 9px;border-radius:999px;border:1px solid var(--line)}
+  .keeprow.ok .rs{color:var(--good);border-color:#2f6b48}
+  .keeprow.no .rs{color:var(--bad);border-color:#6b2f2f}
+  .keeprow .dt{flex-basis:100%;font-size:12px;color:var(--muted)}
   .handwarn{background:#3a1f10;border:1px solid #7a4520;color:#ffd9b0;border-radius:11px;padding:10px 13px;margin-bottom:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .handwarn b{color:#ffc078}
   .handwarn .btn{margin-left:auto}
@@ -844,12 +852,22 @@ function gradeRow(id,g){ const c=roleById(id)||{color:"#999",avatar:"❔",name:i
 async function submitFinal(){ if(gradeBusy)return; const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():"")); if(answers.every(a=>!a)){alert("한 문항 이상 답해주세요.");return;} gradeBusy=true; banner("제출 중…"); const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers}); gradeBusy=false; if(r&&r.error){banner("제출 오류: "+r.error); return;} localStorage.setItem("pmb.final."+myRoleId,JSON.stringify(answers)); banner(r&&r.pending?"제출 완료 — 진행자(GM)가 채점합니다":""); await poll(); }
 
 /* 엔딩 */
+function keepGoalsHTML(){
+  const ks=(STATE&&STATE.keepGoals)||[]; if(!ks.length) return "";
+  return `<div class="card"><h2>끝까지 쥔 카드</h2>
+    <div class="mlead">특정 배역은 어떤 카드를 종막까지 손에 남기는 것 자체가 목표였습니다.</div>
+    ${ks.map(k=>`<div class="keeprow ${k.ok?'ok':'no'}">
+      <span class="nm" style="color:${k.color||'#999'}">${esc(k.name)}</span>
+      <span class="lb">${esc(k.label)}</span>
+      <span class="rs">${k.ok?`달성 +${k.points}`:'실패'}</span>
+      <span class="dt">${esc(k.detail)}</span></div>`).join("")}</div>`;
+}
 function renderReveal(p){
   const e=STATE.ending;
-  if(!e){ p.innerHTML=`<div class="card"><h2>진상 공개</h2><div class="panel-note">아직 채점이 끝나지 않았습니다. 종막 질문지 답변이 모이면 엔딩이 열립니다.</div></div>`; return; }
+  if(!e){ p.innerHTML=`<div class="card"><h2>진상 공개</h2><div class="panel-note">아직 채점이 끝나지 않았습니다. 종막 질문지 답변이 모이면 엔딩이 열립니다.</div></div>`+keepGoalsHTML(); return; }
   const tone=e.tone==="good"?"good":(e.tone==="warn"?"warn":"bad");
   const g=STATE.grades||{}; const gh=Object.keys(g).map(id=>gradeRow(id,g[id])).join("");
-  p.innerHTML=`<div class="card"><div class="verdict ${tone}">${esc(e.name)}</div>${gh}<div class="rev-sol" style="margin-top:12px">${esc(e.desc)}\n\n─ 진상 ─\n${esc(e.truth)}</div></div>`;
+  p.innerHTML=`<div class="card"><div class="verdict ${tone}">${esc(e.name)}</div>${gh}<div class="rev-sol" style="margin-top:12px">${esc(e.desc)}\n\n─ 진상 ─\n${esc(e.truth)}</div></div>`+keepGoalsHTML();
 }
 
 /* 채팅 */
