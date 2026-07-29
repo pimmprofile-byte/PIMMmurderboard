@@ -787,7 +787,8 @@ function interrogPanelHTML(){
   const targets=SCEN.characters.filter(c=>c.id!==myRoleId).map(c=>({c,cards:heldCardsOf(c.id)})).filter(x=>x.cards.length);
   const voteBtn=(!ig.bonusGranted&&ig.voteNeed>0)?`<button class="btn sm" onclick="interrogVote()">🗳️ 추가 심문 신청 (${ig.voteHave}/${ig.voteNeed})</button>`:(ig.bonusGranted?`<span class="pill" style="color:var(--good)">추가 심문 승인됨</span>`:"");
   let h=`<div class="card" style="margin-top:14px"><h2>🔦 심층심문</h2>
-    <div class="panel-note">상대가 지금 손패로 쥔 카드를 지목해 답을 요구합니다. 카드 자체는 공개되지 않아요 — 대답만 듣는 거고, 그 대답이 진짜라는 보장도 없습니다. 몰리면 거짓말이나 딴소리로 넘어갈 수도 있어요.</div>
+    <div class="panel-note">상대가 지금 손패로 쥔 카드를 지목해 답을 요구합니다. 카드 자체는 공개되지 않아요 — 대답만 듣는 거고, 민감한 비밀이면 그 대답이 진짜라는 보장도 없습니다(몰리면 거짓말·딴소리로 넘어가요).<br><br>
+      <b style="color:var(--gold-b)">증거 없이 물으면</b> 어느 정도는 넘어갈 수 있어요. <b style="color:var(--ember-b)">엉뚱한 카드</b>를 증거로 대면 오히려 더 잘 둘러댈 빌미를 줘서 성공률이 더 떨어지고, <b style="color:var(--good)">정확한 카드</b>를 짚으면 반드시 실토합니다. 어떤 카드가 정확한지는 알려주지 않아요 — 그걸 알아내는 게 추리예요. (민감하지 않은 카드는 증거와 무관하게 늘 순순히 답합니다.)</div>
     <div class="panel-note" style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">이번 토론 남은 심문 <b style="color:var(--gold-b)">${ig.remaining}</b>/${ig.total}회 ${voteBtn}</div>`;
   if(!targets.length) h+=`<div class="panel-note" style="margin-top:8px">지금은 심문할 대상이 없어요 — 다들 손패가 비어 있거나 전부 공개했습니다.</div>`;
   else h+=`<div class="ig-list">${targets.map(({c,cards})=>`
@@ -805,7 +806,7 @@ function openInterrog(targetRoleId,cardId){
   const ig=STATE.interrogate||{};
   const evid=[...myHand,...(STATE.revealed||[])];
   $("interrogBox").innerHTML=`<h2 style="font-size:18px">${c.avatar||""} ${esc(c.name||"")} 심문 — ${esc(cd.spot||cd.locName||"")}</h2>
-    <div class="mlead">심문 1회를 씁니다(남은 ${ig.remaining||0}회). 증거 없이 물어도 어느 정도는 넘어가지만, <b>엉뚱한 카드</b>를 대면 오히려 더 잘 둘러댈 여지를 줘요 — 아무 카드나 대는 게 능사가 아닙니다. <b>정확한 카드</b>를 짚으면 반드시 실토합니다. 어떤 카드가 정확한지는 알려주지 않아요 — 그게 추리니까요.</div>
+    <div class="mlead">심문 1회를 씁니다(남은 ${ig.remaining||0}회). 증거는 선택이에요 — 아무 카드나 대는 게 능사는 아닙니다. 뭘 댈지가 곧 추리예요.</div>
     <div class="ig-evlist">
       <button class="ig-ev on" data-id="" onclick="igPickEv('')">증거 없이 묻기</button>
       ${evid.map(e=>`<button class="ig-ev" data-id="${e.id}" onclick="igPickEv('${e.id}')">${esc(e.title)}</button>`).join("")}
