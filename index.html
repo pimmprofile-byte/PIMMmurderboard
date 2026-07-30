@@ -7,6 +7,16 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%95%AF%EF%B8%8F%3C/text%3E%3C/svg%3E">
 
 <style>
+  /* 한글 웹폰트를 직접 얹는다. 예전에는 "Noto Sans KR" 같은 이름만 적어뒀는데
+     그건 보는 사람 기기에 그 폰트가 깔려 있을 때만 먹는다 — 아이폰은 애플고딕,
+     안드로이드는 로보토, 윈도우는 굴림으로 제각각 나왔다.
+     KS X 1001 상용 2350자로 잘라 셋이 합쳐 700KB. swap이라 폰트가 늦어도 글은 바로 보인다. */
+  @font-face{font-family:"PIMM Myeongjo";src:url("/assets/fonts/NanumMyeongjo-400.woff2") format("woff2");
+    font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"PIMM Sans";src:url("/assets/fonts/NotoSansKR-400.woff2") format("woff2");
+    font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"PIMM Sans";src:url("/assets/fonts/NotoSansKR-700.woff2") format("woff2");
+    font-weight:700;font-style:normal;font-display:swap}
   :root{
     --bg:#0b0a0d;--bg2:#111015;--panel:#17151d;--panel2:#1f1c27;--line:#2f2a3a;
     --ink:#ece7f0;--sub:#a49db8;--muted:#6f697f;
@@ -16,8 +26,12 @@
   *{box-sizing:border-box}html,body{margin:0;height:100%}
   html,body{overflow-x:hidden;max-width:100%}
   body{background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Apple SD Gothic Neo",sans-serif}
-  .serif{font-family:"Nanum Myeongjo","Batang","AppleMyungjo",serif}
+    font-family:"PIMM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo",sans-serif}
+  .serif{font-family:"PIMM Myeongjo","Nanum Myeongjo","AppleMyungjo",serif}
+  /* 줄갈이 — 한글은 단어 중간에서 끊기면 읽기가 확 나빠진다. 어절 단위로만 끊고,
+     끊을 자리는 브라우저가 줄 길이를 고르게 맞춰 고르도록 한다. */
+  body{word-break:keep-all;overflow-wrap:break-word;text-wrap:pretty}
+  h1,h2,h3,h4{text-wrap:balance}
   button{font-family:inherit;color:inherit}
   .btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:8px 14px;border-radius:10px;cursor:pointer;font-size:13.5px;transition:.15s}
   .btn:hover{border-color:var(--gold);color:#fff}
@@ -163,7 +177,7 @@
   .gcard .rb{font-size:9.5px;color:var(--muted)}
   .gcard .t{font-size:12px;font-weight:700;margin-top:auto;line-height:1.3}
   .gcard.face{align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#181521,#181521 6px,#15121d 6px,#15121d 12px)}
-  .gcard.face .q{font-size:26px;font-family:"Nanum Myeongjo",serif;color:#3c354c}
+  .gcard.face .q{font-size:26px;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif;color:#3c354c}
   /* 뒤집힌 카드는 '어디를 뒤지는지'로 고른다 — 라벨 번호 대신 자리 이름 */
   .gcard.face{padding:20px 6px 22px}
   .gcard.face .sp{font-size:11.5px;font-weight:700;line-height:1.35;color:#9b93ad;text-align:center;
@@ -221,7 +235,7 @@
   .sec .h{font-weight:700;color:var(--gold-b);font-size:13.5px;margin-bottom:4px}.sec .b{font-size:14px;color:#ded8ea;line-height:1.72}
   .hb{background:#2a1214;border:1px solid #5a2c2c;color:#ffb9b9;border-radius:10px;padding:11px 14px;font-weight:700;text-align:center;margin-bottom:12px}
   .frag{background:#0e1620;border:1px solid #2c465a;border-radius:10px;padding:9px 12px;margin:8px 0;color:#cfe0ee;font-size:13.5px}.frag .w{font-size:11px;color:var(--cold);margin-bottom:3px}
-  .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"Nanum Myeongjo",serif}
+  .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif}
   /* ── 스와이프 카드 캐러셀 (롤카드·손패 넘겨보기) ── */
   .swipe{position:relative;margin:6px 0 2px}
   .sw-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -255,7 +269,7 @@
   .bc-av{font-size:34px;width:60px;height:60px;display:grid;place-items:center;background:var(--bg);border-radius:15px;flex:0 0 60px;border:1px solid var(--line)}
   .bc-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
   .bc-hidden{margin-top:14px;background:#2a1412;border:1px solid #6a2a26;border-radius:10px;padding:10px 13px;color:#f0b8b0;font-size:13.5px;font-weight:600}
-  .bc-goal{display:flex;gap:10px;font-size:15px;padding:9px 0;border-bottom:1px solid var(--line)}.bc-goal:last-child{border-bottom:0}.bc-goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"Nanum Myeongjo",serif}
+  .bc-goal{display:flex;gap:10px;font-size:15px;padding:9px 0;border-bottom:1px solid var(--line)}.bc-goal:last-child{border-bottom:0}.bc-goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif}
   /* 내 정보(배역 시트)는 한 번에 읽을 분량이 많다 — 팝업을 넓히고 본문을 키운다.
      본문 줄길이는 measure로 잡아, 넓어져도 한 줄이 지나치게 길어지지 않게 한다. */
   #sheetModal .box{max-width:760px;padding:26px 26px 22px}
@@ -413,14 +427,17 @@
     border:1px solid rgba(255,255,255,.13);border-radius:.9cqw;
     backdrop-filter:blur(6px);box-shadow:0 .6cqw 4cqw rgba(0,0,0,.6)}
   #vn.speak .vn-panel{border-left:.35cqw solid var(--spk,#c9c2b4)}
-  #vn .vn-line{font-family:"Nanum Myeongjo","AppleMyungjo",serif;color:#f2ecdf;
-    font-size:2.5cqw;line-height:1.72;text-shadow:0 .2cqw 1.2cqw rgba(0,0,0,.95);
-    word-break:keep-all;min-height:1.72em}
+  #vn .vn-line{font-family:"PIMM Myeongjo","Nanum Myeongjo","AppleMyungjo",serif;color:#f2ecdf;
+    font-size:2.5cqw;line-height:1.78;letter-spacing:-.005em;
+    text-shadow:0 .2cqw 1.2cqw rgba(0,0,0,.95);
+    word-break:keep-all;text-wrap:balance;min-height:1.78em}
   #vn .vn-line+.vn-line{margin-top:.7cqw}
   #vn.speak .vn-line{color:#fff}
-  /* 아직 타자 중인 줄에만 커서가 붙는다 */
-  #vn .vn-line.typing::after{content:"";display:inline-block;width:.12em;height:1em;
-    margin-left:.1em;vertical-align:-.12em;background:var(--spk,#c9c2b4);
+  /* 타자 연출은 글자를 "덧붙이지" 않고, 처음부터 전체를 깔아둔 뒤 안 읽은 쪽을 감춘다.
+     그래야 글자가 늘어날 때마다 줄갈이가 다시 계산돼 문장이 들썩이는 일이 없다. */
+  #vn .vn-off{opacity:0}
+  #vn .vn-line.typing .vn-on::after{content:"";display:inline-block;width:.1em;height:1em;
+    margin:0 -.1em 0 .04em;vertical-align:-.13em;background:var(--spk,#c9c2b4);
     animation:vnCaret .8s steps(1) infinite}
   @keyframes vnCaret{50%{opacity:0}}
 
@@ -891,10 +908,16 @@ function vnRender(){
   $("vnDots").innerHTML=vnCuts.map((_,i)=>`<span class="vn-dot${i===vnAt?" on":""}"></span>`).join("");
   vnType(cut.lines||[], cut.who||"");
 }
-/* 한 글자씩 찍는다. 문장부호에서 한 박자 쉬어야 대사로 읽힌다. */
+/* 한 글자씩 찍는다. 문장부호에서 한 박자 쉬어야 대사로 읽힌다.
+   글자를 덧붙이는 게 아니라 전체를 깔아두고 안 읽은 쪽을 감추는 방식이라,
+   타자가 진행돼도 줄갈이가 처음 잡힌 그대로 유지된다. */
+function vnLineHTML(txt,shown){
+  return `<span class="vn-on">${esc(txt.slice(0,shown))}</span>`+
+         `<span class="vn-off">${esc(txt.slice(shown))}</span>`;
+}
 function vnType(lines,who){
   const host=$("vnLines");
-  host.innerHTML=lines.map(()=>'<div class="vn-line"></div>').join("");
+  host.innerHTML=lines.map(t=>`<div class="vn-line">${vnLineHTML(t,0)}</div>`).join("");
   const els=Array.prototype.slice.call(host.children);
   let li=0, ci=0;
   vnTyping=true; vnHintText();
@@ -904,7 +927,7 @@ function vnType(lines,who){
     if(ci===0) el.classList.add("typing");
     if(ci>=txt.length){ el.classList.remove("typing"); li++; ci=0; vnTimer=setTimeout(step,360); return; }
     const ch=txt.charAt(ci); ci++;
-    el.textContent=txt.slice(0,ci);
+    el.innerHTML=vnLineHTML(txt,ci);
     if(ci%2===0) vnBlip(who);
     vnTimer=setTimeout(step, ".…—?!,".indexOf(ch)>=0 ? 165 : 34);
   };
@@ -919,7 +942,8 @@ function vnAdvance(){
   if(vnTyping){
     clearTimeout(vnTimer); vnTyping=false;
     const cut=vnCuts[vnAt]||{};
-    $("vnLines").innerHTML=(cut.lines||[]).map(l=>`<div class="vn-line">${esc(l)}</div>`).join("");
+    $("vnLines").innerHTML=(cut.lines||[]).map(l=>
+      `<div class="vn-line">${vnLineHTML(l,l.length)}</div>`).join("");
     vnHintText(); return;
   }
   if(vnAt>=vnCuts.length-1){ vnClose(); return; }

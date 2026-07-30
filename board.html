@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>졸업사진 卒業寫眞 — 게임보드 (서버 없음)</title>
 <style>
+  /* 한글 웹폰트 자체 호스팅 — 이름만 적어두면 보는 기기에 그 폰트가 있을 때만 먹는다.
+     KS X 1001 상용 2350자 서브셋. swap이라 폰트가 늦어도 글은 먼저 보인다. */
+  @font-face{font-family:"PIMM Myeongjo";src:url("/assets/fonts/NanumMyeongjo-400.woff2") format("woff2");
+    font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"PIMM Sans";src:url("/assets/fonts/NotoSansKR-400.woff2") format("woff2");
+    font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"PIMM Sans";src:url("/assets/fonts/NotoSansKR-700.woff2") format("woff2");
+    font-weight:700;font-style:normal;font-display:swap}
+
   :root{
     --bg:#0b0a0d;--bg2:#111015;--panel:#17151d;--panel2:#1f1c27;--line:#2f2a3a;
     --ink:#ece7f0;--sub:#a49db8;--muted:#6f697f;
@@ -13,8 +22,9 @@
   }
   *{box-sizing:border-box}html,body{margin:0}
   body{background:var(--bg);color:var(--ink);line-height:1.62;-webkit-font-smoothing:antialiased;min-height:100vh;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Apple SD Gothic Neo",sans-serif}
-  .serif{font-family:"Nanum Myeongjo","Batang","AppleMyungjo",serif}
+    font-family:"PIMM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo",sans-serif;
+    word-break:keep-all;overflow-wrap:break-word;text-wrap:pretty}
+  .serif{font-family:"PIMM Myeongjo","Nanum Myeongjo","AppleMyungjo",serif}
   button{font-family:inherit;color:inherit}
   .btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:8px 14px;border-radius:10px;cursor:pointer;font-size:13.5px;transition:.15s}
   .btn:hover{border-color:var(--gold);color:#fff}
@@ -63,7 +73,7 @@
   .gcard .rb{font-size:10px;color:var(--muted)}
   .gcard .t{font-size:12.5px;font-weight:700;margin-top:auto;line-height:1.35}
   .gcard.face{align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#181521,#181521 6px,#15121d 6px,#15121d 12px)}
-  .gcard.face .q{font-size:28px;font-family:"Nanum Myeongjo","Batang",serif;color:#3c354c}
+  .gcard.face .q{font-size:28px;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif;color:#3c354c}
   .gcard.face .rb{position:absolute;bottom:8px;left:0;right:0;text-align:center}
   .gcard.face .tag{color:var(--gold-b)}
   .gcard.locked{cursor:default;opacity:.55}
@@ -87,7 +97,7 @@
   .hb{background:#2a1214;border:1px solid #5a2c2c;color:#ffb9b9;border-radius:10px;padding:10px 13px;font-weight:700;text-align:center;margin-bottom:12px}
   .frag{background:#0e1620;border:1px solid #2c465a;border-radius:10px;padding:9px 12px;margin:8px 0;color:#cfe0ee;font-size:13.5px}
   .frag .w{font-size:11px;color:var(--cold);margin-bottom:3px}
-  .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"Nanum Myeongjo",serif}
+  .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#1a1509;padding:9px 18px;border-radius:20px;font-size:13px;font-weight:700;z-index:80;opacity:0;transition:.25s}
   .toast.on{opacity:1}
 </style>

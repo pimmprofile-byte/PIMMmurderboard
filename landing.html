@@ -1,17 +1,26 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>PIMM MURDERMYSTERY BOARD</title>
 <style>
+  /* 한글 웹폰트 자체 호스팅 — 이름만 적어두면 보는 기기에 그 폰트가 있을 때만 먹는다.
+     KS X 1001 상용 2350자 서브셋. swap이라 폰트가 늦어도 글은 먼저 보인다. */
+  @font-face{font-family:"PIMM Myeongjo";src:url("/assets/fonts/NanumMyeongjo-400.woff2") format("woff2");
+    font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"PIMM Sans";src:url("/assets/fonts/NotoSansKR-400.woff2") format("woff2");
+    font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"PIMM Sans";src:url("/assets/fonts/NotoSansKR-700.woff2") format("woff2");
+    font-weight:700;font-style:normal;font-display:swap}
+
   :root{
     --bg:#0d0b0e; --bg2:#141016; --panel:#1a151c; --panel2:#221b25;
     --bone:#ece4d3; --bone-dim:#b7ad9a; --faint:#6d6560;
     --line:#2c2530; --line2:#3a3140;
     --blood:#c8392b; --blood-bri:#e0503f; --brass:#c99a4e; --signal:#00ff99;
     --blood-bg:rgba(200,57,43,.14); --brass-bg:rgba(201,154,78,.12);
-    --serif:"Playfair Display","Nanum Myeongjo",Georgia,"Times New Roman",serif;
-    --sans:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    --serif:"Playfair Display","PIMM Myeongjo","Nanum Myeongjo",Georgia,serif;
+    --sans:"PIMM Sans","Pretendard","Apple SD Gothic Neo",system-ui,sans-serif;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box} html,body{margin:0}
-  body{background:var(--bg);color:var(--bone);font-family:var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh}
+  body{background:var(--bg);color:var(--bone);font-family:var(--sans);word-break:keep-all;overflow-wrap:break-word;text-wrap:pretty;-webkit-font-smoothing:antialiased;min-height:100vh}
   .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
   button{font-family:inherit;cursor:pointer;color:inherit}
   ::-webkit-scrollbar{height:10px;width:10px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:10px}::-webkit-scrollbar-track{background:transparent}
