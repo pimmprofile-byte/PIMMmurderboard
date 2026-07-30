@@ -444,7 +444,8 @@ def public_scenario() -> dict:
         "map": MAP,
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
-                        "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"]} for c in CHARACTERS],
+                        "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],
+                        "look": c.get("look", c["tagline"])} for c in CHARACTERS],
         "finalQuestions": FINAL_QUESTIONS,
         "interludes": {str(k): v for k, v in INTERLUDES.items()},
     }
@@ -845,3 +846,17 @@ _CARD_SPOTS = {
 
 for _c in CARDS:
     _c.setdefault("spot", _CARD_SPOTS.get(_c["id"], ""))
+
+
+# 배역 선택 화면용 소개 — 외모와 성격만. 사건·비밀·반전 힌트는 절대 넣지 않는다.
+_LOOKS = {
+    "munjaei": "짧게 자른 머리에 늘 각 잡힌 항해복. 표정이 거의 변하지 않고, 말이 짧고 빠르다.",
+    "kangyunseo": "헤드셋 자국이 남은 단발. 감정이 얼굴에 다 드러나고, 말이 빨라지면 손도 같이 바빠진다.",
+    "oserin": "흐트러짐 없는 차림에 늘 수첩을 지니고 다닌다. 목소리가 낮고, 남의 말을 끝까지 듣는다.",
+    "jinharam": "덩치가 크고 손이 거칠다. 어깨가 늘 굽어 있고 말수가 적으며, 눈을 잘 마주치지 않는다.",
+    "yutaeo": "앳된 얼굴에 몸에 안 맞는 큰 작업복. 눈치를 많이 보고 말끝을 흐린다.",
+    "handokyung": "짧게 깎은 머리에 흰 것이 섞였고 손엔 기름때가 배어 있다. 목소리가 낮고 느리며 좀처럼 서두르지 않는다.",
+}
+
+for _ch in CHARACTERS:
+    _ch.setdefault("look", _LOOKS.get(_ch["id"], _ch["tagline"]))

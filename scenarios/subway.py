@@ -284,7 +284,8 @@ def public_scenario() -> dict:
         "map": MAP,
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
-                        "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"]} for c in CHARACTERS],
+                        "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],
+                        "look": c.get("look", c["tagline"])} for c in CHARACTERS],
         "finalQuestions": FINAL_QUESTIONS,
         "interludes": {str(k): v for k, v in INTERLUDES.items()},
     }
@@ -528,3 +529,15 @@ _CARD_HINTS = {
 
 for _c in CARDS:
     _c.setdefault("hint", _CARD_HINTS.get(_c["id"], ""))
+
+
+# 배역 선택 화면용 소개 — 외모와 성격만. 사건·비밀·반전 힌트는 절대 넣지 않는다.
+_LOOKS = {
+    "han": "구겨진 남색 제복에 목에 건 사원증. 눈 밑이 늘 어둡고, 묻는 말에 한 박자 늦게 답한다.",
+    "ora": "앞치마 차림에 늘 웃는 얼굴. 말이 많고 빠르며, 사람 옷차림을 잘 기억한다.",
+    "mun": "넥타이가 풀린 채 얼굴이 붉게 달아올라 있다. 목소리가 크고 감정 기복이 심하다.",
+    "yun": "단정한 코트에 늘 수첩을 들고 다닌다. 침착하고 조리 있게 말하며, 표정이 잘 변하지 않는다.",
+}
+
+for _ch in CHARACTERS:
+    _ch.setdefault("look", _LOOKS.get(_ch["id"], _ch["tagline"]))

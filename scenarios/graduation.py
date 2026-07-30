@@ -274,7 +274,8 @@ def public_scenario() -> dict:
         "map": MAP,
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
-                        "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"]} for c in CHARACTERS],
+                        "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],
+                        "look": c.get("look", c["tagline"])} for c in CHARACTERS],
         "finalQuestions": FINAL_QUESTIONS,
         "interludes": {str(k): v for k, v in INTERLUDES.items()},
     }
@@ -513,3 +514,15 @@ _CARD_HINTS = {
 
 for _c in CARDS:
     _c.setdefault("hint", _CARD_HINTS.get(_c["id"], ""))
+
+
+# 배역 선택 화면용 소개 — 외모와 성격만. 사건·비밀·반전 힌트는 절대 넣지 않는다.
+_LOOKS = {
+    "sim": "수염 자국이 거뭇하고 낡은 가죽 재킷 차림. 붙임성이 좋고 목소리가 크다.",
+    "yu": "마른 체격에 손끝이 늘 지저분하다. 말수가 적고 남을 오래 관찰한다.",
+    "lee": "단정한 옷차림에 웃는 인상. 남의 이야기를 잘 들어주고 공감을 잘한다.",
+    "ose": "눈에 잘 띄지 않는 수수한 차림. 말이 느리고 조용하며 먼저 나서지 않는다.",
+}
+
+for _ch in CHARACTERS:
+    _ch.setdefault("look", _LOOKS.get(_ch["id"], _ch["tagline"]))

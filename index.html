@@ -39,12 +39,10 @@
      인물 사진(3:4)이 주인공이 되게 하고, 버튼은 카드에서 빼 아래 액션바로 모은다. */
   .role-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   @media(min-width:620px){ .role-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px} }
-  /* display:block — flex 자식이 되면 .tg의 -webkit-box가 blockify돼서 줄 클램프가 죽는다 */
-  .rc{position:relative;display:block;padding:0;overflow:hidden;text-align:left;
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;
-    font-family:inherit;color:inherit;cursor:pointer;transition:transform .14s,border-color .16s,box-shadow .16s}
-  .rc:hover:not(:disabled){transform:translateY(-2px);border-color:var(--rc,var(--gold))}
-  .rc:disabled{cursor:default;opacity:.5}
+  /* 카드는 컨테이너, 실제 동작은 카드 안 '선택' 버튼이 맡는다 */
+  .rc{position:relative;display:block;padding:0 0 10px;overflow:hidden;text-align:left;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;transition:border-color .16s,box-shadow .16s}
+  .rc.off{opacity:.55}
   .rc.mine{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset,0 12px 34px -14px rgba(201,162,74,.5)}
   /* 인물 자리 — 사진이 있으면 사진, 없으면 이모지로 폴백(그 사이에도 안 깨진다) */
   .rc .por{position:relative;aspect-ratio:3/4;display:grid;place-items:center;overflow:hidden;
@@ -66,6 +64,21 @@
     height:calc(3em + 18px);overflow:hidden;
     -webkit-mask-image:linear-gradient(180deg,#000 62%,transparent 97%);
     mask-image:linear-gradient(180deg,#000 62%,transparent 97%)}
+  /* 카드마다 붙는 선택 버튼 */
+  .rc-go{display:block;width:calc(100% - 20px);margin:0 10px;padding:8px 6px;border-radius:9px;
+    font-family:inherit;font-size:12.5px;font-weight:800;text-align:center;border:1px solid var(--line);
+    background:var(--panel2);color:var(--sub);cursor:pointer;transition:.14s}
+  .rc-go.pick{background:linear-gradient(180deg,#3a2f14,#2a2210);border-color:#6b5730;color:var(--gold-b)}
+  .rc-go.pick:hover{background:linear-gradient(180deg,#4a3c1a,#332813);border-color:var(--gold)}
+  .rc-go.mine{background:linear-gradient(180deg,#3a2f14,#2a2210);border-color:var(--gold);color:var(--gold-b)}
+  .rc-go:not(.pick):not(.mine):hover{border-color:var(--gold);color:var(--ink)}
+  .rc-go.off{background:none;border-color:transparent;color:var(--muted);font-weight:600;cursor:default}
+  /* 전원 배역 확정 → 호스트 확정 박스 */
+  .startbox{margin-top:16px;padding:15px 16px;border-radius:13px;text-align:center;
+    border:1px solid #6b3a2c;background:linear-gradient(180deg,rgba(200,68,47,.16),rgba(200,68,47,.04))}
+  .startbox .sb-t{font-weight:800;font-size:15px;color:#ffb9a8}
+  .startbox .sb-d{font-size:12.5px;color:var(--sub);margin:5px 0 12px}
+  .startbox.wait{border-color:var(--line);background:var(--panel2);color:var(--sub);font-size:13px}
   /* 카드에서 뺀 액션들 — 내 배역 여부에 따라 바뀌는 하단 바 */
   .rolebar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px}
   .rolebar .hint{font-size:12px;color:var(--muted)}
@@ -489,7 +502,8 @@ async function boot(){
   setInterval(poll,1500);
 }
 async function poll(){
-  try{ STATE=await (await fetch("/api/state")).json(); }catch(e){ return; }
+  // clientId를 넘겨야 서버가 isHost를 판별한다(호스트 전용 UI가 여기에 달려 있다)
+  try{ STATE=await (await fetch("/api/state?clientId="+encodeURIComponent(clientId))).json(); }catch(e){ return; }
   // 다른 사람이 시나리오를 바꿨으면(허브에서) 이 기기도 새 시나리오로 갱신
   if(STATE&&SCEN&&STATE.scenarioId&&STATE.scenarioId!==SCEN.scenarioId){ try{ await loadScenario(); }catch(e){} }
   if(myRoleValid()){ try{ myHand=(await (await fetch("/api/hand/"+myRoleId+"?clientId="+encodeURIComponent(clientId))).json()).hand||[]; }catch(e){} }
@@ -509,6 +523,8 @@ function enterGM(){
 function applyState(){
   if(!STATE)return;
   if(myRoleId&&(!STATE.roles[myRoleId]||STATE.roles[myRoleId].mode!=="human")){ myRoleId=null; localStorage.removeItem("pmb.role"); }
+  // 호스트가 확정하면 배역을 가진 사람은 그대로 오프닝으로 들어간다
+  if(STATE.started&&scr==="lobby"&&myRoleValid()){ go("play"); return; }
   if(scr==="lobby") renderLobby();
   else if(scr==="gm"){ renderGM(); maybePhaseFx(STATE.phase||{}); }
   else if(scr==="play"){
@@ -588,36 +604,64 @@ function portraitHTML(c){
   return `<span class="emo">${c.avatar}</span>`+(src?`<img src="${src}" alt="" loading="lazy" onerror="this.remove()">`:"");
 }
 function renderLobby(){
+  const locked=!!(STATE&&STATE.started);   // 시작 후에는 배역을 바꿀 수 없다
   const cards=SCEN.characters.map(c=>{
     const r=STATE.roles[c.id]||{}; const mine=myRoleId===c.id;
     const otherHuman=!mine&&r.mode==="human";
-    let badge="", act="";
-    if(mine){ badge=`<span class="badge me">● 나</span>`; act=`showMySheet()`; }
-    else if(otherHuman){ badge=`<span class="badge hu">사람</span>`; }
-    else if(r.mode==="ai"){ badge=`<span class="badge ai">AI</span>`; act=`setAI('${c.id}')`; }
-    else { act=`claim('${c.id}')`; }
-    const title=mine?"내 정보 보기":(otherHuman?"다른 사람이 맡았습니다":(r.mode==="ai"?"눌러서 AI 해제":"눌러서 이 배역 맡기"));
-    return `<button class="rc${mine?" mine":""}" style="--rc:${c.color}" title="${title}"
-      ${otherHuman?"disabled":`onclick="${act}"`}>
+    let badge="", btn="";
+    if(mine){
+      badge=`<span class="badge me">● 나</span>`;
+      btn=`<button class="rc-go mine" onclick="showMySheet()">🗂️ 내 정보</button>`;
+    }else if(otherHuman){
+      badge=`<span class="badge hu">사람</span>`;
+      btn=`<span class="rc-go off">참여 중</span>`;
+    }else if(r.mode==="ai"){
+      badge=`<span class="badge ai">AI</span>`;
+      btn=locked?`<span class="rc-go off">AI</span>`:`<button class="rc-go" onclick="setAI('${c.id}')">AI 해제</button>`;
+    }else{
+      btn=locked?`<span class="rc-go off">-</span>`:`<button class="rc-go pick" onclick="claim('${c.id}')">선택</button>`;
+    }
+    return `<div class="rc${mine?" mine":""}${otherHuman?" off":""}" style="--rc:${c.color}">
       <div class="por">${portraitHTML(c)}${badge}
         <div class="scrim"><div class="nm">${esc(c.name)}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div></div>
       </div>
-      <div class="tg">${esc(c.tagline)}</div></button>`;
+      <div class="tg">${esc(c.look||c.tagline)}</div>${btn}</div>`;
   }).join("");
-  $("lobbyList").innerHTML=`<div class="role-grid">${cards}</div><div class="rolebar">${roleBarHTML()}</div>`;
+  $("lobbyList").innerHTML=`<div class="role-grid">${cards}</div>${startBoxHTML()}<div class="rolebar">${roleBarHTML()}</div>`;
+}
+/* 모두 정해지면 호스트에게 확정을 묻는다 — 확정 순간부터 배역은 고정된다 */
+function startBoxHTML(){
+  if(!STATE||STATE.started) return "";
+  const opens=SCEN.characters.filter(c=>(STATE.roles[c.id]||{}).mode==="open");
+  if(opens.length) return "";
+  if(!STATE.isHost) return `<div class="startbox wait">모든 배역이 정해졌습니다. 호스트가 시작하기를 기다리는 중…</div>`;
+  return `<div class="startbox"><div class="sb-t">모든 배역이 정해졌습니다</div>
+    <div class="sb-d">시작하면 배역을 더는 바꿀 수 없습니다.</div>
+    <button class="btn ember" onclick="startGame()">이대로 진행하기 ›</button></div>`;
+}
+async function startGame(){
+  if(!confirm("이대로 진행하시겠습니까?\n\n시작하면 배역을 바꿀 수 없습니다.")) return;
+  const r=await post("/api/start",{clientId});
+  if(r&&r.error){ banner(r.error); return; }
+  await poll();
 }
 function roleBarHTML(){
+  if(STATE&&STATE.started){
+    return myRoleValid()
+      ? `<button class="btn gold" onclick="go('play')">입장하기 ›</button><button class="btn" onclick="showMySheet()">🗂️ 내 정보</button>
+         <span class="hint">게임이 시작돼 배역은 바꿀 수 없습니다</span>`
+      : `<button class="btn" onclick="go('play')">관전으로 보기</button><span class="hint">게임이 시작됐습니다</span>`;
+  }
   const opens=SCEN.characters.filter(c=>(STATE.roles[c.id]||{}).mode==="open");
   const ais=SCEN.characters.filter(c=>(STATE.roles[c.id]||{}).mode==="ai");
   // 빈자리 채우기/AI 해제는 내 배역 유무와 무관하게 필요하다 —
   // 호스트는 보통 자기 배역을 맡은 다음 나머지를 AI로 채운다.
   const bulk=`${opens.length?`<button class="btn" onclick="fillAI()">남은 ${opens.length}자리 AI로</button>`:""}
     ${ais.length?`<button class="btn sm" onclick="clearAI()">AI ${ais.length}명 해제</button>`:""}`;
-  if(myRoleValid()) return `<button class="btn gold" onclick="go('play')">입장하기 ›</button>
-    <button class="btn" onclick="showMySheet()">🗂️ 내 정보</button>
+  if(myRoleValid()) return `<button class="btn" onclick="showMySheet()">🗂️ 내 정보</button>
     <button class="btn sm" onclick="releaseRole()">배역 해제</button>${bulk}`;
   return `<button class="btn gold" onclick="claimRandom()" ${opens.length?"":"disabled"}>🎲 랜덤 배역 받기</button>
-    ${bulk}<span class="hint">카드를 눌러 배역을 맡으세요</span>`;
+    ${bulk}<span class="hint">배역을 골라 선택하세요</span>`;
 }
 async function fillAI(){
   for(const c of SCEN.characters.filter(x=>(STATE.roles[x.id]||{}).mode==="open")) await post("/api/setai",{roleId:c.id});

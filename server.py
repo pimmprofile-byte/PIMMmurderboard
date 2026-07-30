@@ -150,6 +150,7 @@ def fresh_room() -> dict:
         "typing": None,
         "turn": None,             # 조사 페이즈 현재 차례 roleId (하이브리드 턴)
         "interrogate": {"seq": None, "used": 0, "votes": [], "bonus": False},  # 토론 페이즈 심층심문 예산
+        "started": False,         # 호스트가 '이대로 진행'을 확정하면 True — 이후 배역 변경 불가
     }
 
 
@@ -206,6 +207,7 @@ def public_state() -> dict:
             "turn": ROOM.get("turn") if ap > 0 else None,
             "turnOrder": _turn_order() if ap > 0 else [],
             "interrogate": _interrogate_budget() if ph.get("key") == "talk" else None,
+            "started": bool(ROOM.get("started")),
             "typing": ROOM["typing"],
             "grades": g,
             "ending": ending,
@@ -354,6 +356,25 @@ def state(clientId: str = ""):
     return st
 
 
+@app.post("/api/start")
+def start_game(b: HostReq):
+    """호스트가 배역 확정 — 이후 배역은 바꿀 수 없고, 모두가 오프닝으로 들어간다."""
+    with LOCK:
+        if ROOM.get("host") is not None and not _is_host(b.clientId):
+            return JSONResponse({"error": "호스트만 시작할 수 있습니다"}, status_code=403)
+        opens = [rid for rid, r in ROOM["roles"].items() if r["mode"] == "open"]
+        if opens:
+            return JSONResponse({"error": f"아직 정해지지 않은 배역이 {len(opens)}개 있습니다"}, status_code=409)
+        ROOM["started"] = True
+        ROOM["table"].append({"kind": "system", "broadcast": True, "text": "🎬 배역이 확정됐습니다. 오프닝을 시작합니다."})
+        bump()
+    return {"ok": True, "started": True}
+
+
+def _roles_locked() -> bool:
+    return bool(ROOM.get("started"))
+
+
 @app.post("/api/host/claim")
 def host_claim(b: HostReq):
     with LOCK:
@@ -378,6 +399,8 @@ def host_release(b: HostReq):
 @app.post("/api/claim")
 def claim(b: Claim):
     with LOCK:
+        if _roles_locked():
+            return JSONResponse({"error": "게임이 시작돼 배역을 바꿀 수 없습니다"}, status_code=409)
         r = ROOM["roles"].get(b.roleId)
         if not r:
             return JSONResponse({"error": "없는 배역"}, status_code=404)
@@ -396,6 +419,8 @@ def claim(b: Claim):
 @app.post("/api/claim-random")
 def claim_random(b: ClientOnly):
     with LOCK:
+        if _roles_locked():
+            return JSONResponse({"error": "게임이 시작돼 배역을 바꿀 수 없습니다"}, status_code=409)
         for rid, r in ROOM["roles"].items():
             if r["clientId"] == b.clientId:
                 return {"ok": True, "roleId": rid}
@@ -412,6 +437,8 @@ def claim_random(b: ClientOnly):
 @app.post("/api/release")
 def release(b: Claim):
     with LOCK:
+        if _roles_locked():
+            return JSONResponse({"error": "게임이 시작돼 배역을 바꿀 수 없습니다"}, status_code=409)
         r = ROOM["roles"].get(b.roleId)
         if r and r["clientId"] == b.clientId:
             r["clientId"] = None
@@ -423,6 +450,8 @@ def release(b: Claim):
 @app.post("/api/setai")
 def setai(b: SetAI):
     with LOCK:
+        if _roles_locked():
+            return JSONResponse({"error": "게임이 시작돼 배역을 바꿀 수 없습니다"}, status_code=409)
         r = ROOM["roles"].get(b.roleId)
         if not r:
             return JSONResponse({"error": "없는 배역"}, status_code=404)
