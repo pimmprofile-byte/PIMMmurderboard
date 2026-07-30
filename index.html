@@ -191,12 +191,13 @@
   .sw-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .sw-track::-webkit-scrollbar{display:none}
   .sw-slide{flex:0 0 100%;scroll-snap-align:center;min-width:0;padding:2px}
-  .sw-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:36px;height:36px;border-radius:50%;
-    background:rgba(18,15,24,.92);border:1px solid var(--line);color:var(--ink);font-size:21px;line-height:1;display:grid;place-items:center;cursor:pointer;transition:.15s}
+  /* 좌우 화살표는 카드 위에 겹치지 않게 카드 아래 컨트롤 줄에 둔다(점 네비와 한 줄) */
+  .sw-ctrl{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:13px}
+  .sw-nav{position:static;flex:0 0 auto;width:32px;height:32px;border-radius:50%;
+    background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-size:19px;line-height:1;display:grid;place-items:center;cursor:pointer;transition:.15s}
   .sw-nav:hover:not(:disabled){border-color:var(--gold);color:#fff}
-  .sw-nav.prev{left:-8px}.sw-nav.next{right:-8px}
   .sw-nav:disabled{opacity:.2;cursor:default}
-  .sw-dots{display:flex;gap:6px;justify-content:center;align-items:center;margin-top:13px;flex-wrap:wrap}
+  .sw-dots{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap}
   .sw-dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.22s;cursor:pointer}
   .sw-dot.on{background:var(--gold);width:22px;border-radius:4px}
   .sw-count{text-align:center;font-size:11.5px;color:var(--muted);margin-top:5px;letter-spacing:.02em}
@@ -926,8 +927,9 @@ function banner(m){ const b=$("banner"); if(m){b.textContent=m;b.classList.add("
 function buildSwipe(slides){
   const track=slides.map(s=>`<div class="sw-slide">${s}</div>`).join("");
   const dots=slides.map((_,i)=>`<span class="sw-dot${i===0?" on":""}" data-i="${i}"></span>`).join("");
-  const nav=slides.length>1?`<button class="sw-nav prev" aria-label="이전">‹</button><button class="sw-nav next" aria-label="다음">›</button>`:"";
-  return `<div class="swipe">${nav}<div class="sw-track">${track}</div>${slides.length>1?`<div class="sw-dots">${dots}</div><div class="sw-count"><b class="sw-cur">1</b> / ${slides.length} · 옆으로 넘겨보세요</div>`:""}</div>`;
+  // 좌우 화살표를 카드 위에 겹쳐 띄우면 글이 길 때 본문을 가린다 — 카드 아래 컨트롤 줄에 둔다.
+  const ctrls=slides.length>1?`<div class="sw-ctrl"><button class="sw-nav prev" aria-label="이전">‹</button><div class="sw-dots">${dots}</div><button class="sw-nav next" aria-label="다음">›</button></div><div class="sw-count"><b class="sw-cur">1</b> / ${slides.length} · 옆으로 넘겨보세요</div>`:"";
+  return `<div class="swipe"><div class="sw-track">${track}</div>${ctrls}</div>`;
 }
 function wireSwipe(box){
   const sw=box.querySelector(".swipe"); if(!sw)return;
