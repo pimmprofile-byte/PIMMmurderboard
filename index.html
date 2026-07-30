@@ -751,6 +751,17 @@ function renderAiCall(){
 }
 async function aiSay(id){ if(aiBusy)return; aiBusy=true; const r=await post("/api/ai-say",{roleId:id}); if(r&&r.error){ if(String(r.error).indexOf("말하는 중")<0) banner("AI 오류: "+r.error);} else banner(""); aiBusy=false; await poll(); }
 async function aiAll(){ const ais=SCEN.characters.filter(c=>STATE.roles[c.id].mode==="ai"); for(const c of ais){ await aiSay(c.id); } }
+/* 자율대화 — 켜두면 조용해질 때마다 서버가 알아서 한 명을 골라 말하게 한다 */
+async function toggleChat(){
+  const on=!((STATE.chat||{}).on!==false);
+  const r=await post("/api/chat",{on});
+  if(r&&r.error) banner("자율대화 전환 실패: "+r.error);
+  await poll();
+}
+async function aiReact(){
+  const r=await post("/api/ai-react",{});
+  if(r&&r.error) banner("발언 실패: "+r.error); else await poll();
+}
 async function aiFinal(id){ banner("AI 최종답변 채점 중…"); const r=await post("/api/ai-final",{roleId:id}); if(r&&r.error)banner("AI 채점 오류: "+r.error); else banner(""); await poll(); }
 
 /* 로비 — 2열 포스터 그리드. 카드 자체가 버튼이고, 부가 동작은 아래 액션바로 뺀다. */
@@ -1054,7 +1065,14 @@ function renderGM(){
   const ais=SCEN.characters.filter(c=>(STATE.roles[c.id]||{}).mode==="ai");
   if(backendOn()&&ais.length){
     trig.style.display="flex";
-    trig.innerHTML=`<span class="lb">🤖 자동발언</span>`+ais.map(c=>`<span class="aichip" style="--sc:${c.color}" onclick="aiSay('${c.id}')"><span class="d"></span>${esc(c.name)}</span>`).join("")+(ais.length>1?`<span class="aichip" style="--sc:var(--gold)" onclick="aiAll()"><span class="d" style="background:var(--gold)"></span>전원</span>`:"")+((STATE.phase||{}).key==="final"?ais.map(c=>!(STATE.grades||{})[c.id]?`<span class="aichip" style="--sc:${c.color}" onclick="aiFinal('${c.id}')"><span class="d"></span>${esc(c.name)} 답변</span>`:"").join(""):"");
+    const chatOn=((STATE.chat||{}).on!==false);
+    trig.innerHTML=
+      `<span class="aichip" style="--sc:${chatOn?"var(--good)":"var(--muted)"}" onclick="toggleChat()" title="AI끼리 알아서 떠들게 둘지">`+
+        `<span class="d" style="background:${chatOn?"var(--good)":"var(--muted)"}"></span>${chatOn?"자율대화 켬":"자율대화 끔"}</span>`+
+      `<span class="aichip" style="--sc:var(--ember-b)" onclick="aiReact()"><span class="d" style="background:var(--ember-b)"></span>지금 한마디</span>`+
+      `<span class="lb">지목</span>`+
+      ais.map(c=>`<span class="aichip" style="--sc:${c.color}" onclick="aiSay('${c.id}')"><span class="d"></span>${esc(c.name)}</span>`).join("")+
+      ((STATE.phase||{}).key==="final"?ais.map(c=>!(STATE.grades||{})[c.id]?`<span class="aichip" style="--sc:${c.color}" onclick="aiFinal('${c.id}')"><span class="d"></span>${esc(c.name)} 답변</span>`:"").join(""):"");
   } else trig.style.display="none";
 }
 function buildGMBody(ph,cur,ap,k,checked,used,fresh){

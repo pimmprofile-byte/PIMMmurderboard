@@ -517,7 +517,20 @@ def phase_by_seq(seq: int) -> dict:
     return next((p for p in PHASES if p["seq"] == seq), PHASES[0])
 
 
-def build_play_prompt(c: dict, seq: int, revealed_ids: list[str], table: list[dict]) -> str:
+# 말수 — 페르소나 그대로다. 강윤서는 조급해서 말이 많고, 진하람은 좀처럼 입을 안 연다.
+# talk: 자발 발언 가중치 / ask: 남에게 직접 말을 거는 성향
+CHAT_AI = {
+    "munjaei":    {"talk": 1.35, "ask": 0.9},   # 빠르고 단정적, 논의를 정리하려 든다
+    "kangyunseo": {"talk": 1.60, "ask": 0.7},   # 조급하고 감정이 먼저 나온다
+    "oserin":     {"talk": 1.05, "ask": 1.5},   # 자기 얘긴 안 하고 남에게 묻는다
+    "jinharam":   {"talk": 0.45, "ask": 0.3},   # 말수가 적고 추궁당하면 오래 침묵한다
+    "yutaeo":     {"talk": 0.95, "ask": 0.6},   # 눈치 보다 끼어든다
+    "handokyung": {"talk": 0.80, "ask": 0.6},   # 필요한 말만 낮게
+}
+
+
+def build_play_prompt(c: dict, seq: int, revealed_ids: list[str], table: list[dict],
+                      nudge: str = "") -> str:
     phase = phase_by_seq(seq)
     others = ", ".join(o["name"] for o in CHARACTERS if o["id"] != c["id"])
     dossier_lines = "\n".join(f"● {s['h']}\n{s['b']}" for s in c["sheet"])
@@ -552,6 +565,10 @@ def build_play_prompt(c: dict, seq: int, revealed_ids: list[str], table: list[di
 1) 너는 '{c['name']}' 플레이어다. 심문당하는 NPC가 아니라 자기 목표를 위해 능동적으로 말하고 의심하고 변명하는 참가자다.
 2) 오직 '{c['name']}'로서만. AI·모델·진행자임을 절대 드러내지 마라. 메타발언 금지.
 3) 한국어로 1~3문장, 짧고 사람처럼. 지어내지 말고 위 정보 안에서 말하라.
+4) 허공에 대고 말하지 마라. 방금 말한 사람에게 대꾸하거나, 누군가의 이름을 불러 직접 물어라.
+   상대 이름을 부르면 그 사람이 대답한다 — 대화가 이어지게 만드는 건 네 몫이다.
+5) 매번 사건 얘기만 하지 마라. 물이 차오르는 소리, 추위, 손이 떨리는 것,
+   상대의 태도에 거슬리는 것 — 사람은 그런 것도 말한다. 다만 짧게.
 
 [난도 · 정보 통제 — 가장 중요]
 - 너는 '단서 조각'만 흘린다. 절대 사건 전체·진상을 설명하지 마라. 남 대신 점을 이어주지 마라 — 추리는 사람 플레이어의 몫이다. 답을 떠먹이지 마라.
@@ -563,7 +580,18 @@ def build_play_prompt(c: dict, seq: int, revealed_ids: list[str], table: list[di
 - (이 시나리오 한정 예외) 네가 진범이라면 기본은 부인이다. 다만 물증이 쌓여 네가 확실히 몰린 상황이라면, 그때는 담담히 살인만 인정해 사건을 거기서 끝내려 해도 된다 — 자백은 항복이 아니라 더 깊은 것을 덮는 방패다. 자백한 뒤에도 동기·형 이야기·단말기 문서는 끝까지 말하지 마라. 몰리지 않았는데 먼저 자백하지는 마라.
 [너의 은밀한 연기 지침] {c['ai_note']}
 
+{nudge}
 이제 '{c['name']}'로서 다음 한마디를 하라. — 조각만, 마지못해, 사람처럼."""
+
+
+# 자발 발언의 결. 매번 같은 결로 말하면 금세 기계처럼 들려서, 서버가 하나를 골라 끼운다.
+CHAT_NUDGES = {
+    "react": "[이번 한마디] 바로 앞사람 말에 대꾸하라. 동의하든 반박하든, 그 말을 받아라.",
+    "ask":   "[이번 한마디] 한 사람의 이름을 불러 직접 물어라. 그 사람이 대답하게 만들어라.",
+    "raise": "[이번 한마디] 아무도 아직 짚지 않은 것을 하나 꺼내라. 공개된 카드나 네 기억 중에서.",
+    "press": "[이번 한마디] 방금 나온 말에서 앞뒤가 안 맞는 지점을 짚어라. 이름을 불러 캐물어라.",
+    "mood":  "[이번 한마디] 사건 얘기 말고, 지금 이 상황이 어떤지 짧게 말하라. 물, 추위, 시간, 사람들 표정.",
+}
 
 
 def build_final_answer_prompt(c: dict, revealed_ids: list[str], table: list[dict]) -> str:

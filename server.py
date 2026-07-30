@@ -199,6 +199,7 @@ def public_state() -> dict:
         used = {rid: sum(1 for r in cm.values() if r == cur) for rid, cm in ROOM["checkedRound"].items()}
         return {
             "rev": ROOM["rev"], "seq": seq, "round": cur, "scenarioId": SC.ID,
+            "chat": {"on": CHAT["on"], "gap": CHAT["gap"]},
             "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"]},
             "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
             "table": ROOM["table"],
@@ -256,6 +257,13 @@ class HumanSay(BaseModel):
 
 class RoleOnly(BaseModel):
     roleId: str
+
+
+class ChatCtl(BaseModel):
+    key: str = ""
+    clientId: str = ""
+    on: bool | None = None
+    gap: float | None = None
 
 
 class CardOnly(BaseModel):
@@ -1107,34 +1115,66 @@ def human_say(b: HumanSay):
     return {"ok": True}
 
 
-@app.post("/api/ai-say")
-def ai_say(b: RoleOnly):
+class Busy(RuntimeError):
+    """다른 배역이 말하는 중."""
+
+
+def _speak(role_id: str, nudge: str = "") -> dict:
+    """AI 배역 한 명에게 한마디 시킨다. 프롬프트는 그 배역 것만 들어간다."""
     with LOCK:
-        r = ROOM["roles"].get(b.roleId)
+        r = ROOM["roles"].get(role_id)
         if not r or r["mode"] != "ai":
-            return JSONResponse({"error": "AI 배역이 아닙니다"}, status_code=409)
+            raise ValueError("AI 배역이 아닙니다")
         if ROOM["typing"]:
-            return JSONResponse({"error": "다른 배역이 말하는 중입니다"}, status_code=429)
-        ROOM["typing"] = b.roleId
+            raise Busy("다른 배역이 말하는 중입니다")
+        ROOM["typing"] = role_id
         bump()
         seq = ROOM["seq"]
         revealed = list(ROOM["revealed"])
         table = list(ROOM["table"])
-    c = SC.get_character(b.roleId)
+    c = SC.get_character(role_id)
     try:
-        reply = llm(SC.build_play_prompt(c, seq, revealed, table),
-                    f"이제 '{c['name']}'로서 다음 한마디를 하라 (1~3문장).", 400, fast=True)
+        try:
+            system = SC.build_play_prompt(c, seq, revealed, table, nudge)
+        except TypeError:            # nudge를 아직 안 받는 시나리오
+            system = SC.build_play_prompt(c, seq, revealed, table)
+        reply = llm(system, f"이제 '{c['name']}'로서 다음 한마디를 하라 (1~3문장).", 400, fast=True)
         reply = re.sub(rf"^{re.escape(c['name'])}\s*[:：]\s*", "", reply or "").strip()
-    except Exception as e:  # noqa: BLE001
+    except Exception:
         with LOCK:
             ROOM["typing"] = None
             bump()
-        return JSONResponse({"error": str(e)}, status_code=502)
+        raise
+    entry = {"kind": "ai", "roleId": role_id, "speaker": c["name"], "text": reply or "…"}
     with LOCK:
-        ROOM["table"].append({"kind": "ai", "roleId": b.roleId, "speaker": c["name"], "text": reply or "…"})
+        ROOM["table"].append(entry)
         ROOM["typing"] = None
         bump()
+    return entry
+
+
+@app.post("/api/ai-say")
+def ai_say(b: RoleOnly):
+    try:
+        _speak(b.roleId)
+    except Busy as e:
+        return JSONResponse({"error": str(e)}, status_code=429)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"error": str(e)}, status_code=502)
     return {"ok": True}
+
+
+def _addressed_in(text: str, exclude: str = "") -> list[str]:
+    """대사 안에서 이름이 불린 배역들. 이름을 부르면 그 사람이 대답한다 — 대화가 이어지는 핵심."""
+    out = []
+    for ch in SC.CHARACTERS:
+        if ch["id"] == exclude:
+            continue
+        if ch["name"] in text or ch["name"][1:] in text:   # '문재이' / '재이' 둘 다
+            out.append(ch["id"])
+    return out
 
 
 def _pick_reactor(exclude: list[str] | None = None) -> str | None:
@@ -1154,22 +1194,138 @@ def _pick_reactor(exclude: list[str] | None = None) -> str | None:
         fresh = [rid for rid in ais if rid not in recent[-2:]] or ais
         last_card = ROOM["revealed"][-1] if ROOM["revealed"] else None
         seq = ROOM["seq"]
+        last = ROOM["table"][-1] if ROOM["table"] else {}
+        last_text = str(last.get("text") or "")
+        last_from = str(last.get("roleId") or "")
+        spoke_n = {rid: sum(1 for t in ROOM["table"] if t.get("roleId") == rid) for rid in ais}
     card = SC.get_card(last_card) if last_card else None
     ai_cfg = getattr(SC, "INVEST_AI", {})
+    chat_cfg = getattr(SC, "CHAT_AI", {})
+    called = set(_addressed_in(last_text, exclude=last_from))
 
     def score(rid: str) -> tuple[float, int]:
         s = 0.0
         cfg = ai_cfg.get(rid) or {}
+        if rid in called:
+            s += 8.0                                       # 이름이 불렸으면 대답할 차례다
         if card:
             if card.get("loc") in (cfg.get("home") or []):
                 s += 3.0                                   # 방금 열린 곳이 자기 구역이면 할 말이 있다
             s += float((cfg.get("interest") or {}).get(card["id"], 0) or 0)
-        with LOCK:
-            spoke = sum(1 for t in ROOM["table"] if t.get("roleId") == rid)
-        s -= spoke * 0.8                                   # 적게 말한 사람에게 자리를 준다
+        s += 2.0 * float((chat_cfg.get(rid) or {}).get("talk", 1.0))   # 원래 말이 많은 사람
+        s -= spoke_n.get(rid, 0) * 0.8                     # 적게 말한 사람에게 자리를 준다
         return (s, -zlib.crc32(f"{rid}:{seq}".encode()) % 997)   # 동점은 결정적으로 가른다
 
     return max(fresh, key=score)
+
+
+def _pick_nudge(rid: str) -> str:
+    """이번 한마디의 결을 고른다. 매번 같은 결이면 금세 기계처럼 들린다."""
+    nudges = getattr(SC, "CHAT_NUDGES", {})
+    if not nudges:
+        return ""
+    with LOCK:
+        last = ROOM["table"][-1] if ROOM["table"] else {}
+        n_lines = len(ROOM["table"])
+    ask_w = float((getattr(SC, "CHAT_AI", {}).get(rid) or {}).get("ask", 1.0))
+    # 앞사람이 방금 말했으면 받아치는 쪽이 자연스럽고, 정적이 흘렀으면 새 화제를 꺼내야 한다.
+    weights = {
+        "react": 3.0 if last.get("text") else 0.5,
+        "ask":   2.2 * ask_w,
+        "press": 1.6 if last.get("kind") in ("ai", "human") else 0.3,
+        "raise": 1.4,
+        "mood":  0.7 if n_lines % 5 == 0 else 0.25,        # 가끔만. 자주 하면 겉돈다
+    }
+    keys = [k for k in weights if k in nudges]
+    tot = sum(weights[k] for k in keys) or 1.0
+    r = random.random() * tot
+    for k in keys:
+        r -= weights[k]
+        if r <= 0:
+            return nudges[k]
+    return nudges.get("react", "")
+
+
+# ── 자발 대화 ─────────────────────────────────────────────────────
+# AI 배역이 불릴 때만 말하면 자판기처럼 보인다. 조용한 시간이 일정 이상 흐르면
+# 서버가 스스로 한 명을 골라 말하게 한다. 사람이 말하면 물러나고, AI만 계속
+# 떠들면 간격을 벌려서 사람이 낄 자리를 만든다.
+CHAT = {
+    "on": os.getenv("AUTO_CHAT", "1") != "0",
+    "gap": float(os.getenv("AUTO_CHAT_GAP", "13")),   # 기본 침묵 허용치(초)
+    "seenLen": 0, "lastAt": 0.0, "streak": 0, "busy": False,
+}
+
+
+def _chat_gap_now(ph: dict) -> float:
+    """지금 얼마나 조용해야 AI가 입을 여는가."""
+    gap = CHAT["gap"]
+    if int(ph.get("ap", 0) or 0) > 0:
+        gap *= 2.6                       # 조사 페이즈 — 다들 카드 보는 중이라 조용해야 한다
+    gap *= 1.0 + CHAT["streak"] * 0.55   # AI만 연달아 떠들수록 물러난다
+    return gap
+
+
+def _chatter_tick():
+    if not CHAT["on"]:
+        return
+    now = time.monotonic()
+    with LOCK:
+        ph = SC.phase_by_seq(ROOM["seq"])
+        n = len(ROOM["table"])
+        typing = ROOM["typing"]
+        last = ROOM["table"][-1] if ROOM["table"] else {}
+        has_ai = any(r["mode"] == "ai" for r in ROOM["roles"].values())
+    if ph.get("key") == "reveal" or not has_ai:
+        return
+    if n != CHAT["seenLen"]:              # 방금 누가 말했다 — 시계를 다시 잡는다
+        CHAT["seenLen"] = n
+        CHAT["lastAt"] = now
+        CHAT["streak"] = CHAT["streak"] + 1 if last.get("kind") == "ai" else 0
+        return
+    if typing or CHAT["busy"]:
+        return
+    if now - CHAT["lastAt"] < _chat_gap_now(ph):
+        return
+    CHAT["busy"] = True
+    try:
+        rid = _pick_reactor()
+        if rid:
+            _speak(rid, _pick_nudge(rid))
+    except Exception:                    # 한 번 실패해도 루프는 계속 돈다
+        pass
+    finally:
+        CHAT["busy"] = False
+        CHAT["lastAt"] = time.monotonic()
+
+
+def _chatter_loop():
+    while True:
+        time.sleep(2.0)
+        try:
+            _chatter_tick()
+        except Exception:                # noqa: BLE001
+            pass
+
+
+@app.on_event("startup")
+def _start_chatter():
+    threading.Thread(target=_chatter_loop, daemon=True).start()
+
+
+@app.post("/api/chat")
+def chat_ctl(b: ChatCtl):
+    """자발 대화 on/off와 속도. 토론이 뜨거우면 끄고, 식으면 켠다."""
+    if not (_agent_ok(b.key) or _is_host(b.clientId) or ROOM.get("host") is None):
+        return JSONResponse({"error": "권한 없음"}, status_code=403)
+    if b.on is not None:
+        CHAT["on"] = bool(b.on)
+        CHAT["lastAt"] = time.monotonic()
+    if b.gap is not None:
+        CHAT["gap"] = max(4.0, min(90.0, float(b.gap)))
+    with LOCK:
+        bump()
+    return {"ok": True, "on": CHAT["on"], "gap": CHAT["gap"]}
 
 
 @app.post("/api/ai-react")
@@ -1178,12 +1334,16 @@ def ai_react(b: TurnReq):
     rid = b.roleId or _pick_reactor()
     if not rid:
         return JSONResponse({"error": "AI 배역이 없습니다"}, status_code=409)
-    res = ai_say(RoleOnly(roleId=rid))
-    if isinstance(res, JSONResponse):
-        return res
-    with LOCK:
-        line = next((t for t in reversed(ROOM["table"]) if t.get("roleId") == rid), {})
-    return {"ok": True, "roleId": rid, "speaker": line.get("speaker", ""), "text": line.get("text", "")}
+    try:
+        entry = _speak(rid, _pick_nudge(rid))
+    except Busy as e:
+        return JSONResponse({"error": str(e)}, status_code=429)
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"error": str(e)}, status_code=502)
+    CHAT["lastAt"] = time.monotonic()          # 방금 말했으니 자발 발언 시계를 다시 잡는다
+    return {"ok": True, "roleId": rid, "speaker": entry["speaker"], "text": entry["text"]}
 
 
 def _grade(c: dict, answers: list[str]) -> dict:
