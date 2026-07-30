@@ -221,6 +221,16 @@ try:
 except Exception:
     pass
 
+# 이미지 에셋(인물 사진 등)을 /assets 로 서빙 — 파일을 넣는 즉시 UI가 집어간다.
+# 규약: assets/{scenarioId}_portrait_{roleId}.png  (없으면 클라이언트가 이모지로 폴백)
+try:
+    from fastapi.staticfiles import StaticFiles
+    _ASSETS = _HERE / "assets"
+    _ASSETS.mkdir(exist_ok=True)
+    app.mount("/assets", StaticFiles(directory=str(_ASSETS)), name="assets")
+except Exception:
+    pass
+
 
 class Claim(BaseModel):
     roleId: str

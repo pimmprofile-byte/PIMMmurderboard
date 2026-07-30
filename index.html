@@ -34,26 +34,41 @@
   .head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
   .head .t{font-size:22px;font-weight:700;letter-spacing:.04em}
   .lead{color:var(--sub);font-size:13.5px;line-height:1.8;margin:2px 0 18px}
-  .role-card{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;position:relative;overflow:hidden}
-  .role-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--rc,#555)}
-  .role-card.mine{border-color:var(--gold);flex-wrap:wrap;padding-bottom:0}
-  .role-card .av{font-size:28px;width:48px;height:48px;display:grid;place-items:center;background:var(--bg);border-radius:12px;flex:0 0 48px}
-  .role-card .nm{font-weight:700;font-size:16px}.role-card .jb{font-size:11.5px;color:var(--muted)}.role-card .tg{font-size:12.5px;color:#c3bcd2;margin-top:3px;line-height:1.5}
-  .st-tag{font-size:11.5px;padding:4px 9px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);color:var(--sub)}
-  .st-tag.human{color:var(--gold-b);border-color:#5a4a2c}.st-tag.ai{color:#8fb3c9;border-color:#2c465a}
-  /* 배역 선택 화면에서 '내 정보 확인하기' — 내 카드에만, 눈에 띄게 카드 아래 전체 폭 */
-  .myinfo-cta{flex-basis:100%;display:flex;align-items:center;gap:9px;margin:12px -16px 0;padding:12px 16px;
-    border-top:1px dashed color-mix(in srgb,var(--gold) 50%,var(--line));
-    background:linear-gradient(90deg,rgba(201,162,74,.16),rgba(201,162,74,.03));
-    color:var(--gold-b);font-weight:800;font-size:14px;font-family:inherit;cursor:pointer;transition:.15s;text-align:left}
-  .myinfo-cta:hover{background:linear-gradient(90deg,rgba(201,162,74,.26),rgba(201,162,74,.05))}
-  .myinfo-cta .ic{font-size:17px}
-  .myinfo-cta .sub{margin-left:auto;font-size:11.5px;color:var(--sub);font-weight:400}
-  /* 좁은 화면: 배역카드 액션 버튼을 텍스트 아래로 접기 */
-  @media(max-width:540px){
-    .role-card{flex-wrap:wrap}
-    .role-card>div:last-child{flex-basis:100%;justify-content:flex-start;margin-top:6px}
-  }
+  /* ── 배역 선택: 2열 포스터 그리드 ──────────────────────────────
+     세로 목록은 6명을 한눈에 못 비교하고 아바타도 작다. 카드를 포스터로 세워
+     인물 사진(3:4)이 주인공이 되게 하고, 버튼은 카드에서 빼 아래 액션바로 모은다. */
+  .role-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  @media(min-width:620px){ .role-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px} }
+  /* display:block — flex 자식이 되면 .tg의 -webkit-box가 blockify돼서 줄 클램프가 죽는다 */
+  .rc{position:relative;display:block;padding:0;overflow:hidden;text-align:left;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    font-family:inherit;color:inherit;cursor:pointer;transition:transform .14s,border-color .16s,box-shadow .16s}
+  .rc:hover:not(:disabled){transform:translateY(-2px);border-color:var(--rc,var(--gold))}
+  .rc:disabled{cursor:default;opacity:.5}
+  .rc.mine{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset,0 12px 34px -14px rgba(201,162,74,.5)}
+  /* 인물 자리 — 사진이 있으면 사진, 없으면 이모지로 폴백(그 사이에도 안 깨진다) */
+  .rc .por{position:relative;aspect-ratio:3/4;display:grid;place-items:center;overflow:hidden;
+    background:linear-gradient(158deg,color-mix(in srgb,var(--rc,#555) 30%,#17141d),#0f0d13)}
+  .rc .por .emo{font-size:64px;opacity:.92;filter:drop-shadow(0 8px 20px rgba(0,0,0,.65))}
+  .rc .por img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .rc .scrim{position:absolute;left:0;right:0;bottom:0;padding:26px 10px 9px;
+    background:linear-gradient(0deg,rgba(7,5,9,.95),rgba(7,5,9,.6) 52%,transparent)}
+  .rc .nm{font-weight:800;font-size:15px;line-height:1.22;color:var(--rc,var(--ink));word-break:keep-all}
+  .rc .jb{font-size:10.5px;color:#b3aabf;margin-top:2px}
+  .rc .badge{position:absolute;top:7px;right:7px;z-index:2;font-size:9.5px;font-weight:700;letter-spacing:.04em;
+    padding:3px 8px;border-radius:999px;background:rgba(6,4,8,.72);border:1px solid var(--line);color:var(--sub);backdrop-filter:blur(4px)}
+  .rc .badge.me{color:var(--gold-b);border-color:#6b5730}
+  .rc .badge.hu{color:var(--gold-b);border-color:#6b5730}
+  .rc .badge.ai{color:#8fb3c9;border-color:#2c465a}
+  /* -webkit-line-clamp는 브라우저에 따라 display가 blockify돼 안 먹는다.
+     2줄 높이를 직접 잡고 넘치는 부분은 페이드로 흘려보낸다 — 글자가 중간에 잘려 보이지 않게. */
+  .rc .tg{font-size:11.5px;line-height:1.5;color:#bdb5cb;padding:8px 10px 10px;
+    height:calc(3em + 18px);overflow:hidden;
+    -webkit-mask-image:linear-gradient(180deg,#000 62%,transparent 97%);
+    mask-image:linear-gradient(180deg,#000 62%,transparent 97%)}
+  /* 카드에서 뺀 액션들 — 내 배역 여부에 따라 바뀌는 하단 바 */
+  .rolebar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px}
+  .rolebar .hint{font-size:12px;color:var(--muted)}
 
   /* 플레이 · 페이즈 드리븐 */
   #s-play{display:none;flex-direction:column;height:100vh;max-width:920px;width:100%;margin:0 auto;border-inline:1px solid var(--line)}#s-play.on{display:flex}
@@ -376,7 +391,7 @@
 <div id="s-lobby" class="screen on">
   <div class="wrap">
     <div class="head"><span class="t serif">배역 선택</span><span class="pill" id="lobbyScen" style="cursor:pointer" title="사건 허브로 돌아가기" onclick="location.href='/'">🎬 <span id="lobbyScenName"></span> · 홈으로</span><span class="pill" id="beChip2"></span></div>
-    <div class="lead">각자 자기 기기에서 배역을 고르세요(또는 랜덤). 자기 배역의 비밀 큐카드는 이 기기에만 보입니다. 남은 배역은 AI(진행자)가 맡습니다.</div>
+    <div class="lead">각자 자기 기기에서 배역을 고르세요. 내 비밀 정보는 이 기기에만 보입니다.</div>
     <div id="lobbyList"></div>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
       <button class="btn gold" onclick="enterGM()">🎬 GM으로 진행</button>
@@ -565,25 +580,52 @@ async function aiSay(id){ if(aiBusy)return; aiBusy=true; const r=await post("/ap
 async function aiAll(){ const ais=SCEN.characters.filter(c=>STATE.roles[c.id].mode==="ai"); for(const c of ais){ await aiSay(c.id); } }
 async function aiFinal(id){ banner("AI 최종답변 채점 중…"); const r=await post("/api/ai-final",{roleId:id}); if(r&&r.error)banner("AI 채점 오류: "+r.error); else banner(""); await poll(); }
 
-/* 로비 */
+/* 로비 — 2열 포스터 그리드. 카드 자체가 버튼이고, 부가 동작은 아래 액션바로 뺀다. */
+function portraitHTML(c){
+  // 규약: /assets/{시나리오}_portrait_{배역}.png — 파일이 없으면 스스로 지워져 이모지가 드러난다
+  const sid=(STATE&&STATE.scenarioId)||"";
+  const src=sid?`/assets/${sid}_portrait_${c.id}.png`:"";
+  return `<span class="emo">${c.avatar}</span>`+(src?`<img src="${src}" alt="" loading="lazy" onerror="this.remove()">`:"");
+}
 function renderLobby(){
-  const list=$("lobbyList"); list.innerHTML="";
-  const rnd=document.createElement("div"); rnd.style.margin="0 0 12px";
-  rnd.innerHTML=`<button class="btn gold" onclick="claimRandom()" ${myRoleId?"disabled":""}>🎲 랜덤 배역 받기</button> <span class="lead" style="margin:0">무작위로 빈 배역을 받습니다</span>`;
-  list.appendChild(rnd);
-  SCEN.characters.forEach(c=>{
-    const r=STATE.roles[c.id]; const mine=myRoleId===c.id;
-    const d=document.createElement("div"); d.className="role-card"+(mine?" mine":""); d.style.setProperty("--rc",c.color);
-    let act="";
-    if(mine) act=`<span class="st-tag human">나의 배역</span><button class="btn sm gold" onclick="go('play')">입장</button><button class="btn sm" onclick="releaseRole()">해제</button>`;
-    else if(r.mode==="human") act=`<span class="st-tag human">사람 참여 중</span>`;
-    else if(r.mode==="ai") act=`<span class="st-tag ai">AI(진행자)</span><button class="btn sm" onclick="setAI('${c.id}')">해제</button>`;
-    else act=`<button class="btn sm gold" onclick="claim('${c.id}')">맡기</button><button class="btn sm" onclick="setAI('${c.id}')">AI로</button>`;
-    // 내 배역 카드에는 '내 정보 확인하기'를 카드 폭 전체로 붙여 눈에 띄게 한다
-    const cta=mine?`<button class="myinfo-cta" onclick="showMySheet()"><span class="ic">🗂️</span>내 정보 확인하기<span class="sub">정체 · 비밀 · 목표</span></button>`:"";
-    d.innerHTML=`<div class="av">${c.avatar}</div><div style="flex:1;min-width:0"><div class="nm" style="color:${c.color}">${esc(c.name)}${mine?' <span class="tag-me">나</span>':''}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div><div class="tg">${esc(c.tagline)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${act}</div>${cta}`;
-    list.appendChild(d);
-  });
+  const cards=SCEN.characters.map(c=>{
+    const r=STATE.roles[c.id]||{}; const mine=myRoleId===c.id;
+    const otherHuman=!mine&&r.mode==="human";
+    let badge="", act="";
+    if(mine){ badge=`<span class="badge me">● 나</span>`; act=`showMySheet()`; }
+    else if(otherHuman){ badge=`<span class="badge hu">사람</span>`; }
+    else if(r.mode==="ai"){ badge=`<span class="badge ai">AI</span>`; act=`setAI('${c.id}')`; }
+    else { act=`claim('${c.id}')`; }
+    const title=mine?"내 정보 보기":(otherHuman?"다른 사람이 맡았습니다":(r.mode==="ai"?"눌러서 AI 해제":"눌러서 이 배역 맡기"));
+    return `<button class="rc${mine?" mine":""}" style="--rc:${c.color}" title="${title}"
+      ${otherHuman?"disabled":`onclick="${act}"`}>
+      <div class="por">${portraitHTML(c)}${badge}
+        <div class="scrim"><div class="nm">${esc(c.name)}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div></div>
+      </div>
+      <div class="tg">${esc(c.tagline)}</div></button>`;
+  }).join("");
+  $("lobbyList").innerHTML=`<div class="role-grid">${cards}</div><div class="rolebar">${roleBarHTML()}</div>`;
+}
+function roleBarHTML(){
+  const opens=SCEN.characters.filter(c=>(STATE.roles[c.id]||{}).mode==="open");
+  const ais=SCEN.characters.filter(c=>(STATE.roles[c.id]||{}).mode==="ai");
+  // 빈자리 채우기/AI 해제는 내 배역 유무와 무관하게 필요하다 —
+  // 호스트는 보통 자기 배역을 맡은 다음 나머지를 AI로 채운다.
+  const bulk=`${opens.length?`<button class="btn" onclick="fillAI()">남은 ${opens.length}자리 AI로</button>`:""}
+    ${ais.length?`<button class="btn sm" onclick="clearAI()">AI ${ais.length}명 해제</button>`:""}`;
+  if(myRoleValid()) return `<button class="btn gold" onclick="go('play')">입장하기 ›</button>
+    <button class="btn" onclick="showMySheet()">🗂️ 내 정보</button>
+    <button class="btn sm" onclick="releaseRole()">배역 해제</button>${bulk}`;
+  return `<button class="btn gold" onclick="claimRandom()" ${opens.length?"":"disabled"}>🎲 랜덤 배역 받기</button>
+    ${bulk}<span class="hint">카드를 눌러 배역을 맡으세요</span>`;
+}
+async function fillAI(){
+  for(const c of SCEN.characters.filter(x=>(STATE.roles[x.id]||{}).mode==="open")) await post("/api/setai",{roleId:c.id});
+  await poll();
+}
+async function clearAI(){
+  for(const c of SCEN.characters.filter(x=>(STATE.roles[x.id]||{}).mode==="ai")) await post("/api/setai",{roleId:c.id});
+  await poll();
 }
 /* ===== GM 마킹 보드 (페이즈 구동 · 시네마틱) ===== */
 let gmSig=null, gmSeenMarks=null;
@@ -674,8 +716,10 @@ async function gmMark(role,cardId){
 }
 function gmBanner(m){ const b=$("gmBanner"); if(m){b.textContent=m;b.classList.add("on");}else b.classList.remove("on"); }
 
-async function claim(id){ const r=await post("/api/claim",{roleId:id,clientId}); if(r&&r.error){banner(r.error);return;} await setMy(id); go("play"); }
-async function claimRandom(){ const r=await post("/api/claim-random",{clientId}); if(r&&r.error){banner(r.error);return;} if(r&&r.roleId){ await setMy(r.roleId); go("play"); } }
+/* 배역을 맡아도 바로 입장시키지 않는다 — 카드 전체가 탭 영역이라 오탭 비용이 크고,
+   무엇보다 들어가기 전에 '내 정보'를 읽을 기회를 줘야 한다. 입장은 하단 액션바에서. */
+async function claim(id){ const r=await post("/api/claim",{roleId:id,clientId}); if(r&&r.error){banner(r.error);return;} await setMy(id); }
+async function claimRandom(){ const r=await post("/api/claim-random",{clientId}); if(r&&r.error){banner(r.error);return;} if(r&&r.roleId){ await setMy(r.roleId); } }
 async function setMy(id){ myRoleId=id; localStorage.setItem("pmb.role",id); await poll(); }
 async function releaseRole(){ if(myRoleId){ await post("/api/release",{roleId:myRoleId,clientId}); myRoleId=null; localStorage.removeItem("pmb.role"); await poll(); } }
 async function setAI(id){ const r=await post("/api/setai",{roleId:id}); if(r&&r.error)banner(r.error); await poll(); }
