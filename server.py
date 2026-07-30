@@ -39,6 +39,9 @@ SC = scenarios.get(os.getenv("SCENARIO") or scenarios.default_id())
 
 BACKEND = os.getenv("LLM_BACKEND", "claude").lower()
 CLAUDE_MODEL = os.getenv("REUNION_MODEL") or os.getenv("PIMM_MODEL") or "claude-opus-4-8"
+# 배역 대사는 한두 문장짜리 응수라 빠른 게 곧 재미다 — 여기만 작은 모델로 돌린다.
+# 채점은 판마다 한 번뿐이고 정확해야 하므로 CLAUDE_MODEL을 그대로 쓴다.
+CLAUDE_MODEL_FAST = os.getenv("PIMM_MODEL_FAST") or "claude-haiku-4-5-20251001"
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5")
@@ -58,7 +61,7 @@ except Exception:
 _ac = None
 
 
-def _claude(system: str, user: str, mt: int) -> str:
+def _claude(system: str, user: str, mt: int, model: str = "") -> str:
     global _ac
     if anthropic is None:
         raise RuntimeError("anthropic SDK 미설치 — pip install anthropic")
@@ -69,7 +72,7 @@ def _claude(system: str, user: str, mt: int) -> str:
     last = None
     for i in range(3):
         try:
-            m = _ac.messages.create(model=CLAUDE_MODEL, max_tokens=mt, system=system,
+            m = _ac.messages.create(model=model or CLAUDE_MODEL, max_tokens=mt, system=system,
                                     messages=[{"role": "user", "content": user}])
             for b in m.content:
                 if getattr(b, "type", None) == "text":
@@ -82,7 +85,7 @@ def _claude(system: str, user: str, mt: int) -> str:
     raise RuntimeError(f"Claude 호출 실패: {last}")
 
 
-def _ollama(system: str, user: str, mt: int) -> str:
+def _ollama(system: str, user: str, mt: int, model: str = "") -> str:
     payload = {"model": OLLAMA_MODEL, "stream": False, "options": {"temperature": 0.85, "num_predict": mt},
                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     req = urllib.request.Request(f"{OLLAMA_URL}/api/chat", data=json.dumps(payload).encode("utf-8"),
@@ -99,8 +102,10 @@ def _ollama(system: str, user: str, mt: int) -> str:
     raise RuntimeError(f"Ollama 호출 실패({OLLAMA_URL}, {OLLAMA_MODEL}): {last}")
 
 
-def llm(system: str, user: str, mt: int = 400) -> str:
-    return _ollama(system, user, mt) if BACKEND == "ollama" else _claude(system, user, mt)
+def llm(system: str, user: str, mt: int = 400, fast: bool = False) -> str:
+    """fast=True면 배역 대사용 작은 모델로. Ollama 백엔드는 모델이 하나뿐이라 무시된다."""
+    model = CLAUDE_MODEL_FAST if fast else CLAUDE_MODEL
+    return _ollama(system, user, mt, model) if BACKEND == "ollama" else _claude(system, user, mt, model)
 
 
 def backend_ready() -> tuple[bool, str]:
@@ -110,7 +115,7 @@ def backend_ready() -> tuple[bool, str]:
         return False, "Claude · API 키 미설정 (.env)"
     if anthropic is None:
         return False, "Claude · anthropic SDK 미설치"
-    return True, f"Claude · {CLAUDE_MODEL}"
+    return True, f"Claude · {CLAUDE_MODEL} (대사 {CLAUDE_MODEL_FAST})"
 
 
 def _parse_json(raw: str) -> dict:
@@ -1118,7 +1123,7 @@ def ai_say(b: RoleOnly):
     c = SC.get_character(b.roleId)
     try:
         reply = llm(SC.build_play_prompt(c, seq, revealed, table),
-                    f"이제 '{c['name']}'로서 다음 한마디를 하라 (1~3문장).", 400)
+                    f"이제 '{c['name']}'로서 다음 한마디를 하라 (1~3문장).", 400, fast=True)
         reply = re.sub(rf"^{re.escape(c['name'])}\s*[:：]\s*", "", reply or "").strip()
     except Exception as e:  # noqa: BLE001
         with LOCK:
@@ -1130,6 +1135,55 @@ def ai_say(b: RoleOnly):
         ROOM["typing"] = None
         bump()
     return {"ok": True}
+
+
+def _pick_reactor(exclude: list[str] | None = None) -> str | None:
+    """지금 한마디 하기에 가장 자연스러운 AI 배역을 고른다.
+
+    진행 세션이 매번 '누가 말할 차례냐'를 직접 판단하면 부담이 크고, 결국 한두 명만
+    계속 떠들게 된다. 그래서 서버가 고른다 — 최근에 말한 사람은 빼고, 방금 공개된
+    카드가 자기 구역·관심사인 배역에 가중치를 준다.
+    """
+    exclude = set(exclude or [])
+    with LOCK:
+        ais = [rid for rid, r in ROOM["roles"].items() if r["mode"] == "ai" and rid not in exclude]
+        if not ais:
+            return None
+        # 최근 발언자 2명은 연속 발언을 피한다(그래도 후보가 없으면 되살린다)
+        recent = [t.get("roleId") for t in ROOM["table"][-4:] if t.get("roleId")]
+        fresh = [rid for rid in ais if rid not in recent[-2:]] or ais
+        last_card = ROOM["revealed"][-1] if ROOM["revealed"] else None
+        seq = ROOM["seq"]
+    card = SC.get_card(last_card) if last_card else None
+    ai_cfg = getattr(SC, "INVEST_AI", {})
+
+    def score(rid: str) -> tuple[float, int]:
+        s = 0.0
+        cfg = ai_cfg.get(rid) or {}
+        if card:
+            if card.get("loc") in (cfg.get("home") or []):
+                s += 3.0                                   # 방금 열린 곳이 자기 구역이면 할 말이 있다
+            s += float((cfg.get("interest") or {}).get(card["id"], 0) or 0)
+        with LOCK:
+            spoke = sum(1 for t in ROOM["table"] if t.get("roleId") == rid)
+        s -= spoke * 0.8                                   # 적게 말한 사람에게 자리를 준다
+        return (s, -zlib.crc32(f"{rid}:{seq}".encode()) % 997)   # 동점은 결정적으로 가른다
+
+    return max(fresh, key=score)
+
+
+@app.post("/api/ai-react")
+def ai_react(b: TurnReq):
+    """AI 배역 중 하나를 골라 한마디 시킨다 — 진행 세션의 '누구 시킬까' 부담을 덜어준다."""
+    rid = b.roleId or _pick_reactor()
+    if not rid:
+        return JSONResponse({"error": "AI 배역이 없습니다"}, status_code=409)
+    res = ai_say(RoleOnly(roleId=rid))
+    if isinstance(res, JSONResponse):
+        return res
+    with LOCK:
+        line = next((t for t in reversed(ROOM["table"]) if t.get("roleId") == rid), {})
+    return {"ok": True, "roleId": rid, "speaker": line.get("speaker", ""), "text": line.get("text", "")}
 
 
 def _grade(c: dict, answers: list[str]) -> dict:
