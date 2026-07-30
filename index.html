@@ -361,12 +361,17 @@
   .frag.newfrag{animation:fragSurface .7s ease both,fragPing 1.8s ease .5s 2}
 
   /* ── 오프닝 비주얼노벨 ──────────────────────────────────────────
-     배경(있으면 이미지, 없으면 그라데이션) 위에 내레이션을 한 컷씩.
-     탭할 때마다 다음 컷. 이미지가 하나도 없어도 그대로 성립한다. */
-  #vn{position:fixed;inset:0;z-index:90;display:none;background:#050407;overflow:hidden}
-  #vn.on{display:block}
+     GM 화면에 띄우는 연출이라 무대는 16:9로 고정하고 레터박스로 가운데 둔다.
+     무대 안의 치수는 전부 cqw(무대 폭 기준)라, 화면이 크든 작든 비율이 같다.
+     배경·인물 이미지가 하나도 없어도 그라데이션 폴백으로 그대로 성립한다. */
+  #vn{position:fixed;inset:0;z-index:90;display:none;background:#000;
+    place-items:center;overflow:hidden}
+  #vn.on{display:grid}
+  #vn .vn-stage{position:relative;overflow:hidden;background:#050407;
+    width:min(100vw,calc(100vh * 16 / 9));height:min(100vh,calc(100vw * 9 / 16));
+    container-type:inline-size}
   #vn .vn-bg{position:absolute;inset:0;background-size:cover;background-position:center;
-    transition:opacity .55s ease, transform 6s linear;opacity:0;transform:scale(1.06)}
+    transition:opacity .55s ease, transform 7s linear;opacity:0;transform:scale(1.07)}
   #vn .vn-bg.show{opacity:1;transform:scale(1)}
   /* 이미지가 없을 때의 폴백 — 컷 분위기를 색으로만 낸다 */
   #vn .vn-bg.calm{background-image:radial-gradient(120% 90% at 50% 35%,#1b2733,#0a0f16 60%,#05070a)}
@@ -374,26 +379,106 @@
   #vn .vn-bg.body{background-image:radial-gradient(110% 80% at 50% 60%,#24080b,#0d0508 60%,#040305)}
   #vn .vn-bg.scene{background-image:radial-gradient(120% 90% at 45% 40%,#231017,#0f0810 62%,#05070a)}
   #vn .vn-vig{position:absolute;inset:0;pointer-events:none;
-    box-shadow:inset 0 0 180px 60px rgba(0,0,0,.85);
-    background:linear-gradient(0deg,rgba(4,3,6,.94) 0%,rgba(4,3,6,.55) 30%,transparent 58%)}
-  #vn .vn-txt{position:absolute;left:0;right:0;bottom:0;padding:22px 22px calc(22px + env(safe-area-inset-bottom));
-    max-width:820px;margin:0 auto}
+    box-shadow:inset 0 0 14cqw 5cqw rgba(0,0,0,.85);
+    background:linear-gradient(0deg,rgba(4,3,6,.95) 0%,rgba(4,3,6,.6) 26%,transparent 52%)}
+
+  /* 인물 컷 — 인물 이미지는 배경이 딸린 완성 일러스트라 누끼 스프라이트처럼 쓸 수 없다.
+     그래서 극화 만화의 인물 컷처럼 테두리를 준 패널로 세우고, 아랫단은 텍스트박스 뒤로 물린다.
+     말하는 동안은 뒷배경을 눌러 인물이 앞으로 나오게 한다. */
+  #vn .vn-sprite{position:absolute;right:5cqw;bottom:20cqw;height:52%;width:auto;
+    object-fit:cover;border-radius:.5cqw;
+    border:.12cqw solid color-mix(in srgb,var(--spk,#c9c2b4) 55%,transparent);
+    box-shadow:0 1cqw 4.5cqw rgba(0,0,0,.75), 0 0 0 .5cqw rgba(4,3,6,.55);
+    opacity:0;transform:translate(1.6cqw,1.2cqw) scale(.985);
+    transition:opacity .42s ease, transform .42s cubic-bezier(.2,.7,.3,1)}
+  #vn .vn-sprite.show{opacity:1;transform:none}
+  /* 이미지가 없는 배역은 이모지로 대신한다 */
+  #vn .vn-emo{position:absolute;right:11cqw;bottom:24cqw;font-size:14cqw;line-height:1;
+    opacity:0;transform:translateY(1.2cqw);transition:opacity .42s ease,transform .42s ease;
+    filter:drop-shadow(0 0 2cqw rgba(0,0,0,.9)) saturate(.7)}
+  #vn .vn-emo.show{opacity:.9;transform:none}
+  #vn .vn-bg{filter:none;transition:opacity .55s ease,transform 7s linear,filter .5s ease}
+  #vn.speak .vn-bg{filter:brightness(.5) saturate(.75)}
+
+  /* 텍스트박스 */
+  #vn .vn-box{position:absolute;left:0;right:0;bottom:0;padding:0 6cqw 5cqw;
+    display:flex;flex-direction:column;align-items:flex-start}
+  #vn .vn-name{display:none;align-self:flex-start;margin:0 0 -.35cqw 1.2cqw;
+    padding:.75cqw 2.2cqw;border-radius:.6cqw .6cqw 0 0;
+    font-size:1.85cqw;letter-spacing:.06em;font-weight:700;color:#0a0810;
+    background:var(--spk,#c9c2b4);box-shadow:0 -.2cqw 1.2cqw rgba(0,0,0,.5)}
+  #vn.speak .vn-name{display:block}
+  #vn .vn-panel{width:100%;min-height:15cqw;padding:2.6cqw 3cqw;
+    background:linear-gradient(180deg,rgba(9,8,13,.82),rgba(6,5,9,.93));
+    border:1px solid rgba(255,255,255,.13);border-radius:.9cqw;
+    backdrop-filter:blur(6px);box-shadow:0 .6cqw 4cqw rgba(0,0,0,.6)}
+  #vn.speak .vn-panel{border-left:.35cqw solid var(--spk,#c9c2b4)}
   #vn .vn-line{font-family:"Nanum Myeongjo","AppleMyungjo",serif;color:#f2ecdf;
-    font-size:clamp(16px,4.4vw,23px);line-height:1.85;text-shadow:0 3px 18px rgba(0,0,0,.95);
-    word-break:keep-all;opacity:0;animation:vnIn .6s ease forwards}
-  #vn .vn-line+.vn-line{margin-top:9px}
-  @keyframes vnIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
-  #vn .vn-bar{display:flex;align-items:center;gap:10px;margin-top:20px}
-  #vn .vn-dots{display:flex;gap:5px;flex:1}
-  #vn .vn-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.22)}
-  #vn .vn-dot.on{background:var(--ember-b);width:18px;border-radius:3px}
-  #vn .vn-hint{font-size:11.5px;color:rgba(255,255,255,.5);letter-spacing:.04em}
-  #vn .vn-skip{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;z-index:3;
-    background:rgba(6,4,8,.62);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.72);
-    border-radius:999px;padding:6px 14px;font-size:12px;font-family:inherit;cursor:pointer;backdrop-filter:blur(5px)}
-  #vn .vn-skip:hover{color:#fff;border-color:var(--ember-b)}
+    font-size:2.5cqw;line-height:1.72;text-shadow:0 .2cqw 1.2cqw rgba(0,0,0,.95);
+    word-break:keep-all;min-height:1.72em}
+  #vn .vn-line+.vn-line{margin-top:.7cqw}
+  #vn.speak .vn-line{color:#fff}
+  /* 아직 타자 중인 줄에만 커서가 붙는다 */
+  #vn .vn-line.typing::after{content:"";display:inline-block;width:.12em;height:1em;
+    margin-left:.1em;vertical-align:-.12em;background:var(--spk,#c9c2b4);
+    animation:vnCaret .8s steps(1) infinite}
+  @keyframes vnCaret{50%{opacity:0}}
+
+  #vn .vn-bar{display:flex;align-items:center;gap:1.4cqw;margin-top:1.8cqw;width:100%}
+  #vn .vn-dots{display:flex;gap:.55cqw;flex:1;flex-wrap:wrap}
+  #vn .vn-dot{width:.62cqw;height:.62cqw;border-radius:50%;background:rgba(255,255,255,.22)}
+  #vn .vn-dot.on{background:var(--ember-b);width:2cqw;border-radius:.31cqw}
+  #vn .vn-hint{font-size:1.4cqw;color:rgba(255,255,255,.5);letter-spacing:.04em;white-space:nowrap}
+  #vn .vn-tools{position:absolute;top:2.2cqw;right:2.2cqw;z-index:4;display:flex;gap:1cqw}
+  #vn .vn-tool{background:rgba(6,4,8,.62);border:1px solid rgba(255,255,255,.18);
+    color:rgba(255,255,255,.72);border-radius:999px;padding:.8cqw 1.9cqw;
+    font-size:1.5cqw;font-family:inherit;cursor:pointer;backdrop-filter:blur(5px);line-height:1.3}
+  #vn .vn-tool:hover{color:#fff;border-color:var(--ember-b)}
+
+  /* 극 진행 연출 — 컷의 fx 값이 무대에 클래스로 붙는다 */
+  #vn .vn-flash{position:absolute;inset:0;pointer-events:none;opacity:0}
+  #vn .vn-stage.fx-alarm .vn-flash{background:radial-gradient(120% 90% at 50% 40%,rgba(224,60,42,.55),transparent 70%);
+    animation:vnAlarm 1.15s ease-out 3}
+  #vn .vn-stage.fx-thud  .vn-flash{background:#000;animation:vnBlack .5s ease-out 1}
+  #vn .vn-stage.fx-static .vn-flash{background:repeating-linear-gradient(0deg,rgba(255,255,255,.09) 0 1px,transparent 1px 3px);
+    animation:vnStatic .5s steps(3) 3}
+  #vn .vn-stage.fx-water .vn-flash{background:linear-gradient(0deg,rgba(46,90,172,.5),transparent 55%);
+    animation:vnRise 1.9s ease-out 1}
+  @keyframes vnAlarm{0%,100%{opacity:0}45%{opacity:1}}
+  @keyframes vnBlack{0%{opacity:1}100%{opacity:0}}
+  @keyframes vnStatic{0%,100%{opacity:0}50%{opacity:.85}}
+  @keyframes vnRise{0%{opacity:0;transform:translateY(30%)}60%{opacity:1}100%{opacity:.35;transform:none}}
+  #vn .vn-stage.fx-alarm,#vn .vn-stage.fx-thud{animation:vnShake .5s cubic-bezier(.36,.07,.19,.97) 1}
+  #vn .vn-stage.fx-rumble{animation:vnRumble 2.4s ease-in-out 1}
+  @keyframes vnShake{10%,90%{transform:translateX(-.35cqw)}30%,70%{transform:translateX(.6cqw)}
+    50%{transform:translateX(-.6cqw)}100%{transform:none}}
+  @keyframes vnRumble{0%,100%{transform:none}
+    20%{transform:translate(.18cqw,-.12cqw)}40%{transform:translate(-.16cqw,.14cqw)}
+    60%{transform:translate(.14cqw,.1cqw)}80%{transform:translate(-.1cqw,-.08cqw)}}
+
+  /* 세로로 든 폰 — GM 화면이 아닌 경우다. 16:9로 가두면 글자가 10px 밑으로 떨어지므로
+     레터박스를 풀고 화면을 채운 뒤 치수만 키운다. */
+  @media(max-width:700px) and (orientation:portrait){
+    #vn .vn-stage{width:100vw;height:100dvh}
+    #vn .vn-line{font-size:5.2cqw}
+    #vn .vn-line+.vn-line{margin-top:1.6cqw}
+    #vn .vn-name{font-size:3.9cqw;margin-left:2.5cqw;padding:1.5cqw 4cqw;border-radius:1.4cqw 1.4cqw 0 0}
+    #vn .vn-hint{font-size:3.1cqw}
+    #vn .vn-tool{font-size:3.4cqw;padding:1.6cqw 3.8cqw;border-radius:999px}
+    #vn .vn-tools{top:4cqw;right:4cqw;gap:2cqw}
+    #vn .vn-box{padding:0 5cqw 7cqw}
+    #vn .vn-panel{min-height:30cqw;padding:5cqw;border-radius:2cqw}
+    #vn .vn-bar{margin-top:4cqw;gap:3cqw}
+    #vn .vn-dot{width:1.4cqw;height:1.4cqw}
+    #vn .vn-dot.on{width:4.2cqw;border-radius:.7cqw}
+    #vn .vn-sprite{height:38%;bottom:36cqw;right:6cqw;border-radius:1.4cqw}
+    #vn .vn-emo{font-size:22cqw;bottom:42cqw;right:12cqw}
+    #vn .vn-vig{box-shadow:inset 0 0 28cqw 10cqw rgba(0,0,0,.85)}
+  }
   @media(prefers-reduced-motion:reduce){
-    #vn .vn-bg{transition:opacity .01ms}#vn .vn-line{animation-duration:.01ms}
+    #vn .vn-bg,#vn .vn-sprite,#vn .vn-emo{transition-duration:.01ms}
+    #vn .vn-stage,#vn .vn-flash{animation:none!important}
+    #vn .vn-line.typing::after{animation:none}
   }
 
   /* 페이즈 전환 시네마틱 오버레이 */
@@ -504,12 +589,23 @@
 <div class="modal" id="handModal"><div class="box" id="handBox"></div></div>
 <div class="modal" id="trimModal"><div class="box" id="trimBox"></div></div>
 <div class="modal" id="interrogModal"><div class="box" id="interrogBox"></div></div>
-<div id="vn" onclick="vnNext()">
-  <div class="vn-bg" id="vnBg"></div>
-  <div class="vn-vig"></div>
-  <button class="vn-skip" onclick="event.stopPropagation();vnClose()">건너뛰기 ✕</button>
-  <div class="vn-txt"><div id="vnLines"></div>
-    <div class="vn-bar"><div class="vn-dots" id="vnDots"></div><span class="vn-hint" id="vnHint">화면을 탭하면 다음</span></div>
+<div id="vn" onclick="vnAdvance()">
+  <div class="vn-stage" id="vnStage">
+    <div class="vn-bg" id="vnBg"></div>
+    <div class="vn-flash"></div>
+    <img class="vn-sprite" id="vnSprite" alt="">
+    <div class="vn-emo" id="vnEmo"></div>
+    <div class="vn-vig"></div>
+    <div class="vn-tools">
+      <button class="vn-tool" id="vnMute" onclick="event.stopPropagation();vnToggleMute()">🔊 소리</button>
+      <button class="vn-tool" onclick="event.stopPropagation();vnClose()">건너뛰기 ✕</button>
+    </div>
+    <div class="vn-box">
+      <div class="vn-name" id="vnName"></div>
+      <div class="vn-panel"><div id="vnLines"></div>
+        <div class="vn-bar"><div class="vn-dots" id="vnDots"></div><span class="vn-hint" id="vnHint">화면을 탭하면 다음</span></div>
+      </div>
+    </div>
   </div>
 </div>
 <div id="phaseFx"><div class="fx-in"><div class="fx-kick" id="fxKick"></div><div class="fx-name serif" id="fxName"></div><div class="fx-line" id="fxLine"></div></div></div>
@@ -655,25 +751,106 @@ function findAsset(base, cb){
 }
 /* ── 오프닝 비주얼노벨 ─────────────────────────────────────────────
    시나리오가 openingCuts를 주면 그걸 쓰고, 없으면 intro를 두 줄씩 잘라 컷으로 만든다.
-   배경은 /assets/{시나리오}_opening_{img}.{webp|png} — 없으면 CSS 그라데이션이 남는다. */
-let vnCuts=[], vnAt=0;
+   컷: {img, who, fx, lines} — who가 있으면 그 배역이 말하는 컷이 된다.
+   배경 /assets/{시나리오}_opening_{img}.{webp|png}
+   인물 /assets/{시나리오}_portrait_{배역}.{webp|png}
+   둘 다 없어도 그라데이션과 이모지로 그대로 성립한다. */
+
+/* 효과음은 전부 WebAudio로 즉석 합성한다 — 음원 파일을 얹지 않아 저장소가 가볍고
+   오프라인에서도 동일하게 울린다. */
+let vnAC=null, vnMuted=false;
+try{ vnMuted=localStorage.getItem("pmb.vn.mute")==="1"; }catch(e){}
+function vnAudio(){
+  if(vnMuted) return null;
+  try{
+    if(!vnAC) vnAC=new (window.AudioContext||window.webkitAudioContext)();
+    if(vnAC.state==="suspended") vnAC.resume();
+    return vnAC.state==="running" ? vnAC : null;
+  }catch(e){ return null; }
+}
+function vnTone(freq,dur,type,gain,slideTo){
+  const ac=vnAudio(); if(!ac) return;
+  const t=ac.currentTime, o=ac.createOscillator(), g=ac.createGain();
+  o.type=type||"sine"; o.frequency.setValueAtTime(freq,t);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20,slideTo),t+dur);
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.linearRampToValueAtTime(gain==null?.14:gain,t+.012);
+  g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+dur+.05);
+}
+function vnNoise(dur,cutFrom,cutTo,gain){
+  const ac=vnAudio(); if(!ac) return;
+  const n=Math.max(1,Math.floor(ac.sampleRate*dur));
+  const buf=ac.createBuffer(1,n,ac.sampleRate), d=buf.getChannelData(0);
+  let last=0;                                   // 브라운 노이즈 — 화이트보다 물·굉음에 가깝다
+  for(let i=0;i<n;i++){ const w=Math.random()*2-1; last=(last+.02*w)/1.02; d[i]=last*3.2; }
+  const t=ac.currentTime, s=ac.createBufferSource(); s.buffer=buf;
+  const f=ac.createBiquadFilter(); f.type="lowpass";
+  f.frequency.setValueAtTime(cutFrom,t);
+  f.frequency.exponentialRampToValueAtTime(Math.max(40,cutTo),t+dur);
+  const g=ac.createGain();
+  g.gain.setValueAtTime(gain==null?.3:gain,t);
+  g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  s.connect(f); f.connect(g); g.connect(ac.destination); s.start(t); s.stop(t+dur);
+}
+const VN_SFX={
+  sonar (){ vnTone(1250,1.6,"sine",.10); setTimeout(()=>vnTone(1250,1.9,"sine",.055),340); },
+  hush  (){ vnTone(320,.9,"sine",.05); },
+  alarm (){ let i=0; (function beat(){ if(i++>=3||vnMuted) return;
+              vnTone(880,.19,"square",.09); setTimeout(()=>vnTone(660,.24,"square",.09),200);
+              setTimeout(beat,580); })(); },
+  thud  (){ vnTone(140,.75,"sine",.30,38); vnNoise(.5,900,90,.22); },
+  static(){ vnNoise(.75,5200,1400,.16); setTimeout(()=>vnNoise(.4,4000,900,.11),380); },
+  water (){ vnNoise(2.0,260,1500,.24); },
+  rumble(){ vnTone(58,2.6,"sine",.24,34); vnNoise(2.4,320,70,.18); }
+};
+/* 배역마다 기본 음높이를 달리 줘서, 말풍선 소리만으로도 누가 말하는지 감이 오게 한다 */
+const VN_VOICE={munjaei:520,kangyunseo:645,oserin:470,jinharam:300,yutaeo:585,handokyung:262};
+function vnBlip(who){
+  const base=VN_VOICE[who]||395;
+  vnTone(base*(.94+Math.random()*.12),.045,who?"triangle":"sine",who?.055:.032);
+}
+function vnToggleMute(){
+  vnMuted=!vnMuted;
+  try{ localStorage.setItem("pmb.vn.mute",vnMuted?"1":"0"); }catch(e){}
+  $("vnMute").textContent=vnMuted?"🔇 소리":"🔊 소리";
+}
+/* 브라우저는 사용자 조작 없이 소리를 못 낸다. VN이 열리면 첫 탭에서 한 번만 깨운다. */
+function vnArmAudio(){
+  let armed=true;
+  const go=()=>{
+    if(!armed) return;
+    const at=vnAt;
+    if(!vnAudio()) return;
+    armed=false; document.removeEventListener("pointerdown",go,true);
+    // 같은 탭이 컷을 넘겼다면 그 컷의 효과음이 알아서 울리므로 겹쳐 울리지 않는다
+    setTimeout(()=>{ const c=vnCuts[at];
+      if(vnAt===at && c && c.fx && VN_SFX[c.fx]) VN_SFX[c.fx](); },0);
+  };
+  document.addEventListener("pointerdown",go,true);
+}
+
+let vnCuts=[], vnAt=0, vnTimer=null, vnTyping=false;
 function vnBuildCuts(){
   const cuts=(SCEN&&SCEN.openingCuts)||[];
-  if(cuts.length) return cuts.map(c=>({img:c.img||"",lines:c.lines||[]}));
+  if(cuts.length) return cuts.map(c=>({img:c.img||"",who:c.who||"",fx:c.fx||"",lines:c.lines||[]}));
   const ls=String((SCEN&&SCEN.intro)||"").split("\n").map(s=>s.trim()).filter(Boolean);
-  const out=[]; for(let i=0;i<ls.length;i+=2) out.push({img:"",lines:ls.slice(i,i+2)});
+  const out=[]; for(let i=0;i<ls.length;i+=2) out.push({img:"",who:"",fx:"",lines:ls.slice(i,i+2)});
   return out;
 }
 function vnSeenKey(){ return "pmb.vn."+((STATE&&STATE.scenarioId)||"?"); }
 function openVN(force){
   vnCuts=vnBuildCuts(); if(!vnCuts.length) return;
   if(!force&&localStorage.getItem(vnSeenKey())) return;
-  vnAt=0; $("vn").classList.add("on"); vnRender();
+  vnAt=0;
+  $("vnMute").textContent=vnMuted?"🔇 소리":"🔊 소리";
+  $("vn").classList.add("on"); vnArmAudio(); vnRender();
 }
 function vnRender(){
   const cut=vnCuts[vnAt]; if(!cut) return;
   const sid=(STATE&&STATE.scenarioId)||"";
-  const bg=$("vnBg");
+  const stage=$("vnStage"), bg=$("vnBg"), sp=$("vnSprite"), emo=$("vnEmo");
+
   bg.className="vn-bg "+(cut.img||"");
   bg.style.backgroundImage="";
   bg.classList.remove("show"); void bg.offsetWidth; bg.classList.add("show");
@@ -683,13 +860,76 @@ function vnRender(){
       if(url && vnCuts[vnAt]===cut) bg.style.backgroundImage=`url("${url}")`;
     });
   }
-  $("vnLines").innerHTML=cut.lines.map((l,i)=>
-    `<div class="vn-line" style="animation-delay:${(i*0.5).toFixed(2)}s">${esc(l)}</div>`).join("");
+
+  // 화자 — 스프라이트·이름표·강조색
+  const ch=cut.who ? (SCEN.characters||[]).find(c=>c.id===cut.who) : null;
+  const root=$("vn");
+  root.classList.toggle("speak",!!ch);
+  sp.classList.remove("show"); emo.classList.remove("show");
+  if(ch){
+    $("vnName").textContent=ch.name+(ch.job?" · "+ch.job:"");
+    root.style.setProperty("--spk",ch.color||"#c9c2b4");
+    emo.textContent=ch.avatar||"";
+    if(sid){
+      findAsset(`/assets/${sid}_portrait_${ch.id}`, url=>{
+        if(vnCuts[vnAt]!==cut) return;
+        if(url){ sp.src=url; sp.classList.add("show"); }
+        else { emo.classList.add("show"); }
+      });
+    } else { emo.classList.add("show"); }
+  } else {
+    root.style.removeProperty("--spk");
+  }
+
+  // 연출 큐 — 클래스를 지웠다 다시 붙여야 애니메이션이 처음부터 다시 돈다
+  stage.className="vn-stage"; void stage.offsetWidth;
+  if(cut.fx){
+    stage.classList.add("fx-"+cut.fx);
+    const play=VN_SFX[cut.fx]; if(play) play();
+  }
+
   $("vnDots").innerHTML=vnCuts.map((_,i)=>`<span class="vn-dot${i===vnAt?" on":""}"></span>`).join("");
-  $("vnHint").textContent=(vnAt>=vnCuts.length-1)?"탭하면 시작합니다":"화면을 탭하면 다음";
+  vnType(cut.lines||[], cut.who||"");
 }
-function vnNext(){ if(vnAt>=vnCuts.length-1){ vnClose(); return; } vnAt++; vnRender(); }
-function vnClose(){ $("vn").classList.remove("on"); try{ localStorage.setItem(vnSeenKey(),"1"); }catch(e){} }
+/* 한 글자씩 찍는다. 문장부호에서 한 박자 쉬어야 대사로 읽힌다. */
+function vnType(lines,who){
+  const host=$("vnLines");
+  host.innerHTML=lines.map(()=>'<div class="vn-line"></div>').join("");
+  const els=Array.prototype.slice.call(host.children);
+  let li=0, ci=0;
+  vnTyping=true; vnHintText();
+  const step=()=>{
+    if(li>=lines.length){ vnTyping=false; vnHintText(); return; }
+    const txt=lines[li], el=els[li];
+    if(ci===0) el.classList.add("typing");
+    if(ci>=txt.length){ el.classList.remove("typing"); li++; ci=0; vnTimer=setTimeout(step,360); return; }
+    const ch=txt.charAt(ci); ci++;
+    el.textContent=txt.slice(0,ci);
+    if(ci%2===0) vnBlip(who);
+    vnTimer=setTimeout(step, ".…—?!,".indexOf(ch)>=0 ? 165 : 34);
+  };
+  clearTimeout(vnTimer); step();
+}
+function vnHintText(){
+  $("vnHint").textContent = vnTyping ? "탭하면 전체 표시"
+    : (vnAt>=vnCuts.length-1 ? "탭하면 시작합니다" : "화면을 탭하면 다음");
+}
+/* 탭 한 번은 "지금 찍는 글자 전부 표시", 그다음 탭이 다음 컷 */
+function vnAdvance(){
+  if(vnTyping){
+    clearTimeout(vnTimer); vnTyping=false;
+    const cut=vnCuts[vnAt]||{};
+    $("vnLines").innerHTML=(cut.lines||[]).map(l=>`<div class="vn-line">${esc(l)}</div>`).join("");
+    vnHintText(); return;
+  }
+  if(vnAt>=vnCuts.length-1){ vnClose(); return; }
+  vnAt++; vnRender();
+}
+function vnClose(){
+  clearTimeout(vnTimer); vnTyping=false;
+  $("vn").classList.remove("on");
+  try{ localStorage.setItem(vnSeenKey(),"1"); }catch(e){}
+}
 function replayVN(){ openVN(true); }
 
 function portraitHTML(c){
