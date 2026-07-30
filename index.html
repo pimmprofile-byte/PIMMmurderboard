@@ -641,9 +641,21 @@ async function aiAll(){ const ais=SCEN.characters.filter(c=>STATE.roles[c.id].mo
 async function aiFinal(id){ banner("AI 최종답변 채점 중…"); const r=await post("/api/ai-final",{roleId:id}); if(r&&r.error)banner("AI 채점 오류: "+r.error); else banner(""); await poll(); }
 
 /* 로비 — 2열 포스터 그리드. 카드 자체가 버튼이고, 부가 동작은 아래 액션바로 뺀다. */
+/* 에셋은 webp를 먼저, 없으면 png를 찾는다 — 어느 포맷으로 넣어도 동작하게. */
+const ASSET_EXT=["webp","png"];
+function findAsset(base, cb){
+  let i=0;
+  const tryNext=()=>{
+    if(i>=ASSET_EXT.length){ cb(null); return; }
+    const url=`${base}.${ASSET_EXT[i++]}`;
+    const im=new Image();
+    im.onload=()=>cb(url); im.onerror=tryNext; im.src=url;
+  };
+  tryNext();
+}
 /* ── 오프닝 비주얼노벨 ─────────────────────────────────────────────
    시나리오가 openingCuts를 주면 그걸 쓰고, 없으면 intro를 두 줄씩 잘라 컷으로 만든다.
-   배경 이미지는 /assets/{시나리오}_opening_{img}.png — 없으면 CSS 그라데이션이 남는다. */
+   배경은 /assets/{시나리오}_opening_{img}.{webp|png} — 없으면 CSS 그라데이션이 남는다. */
 let vnCuts=[], vnAt=0;
 function vnBuildCuts(){
   const cuts=(SCEN&&SCEN.openingCuts)||[];
@@ -667,10 +679,9 @@ function vnRender(){
   bg.classList.remove("show"); void bg.offsetWidth; bg.classList.add("show");
   if(sid&&cut.img){
     // 이미지가 실제로 있을 때만 덧입힌다(없으면 위의 그라데이션이 그대로 남는다)
-    const url=`/assets/${sid}_opening_${cut.img}.png`;
-    const probe=new Image();
-    probe.onload=()=>{ if(vnCuts[vnAt]===cut) bg.style.backgroundImage=`url("${url}")`; };
-    probe.src=url;
+    findAsset(`/assets/${sid}_opening_${cut.img}`, url=>{
+      if(url && vnCuts[vnAt]===cut) bg.style.backgroundImage=`url("${url}")`;
+    });
   }
   $("vnLines").innerHTML=cut.lines.map((l,i)=>
     `<div class="vn-line" style="animation-delay:${(i*0.5).toFixed(2)}s">${esc(l)}</div>`).join("");
@@ -682,10 +693,13 @@ function vnClose(){ $("vn").classList.remove("on"); try{ localStorage.setItem(vn
 function replayVN(){ openVN(true); }
 
 function portraitHTML(c){
-  // 규약: /assets/{시나리오}_portrait_{배역}.png — 파일이 없으면 스스로 지워져 이모지가 드러난다
+  // 규약: /assets/{시나리오}_portrait_{배역}.{webp|png}
+  // webp가 없으면 png로, 그것도 없으면 스스로 지워져 이모지가 드러난다.
   const sid=(STATE&&STATE.scenarioId)||"";
-  const src=sid?`/assets/${sid}_portrait_${c.id}.png`:"";
-  return `<span class="emo">${c.avatar}</span>`+(src?`<img src="${src}" alt="" loading="lazy" onerror="this.remove()">`:"");
+  const src=sid?`/assets/${sid}_portrait_${c.id}.webp`:"";
+  const png=sid?`/assets/${sid}_portrait_${c.id}.png`:"";
+  return `<span class="emo">${c.avatar}</span>`+(src?`<img src="${src}" alt="" loading="lazy"
+    onerror="if(this.dataset.f){this.remove()}else{this.dataset.f=1;this.src='${png}'}">`:"");
 }
 function renderLobby(){
   const locked=!!(STATE&&STATE.started);   // 시작 후에는 배역을 바꿀 수 없다
