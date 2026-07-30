@@ -228,6 +228,21 @@
   .bc-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
   .bc-hidden{margin-top:14px;background:#2a1412;border:1px solid #6a2a26;border-radius:10px;padding:10px 13px;color:#f0b8b0;font-size:13.5px;font-weight:600}
   .bc-goal{display:flex;gap:10px;font-size:15px;padding:9px 0;border-bottom:1px solid var(--line)}.bc-goal:last-child{border-bottom:0}.bc-goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"Nanum Myeongjo",serif}
+  /* 내 정보(배역 시트)는 한 번에 읽을 분량이 많다 — 팝업을 넓히고 본문을 키운다.
+     본문 줄길이는 measure로 잡아, 넓어져도 한 줄이 지나치게 길어지지 않게 한다. */
+  #sheetModal .box{max-width:760px;padding:26px 26px 22px}
+  #sheetModal h2{font-size:22px}
+  #sheetModal .mlead{font-size:13.5px;margin-bottom:16px}
+  #sheetModal .bigcard{min-height:300px;padding:24px 26px 26px}
+  #sheetModal .bc-eyebrow{font-size:11.5px;margin-bottom:11px}
+  #sheetModal .bc-title{font-size:24px;line-height:1.3}
+  #sheetModal .bc-sub{font-size:14.5px;margin-top:5px}
+  #sheetModal .bc-body{font-size:17px;line-height:1.92;margin-top:17px;max-width:60ch}
+  #sheetModal .bc-av{font-size:38px;width:66px;height:66px;flex:0 0 66px;border-radius:16px}
+  #sheetModal .bc-hidden{font-size:14.5px;padding:12px 15px;margin-top:16px}
+  #sheetModal .bc-goal{font-size:16.5px;padding:12px 0;line-height:1.6}
+  #sheetModal .frag{font-size:14.5px;line-height:1.75;padding:11px 14px}
+  #sheetModal .sw-count{font-size:12.5px}
   /* ── 조사 턴 (차례 표시·키컬러) ── */
   .turnbar{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin-bottom:12px}
   .turnbar .tb-h{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px}
