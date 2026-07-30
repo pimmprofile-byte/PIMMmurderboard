@@ -40,16 +40,16 @@
     .zone.is-locked .zone-fill{opacity:.34}
     .zone.is-alert  .zone-fill{fill:#2b1a1c;stroke:#c8442f}
     .zone-name{font-size:29px;font-weight:700;fill:#dcecf6;letter-spacing:.03em}
-    .ztag{font-size:17px;font-weight:700;fill:#c9a24a;letter-spacing:.08em}
-    .zone-note{font-size:18px;fill:#8fb6cd}
+    .ztag{font-size:19px;font-weight:700;fill:#c9a24a;letter-spacing:.08em}
+    .zone-note{font-size:21px;fill:#93bad1}
     .det{fill:none;stroke:#7fb4d6;stroke-width:1.2;opacity:.55}
     .det-f{fill:#7fb4d6;opacity:.13}
     .gold{fill:none;stroke:#c9a24a;stroke-width:2}
     .goldf{fill:#c9a24a}
-    .cap{font-size:17px;fill:#84a9c0}
-    .cap-g{font-size:17px;fill:#c9a24a}
-    .ttl{font-size:21px;font-weight:700;fill:#a8cde4;letter-spacing:.14em}
-    .sub{font-size:16px;fill:#6f8ea4;letter-spacing:.06em}
+    .cap{font-size:19px;fill:#8ab0c7}
+    .cap-g{font-size:19px;fill:#c9a24a}
+    .ttl{font-size:22px;font-weight:700;fill:#a8cde4;letter-spacing:.12em}
+    .sub{font-size:17px;fill:#7896ac;letter-spacing:.05em}
     .hull{fill:none;stroke:#7fb4d6;stroke-width:2.4}
     .hull-in{fill:none;stroke:#5c8fae;stroke-width:1.2;opacity:.75}
     #floodwater{transition:y .9s linear,height .9s linear}
@@ -63,7 +63,7 @@
 
   <!-- 표제 -->
   <text class="ttl" x="24" y="32">테티스호 · 구획 배치도</text>
-  <text class="sub" x="24" y="56">심해 조사정 · 수심 400 m · 좌현 단면</text>
+  <text class="sub" x="24" y="56">심해 조사정 · 수심 400 m</text>
 
   <!-- 선체 외곽 + 벽체 해치 -->
   <path fill="url(#hatch)" fill-rule="evenodd" stroke="none"
@@ -110,7 +110,7 @@
       </g>
       <path class="gold" d="M144 116 158 130M158 116 144 130"/>
       <text class="zone-name" x="176" y="152" text-anchor="middle"><tspan class="ztag">A</tspan><tspan dx="9">함교</tspan></text>
-      <text class="zone-note" x="176" y="176" text-anchor="middle">조타석 · 계기반</text>
+      <text class="zone-note" x="178" y="177" text-anchor="middle">조타석·계기반</text>
     </g>
 
     <g id="zone-F" class="zone" data-loc="F">
@@ -134,8 +134,8 @@
       <title>E 통신실</title>
       <path class="zone-fill" d="M468 104H586L626 140 644 188H468Z"/>
       <g class="det">
-        <path d="M492 148v-20h26v20zM505 128v-14"/>
-        <path d="M496 110a14 14 0 0 1 18 0M492 104a22 22 0 0 1 26 0"/>
+        <path d="M474 178v-18h24v18zM486 160v-16"/>
+        <path d="M478 144a12 12 0 0 1 16 0M474 136a20 20 0 0 1 24 0"/>
       </g>
       <text class="zone-name" x="556" y="146" text-anchor="middle"><tspan class="ztag">E</tspan><tspan dx="9">통신실</tspan></text>
       <text class="zone-note" x="556" y="172" text-anchor="middle">무선 콘솔</text>
@@ -145,15 +145,13 @@
       <title>B 기관실</title>
       <path class="zone-fill" d="M482 198H644V260L628 300 590 336H482Z"/>
       <g class="det">
-        <circle cx="600" cy="302" r="12"/>
-        <path d="M600 290v24M588 302h24M591 293l18 18M609 293l-18 18"/>
-        <path d="M600 314v14h-24"/>
-        <rect x="608" y="204" width="34" height="14" rx="2"/>
+        <circle cx="622" cy="224" r="11"/>
+        <path d="M622 213v22M611 224h22M614 216l16 16M630 216l-16 16"/>
       </g>
-      <text class="zone-name" x="546" y="236" text-anchor="middle"><tspan class="ztag">B</tspan><tspan dx="9">기관실</tspan></text>
-      <text class="zone-note" x="500" y="268">· 밸러스트 밸브</text>
-      <text class="zone-note" x="500" y="294">· 제어 콘솔</text>
-      <text class="zone-note" x="500" y="320">· 폐수조</text>
+      <text class="zone-name" x="548" y="236" text-anchor="middle"><tspan class="ztag">B</tspan><tspan dx="9">기관실</tspan></text>
+      <text class="zone-note" x="498" y="270">밸러스트 밸브</text>
+      <text class="zone-note" x="498" y="298">제어 콘솔</text>
+      <text class="zone-note" x="498" y="326">폐수조</text>
     </g>
 
     <g id="zone-C" class="zone" data-loc="C">
