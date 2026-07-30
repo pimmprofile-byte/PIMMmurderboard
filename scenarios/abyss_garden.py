@@ -446,6 +446,7 @@ def public_scenario() -> dict:
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
                         "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],
                         "look": c.get("look", c["tagline"])} for c in CHARACTERS],
+        "openingCuts": OPENING_CUTS,
         "finalQuestions": FINAL_QUESTIONS,
         "interludes": {str(k): v for k, v in INTERLUDES.items()},
     }
@@ -860,3 +861,23 @@ _LOOKS = {
 
 for _ch in CHARACTERS:
     _ch.setdefault("look", _LOOKS.get(_ch["id"], _ch["tagline"]))
+
+
+# ── 오프닝 비주얼노벨 컷 ───────────────────────────────────────────────
+# 평온 → 경보 → 발견 → 상황 → 결말. 배경이 멀쩡한 컷으로 시작해야
+# 붉은 비상등으로 넘어가는 순간이 산다.
+# img 는 /assets/submarine_opening_{img}.png 를 찾고, 없으면 그라데이션으로 폴백한다.
+OPENING_CUTS = [
+    {"img": "calm",  "lines": ["수심 400미터. 심해 조사정 테티스호.",
+                               "여섯 사람을 태운 배는, 조금 전까지 아무 일도 없었다."]},
+    {"img": "bg",    "lines": ["새벽 3시 10분.",
+                               "비상등이 켜지고, 발밑에서 쇳소리가 길게 울렸다."]},
+    {"img": "body",  "lines": ["함교에서 선장 서준혁이 죽은 채 발견됐다.",
+                               "목에는 눌린 자국. 뒤통수에는 단단한 것에 맞은 상처."]},
+    {"img": "scene", "lines": ["사망 추정 시각은 2시 10분에서 35분 사이.",
+                               "그리고 2시 45분부터, 배에 물이 들어오기 시작했다."]},
+    {"img": "scene", "lines": ["통신은 끊겼다. 구조 신호가 나가지 않는다.",
+                               "탈출 포드는 딱 세 자리. 그런데 우리는 여섯이다."]},
+    {"img": "bg",    "lines": ["포드를 쏘려면 선장의 인증코드가 필요하다. 그 코드가 든 단말기는 사라졌다.",
+                               "물은 차오르고 — 선장을 죽인 사람은, 이 안에 있다."]},
+]

@@ -360,6 +360,42 @@
   @keyframes fragPing{0%,100%{box-shadow:0 0 0 0 rgba(127,180,214,0)}40%{box-shadow:0 0 26px 2px rgba(127,180,214,.6)}}
   .frag.newfrag{animation:fragSurface .7s ease both,fragPing 1.8s ease .5s 2}
 
+  /* ── 오프닝 비주얼노벨 ──────────────────────────────────────────
+     배경(있으면 이미지, 없으면 그라데이션) 위에 내레이션을 한 컷씩.
+     탭할 때마다 다음 컷. 이미지가 하나도 없어도 그대로 성립한다. */
+  #vn{position:fixed;inset:0;z-index:90;display:none;background:#050407;overflow:hidden}
+  #vn.on{display:block}
+  #vn .vn-bg{position:absolute;inset:0;background-size:cover;background-position:center;
+    transition:opacity .55s ease, transform 6s linear;opacity:0;transform:scale(1.06)}
+  #vn .vn-bg.show{opacity:1;transform:scale(1)}
+  /* 이미지가 없을 때의 폴백 — 컷 분위기를 색으로만 낸다 */
+  #vn .vn-bg.calm{background-image:radial-gradient(120% 90% at 50% 35%,#1b2733,#0a0f16 60%,#05070a)}
+  #vn .vn-bg.bg{background-image:radial-gradient(120% 90% at 50% 40%,#2a0f10,#12060a 60%,#05070a)}
+  #vn .vn-bg.body{background-image:radial-gradient(110% 80% at 50% 60%,#24080b,#0d0508 60%,#040305)}
+  #vn .vn-bg.scene{background-image:radial-gradient(120% 90% at 45% 40%,#231017,#0f0810 62%,#05070a)}
+  #vn .vn-vig{position:absolute;inset:0;pointer-events:none;
+    box-shadow:inset 0 0 180px 60px rgba(0,0,0,.85);
+    background:linear-gradient(0deg,rgba(4,3,6,.94) 0%,rgba(4,3,6,.55) 30%,transparent 58%)}
+  #vn .vn-txt{position:absolute;left:0;right:0;bottom:0;padding:22px 22px calc(22px + env(safe-area-inset-bottom));
+    max-width:820px;margin:0 auto}
+  #vn .vn-line{font-family:"Nanum Myeongjo","AppleMyungjo",serif;color:#f2ecdf;
+    font-size:clamp(16px,4.4vw,23px);line-height:1.85;text-shadow:0 3px 18px rgba(0,0,0,.95);
+    word-break:keep-all;opacity:0;animation:vnIn .6s ease forwards}
+  #vn .vn-line+.vn-line{margin-top:9px}
+  @keyframes vnIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+  #vn .vn-bar{display:flex;align-items:center;gap:10px;margin-top:20px}
+  #vn .vn-dots{display:flex;gap:5px;flex:1}
+  #vn .vn-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.22)}
+  #vn .vn-dot.on{background:var(--ember-b);width:18px;border-radius:3px}
+  #vn .vn-hint{font-size:11.5px;color:rgba(255,255,255,.5);letter-spacing:.04em}
+  #vn .vn-skip{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;z-index:3;
+    background:rgba(6,4,8,.62);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.72);
+    border-radius:999px;padding:6px 14px;font-size:12px;font-family:inherit;cursor:pointer;backdrop-filter:blur(5px)}
+  #vn .vn-skip:hover{color:#fff;border-color:var(--ember-b)}
+  @media(prefers-reduced-motion:reduce){
+    #vn .vn-bg{transition:opacity .01ms}#vn .vn-line{animation-duration:.01ms}
+  }
+
   /* 페이즈 전환 시네마틱 오버레이 */
   #phaseFx{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;pointer-events:none;
     background:radial-gradient(120% 90% at 50% 45%,rgba(10,8,12,.86),rgba(4,3,6,.97));opacity:0}
@@ -468,6 +504,14 @@
 <div class="modal" id="handModal"><div class="box" id="handBox"></div></div>
 <div class="modal" id="trimModal"><div class="box" id="trimBox"></div></div>
 <div class="modal" id="interrogModal"><div class="box" id="interrogBox"></div></div>
+<div id="vn" onclick="vnNext()">
+  <div class="vn-bg" id="vnBg"></div>
+  <div class="vn-vig"></div>
+  <button class="vn-skip" onclick="event.stopPropagation();vnClose()">건너뛰기 ✕</button>
+  <div class="vn-txt"><div id="vnLines"></div>
+    <div class="vn-bar"><div class="vn-dots" id="vnDots"></div><span class="vn-hint" id="vnHint">화면을 탭하면 다음</span></div>
+  </div>
+</div>
 <div id="phaseFx"><div class="fx-in"><div class="fx-kick" id="fxKick"></div><div class="fx-name serif" id="fxName"></div><div class="fx-line" id="fxLine"></div></div></div>
 
 <script>
@@ -597,6 +641,46 @@ async function aiAll(){ const ais=SCEN.characters.filter(c=>STATE.roles[c.id].mo
 async function aiFinal(id){ banner("AI 최종답변 채점 중…"); const r=await post("/api/ai-final",{roleId:id}); if(r&&r.error)banner("AI 채점 오류: "+r.error); else banner(""); await poll(); }
 
 /* 로비 — 2열 포스터 그리드. 카드 자체가 버튼이고, 부가 동작은 아래 액션바로 뺀다. */
+/* ── 오프닝 비주얼노벨 ─────────────────────────────────────────────
+   시나리오가 openingCuts를 주면 그걸 쓰고, 없으면 intro를 두 줄씩 잘라 컷으로 만든다.
+   배경 이미지는 /assets/{시나리오}_opening_{img}.png — 없으면 CSS 그라데이션이 남는다. */
+let vnCuts=[], vnAt=0;
+function vnBuildCuts(){
+  const cuts=(SCEN&&SCEN.openingCuts)||[];
+  if(cuts.length) return cuts.map(c=>({img:c.img||"",lines:c.lines||[]}));
+  const ls=String((SCEN&&SCEN.intro)||"").split("\n").map(s=>s.trim()).filter(Boolean);
+  const out=[]; for(let i=0;i<ls.length;i+=2) out.push({img:"",lines:ls.slice(i,i+2)});
+  return out;
+}
+function vnSeenKey(){ return "pmb.vn."+((STATE&&STATE.scenarioId)||"?"); }
+function openVN(force){
+  vnCuts=vnBuildCuts(); if(!vnCuts.length) return;
+  if(!force&&localStorage.getItem(vnSeenKey())) return;
+  vnAt=0; $("vn").classList.add("on"); vnRender();
+}
+function vnRender(){
+  const cut=vnCuts[vnAt]; if(!cut) return;
+  const sid=(STATE&&STATE.scenarioId)||"";
+  const bg=$("vnBg");
+  bg.className="vn-bg "+(cut.img||"");
+  bg.style.backgroundImage="";
+  bg.classList.remove("show"); void bg.offsetWidth; bg.classList.add("show");
+  if(sid&&cut.img){
+    // 이미지가 실제로 있을 때만 덧입힌다(없으면 위의 그라데이션이 그대로 남는다)
+    const url=`/assets/${sid}_opening_${cut.img}.png`;
+    const probe=new Image();
+    probe.onload=()=>{ if(vnCuts[vnAt]===cut) bg.style.backgroundImage=`url("${url}")`; };
+    probe.src=url;
+  }
+  $("vnLines").innerHTML=cut.lines.map((l,i)=>
+    `<div class="vn-line" style="animation-delay:${(i*0.5).toFixed(2)}s">${esc(l)}</div>`).join("");
+  $("vnDots").innerHTML=vnCuts.map((_,i)=>`<span class="vn-dot${i===vnAt?" on":""}"></span>`).join("");
+  $("vnHint").textContent=(vnAt>=vnCuts.length-1)?"탭하면 시작합니다":"화면을 탭하면 다음";
+}
+function vnNext(){ if(vnAt>=vnCuts.length-1){ vnClose(); return; } vnAt++; vnRender(); }
+function vnClose(){ $("vn").classList.remove("on"); try{ localStorage.setItem(vnSeenKey(),"1"); }catch(e){} }
+function replayVN(){ openVN(true); }
+
 function portraitHTML(c){
   // 규약: /assets/{시나리오}_portrait_{배역}.png — 파일이 없으면 스스로 지워져 이모지가 드러난다
   const sid=(STATE&&STATE.scenarioId)||"";
@@ -781,9 +865,11 @@ function renderPanel(ph){
     const lines=String(SCEN.intro||"").split("\n").filter(x=>x.trim());
     const chunks=[]; for(let i=0;i<lines.length;i+=2) chunks.push(lines.slice(i,i+2).join("\n"));
     const introHTML=chunks.map((c,i)=>`<p class="cine-p" style="animation-delay:${(i*0.9+0.15).toFixed(2)}s">${esc(c).replace(/\n/g,"<br>")}</p>`).join("");
-    p.innerHTML=`<div class="card"><h2>사건 · 공통지문</h2><div class="cine-intro">${introHTML}</div></div>
+    p.innerHTML=`<div class="card"><div class="clue-h"><h2 style="margin:0">사건 · 공통지문</h2><button class="btn sm" onclick="replayVN()">🎬 오프닝 다시 보기</button></div><div class="cine-intro">${introHTML}</div></div>
     <div class="card"><h2>피해자</h2><div class="panel-note">${esc(SCEN.victim||"")}</div></div>
-    <div class="panel-note" style="text-align:center">각자 <b>내 정보</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`; }
+    <div class="panel-note" style="text-align:center">각자 <b>내 정보</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`;
+    // 오프닝 페이즈에 처음 들어오면 한 번 재생(이후엔 '다시 보기'로만)
+    openVN(false); }
   else if(k==="invest"){ const ap=ph.ap||0; const u=(STATE.usedAP||{})[myRoleId]||0; const left=Math.max(0,ap-u); const apPill=myRoleValid()?`<span class="pill" style="color:${left>0?'var(--good)':'var(--ember-b)'}">이번 턴 조사 ${u}/${ap}</span>`:"";
     p.innerHTML=`${handWarn()}${turnBar()}<div class="clue-h"><h3>조사 맵</h3>${apPill}<span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">${myRoleValid()?`내 차례에 <b>${ap}장</b>까지 조사할 수 있어요. 카드를 눌러 <b>조사</b>하면 <b>손패(비공개)</b>로 들어옵니다. 알아낸 것은 <b>대화로만</b> 공유하세요(감춰도 됩니다).`:`관전 중 — 배역을 맡아야 조사할 수 있어요.`}</div><div id="cmap"></div>`;
     renderMap($("cmap")); }

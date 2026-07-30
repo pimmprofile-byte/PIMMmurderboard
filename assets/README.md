@@ -28,3 +28,20 @@
 해당 배역: `submarine/handokyung`, `subway/yun`, `graduation/ose`.
 
 자세한 프롬프트는 `docs/asset-manifest.md` 참고.
+
+## 오프닝 배경 (비주얼노벨)
+
+파일명 규약:
+
+    {시나리오ID}_opening_{컷}.png
+
+| 컷 | 파일 | 내용 |
+|---|---|---|
+| `calm`  | `submarine_opening_calm.png`  | 사건 전, 정상 조명의 평온한 복도 |
+| `bg`    | `submarine_opening_bg.png`    | 붉은 비상등이 켜진 복도 |
+| `body`  | `submarine_opening_body.png`  | 선장의 시신 (절제된 연출) |
+| `scene` | `submarine_opening_scene.png` | 함교 사건 현장 |
+
+- 가로 **16:9** (권장 1920×1080), 장당 **600KB 이하**.
+- 화면 아래 40%에는 내레이션이 올라가므로 그쪽은 어둡게 비워둘 것.
+- 없는 컷은 CSS 그라데이션으로 자동 폴백된다 — 일부만 넣어도 된다.
