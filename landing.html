@@ -286,8 +286,29 @@ let admin=false;
 
 /* 실서버 연동 — 이 파일을 서버가 / 로 서빙하면 게임(/play)으로 이어진다 */
 const clientId=(()=>{ let c=localStorage.getItem("pmb.cid"); if(!c){ c="c"+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); localStorage.setItem("pmb.cid",c);} return c; })();
-async function apiSelect(id){ try{ await fetch("/api/select",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenarioId:id,clientId,key:""})}); }catch(e){} }
-function joinGame(){ location.href="/play"; }
+async function apiSelect(id){
+  try{
+    const r=await fetch("/api/select",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenarioId:id,clientId,key:""})});
+    const j=await r.json().catch(()=>({}));
+    return j&&j.error?{ok:false,error:j.error}:{ok:true};
+  }catch(e){ return {ok:false,error:"network"}; }
+}
+// 아무도 호스트를 맡고 있지 않으면 내가 맡는다(안전: 이미 다른 사람이 있으면 그대로 둔다)
+async function claimHost(){
+  try{
+    const r=await fetch("/api/host/claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({clientId})});
+    return await r.json().catch(()=>({isHost:false}));
+  }catch(e){ return {isHost:false}; }
+}
+async function joinGame(){
+  // 내가 고른 사건이 있고, 아직 아무도 호스트가 아니면(=사실상 첫 입장) 그걸로 실제 적용한다.
+  // 이미 다른 호스트가 진행 중이면 건드리지 않고 그냥 참가자로 들어간다(진행 중인 게임을 리셋하면 안 되니까).
+  if(me.pick){
+    const claim=await claimHost();
+    if(claim&&claim.isHost) await apiSelect(me.pick);
+  }
+  location.href="/play";
+}
 
 /* ── 사운드: 클릭·전환음만 (Web Audio 합성, 파일 0개) · 음악은 최종 빌드에서 ── */
 let _ac=null;
@@ -338,7 +359,9 @@ function pickScenario(id){
 async function launch(){
   const s=SCEN.find(x=>x.id===me.pick); if(!s) return;
   note(`《${s.title}》 여는 중…`);
-  await apiSelect(me.pick);
+  await claimHost();
+  const r=await apiSelect(me.pick);
+  if(!r.ok){ note(r.error==="host"?"이미 다른 호스트가 진행 중이에요.":"사건을 여는 데 실패했어요."); return; }
   location.href="/play";
 }
 function note(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(note._t); note._t=setTimeout(()=>t.classList.remove("on"),2600); }
