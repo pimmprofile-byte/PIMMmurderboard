@@ -287,8 +287,18 @@ const $=id=>document.getElementById(id);
 const ORDER=["submarine","subway","graduation"];   // 잠수정 = 1옵션, 맨 앞
 // 각 사건의 캐릭터 정원(배역 수) — 정원만큼 사람표시가 뜨고 선택하면 하나씩 차오름
 const CAP={submarine:6, subway:4, graduation:4};
-// 데모용 '이미 접속한 다른 참가자' 수 (실제 앱에선 서버 실시간 인원이 차오름)
-const demoOthers={submarine:2, subway:1, graduation:0};
+// 실제 서버에서 읽어 온 접속 인원. 예전엔 여기에 데모용 숫자가 박혀 있어서
+// 아무도 없는 방인데 잠수정에 2명, 막차에 1명이 들어와 있는 것처럼 보였다.
+// 방은 한 번에 하나뿐이라, 지금 열려 있는 시나리오만 실제 인원이 찬다.
+let liveSeats={};
+async function refreshSeats(){
+  try{
+    const st=await (await fetch("/api/state")).json();
+    const n=Object.values(st.roles||{}).filter(r=>r.claimed).length;
+    liveSeats = st.scenarioId ? {[st.scenarioId]:n} : {};
+  }catch(e){ liveSeats={}; }
+  render();
+}
 let me={mode:null, pick:null};   // mode: 'host' | 'participant'
 let hostPresent=false;
 let admin=false;
@@ -339,6 +349,7 @@ document.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) sfxC
 function go(name){
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));
   $("scr-"+name).classList.add("on");
+  if(name==="scenarios") refreshSeats();   // 들어올 때마다 실제 인원을 다시 읽는다
   const ab=$("adminbtn"); if(ab) ab.style.display=(name==="entry"?"":"none");  // 관리자 버튼은 메인에만
   sfxTransit();
   window.scrollTo(0,0);
@@ -346,12 +357,12 @@ function go(name){
 function enterHost(){ me.mode="host"; hostPresent=true; go("scenarios"); render(); }
 function enterParticipant(){ me.mode="participant"; go("scenarios"); render(); }
 function becomeHostNow(){ me.mode="host"; hostPresent=true; note("이제 당신이 호스트예요. 사건을 열 수 있어요."); render(); }
-function headcount(id){ return (demoOthers[id]||0) + (me.pick===id?1:0); }
+function headcount(id){ return (liveSeats[id]||0) + (me.pick===id?1:0); }
 // 정원 가이드 사람표시: 호스트=초록, 참가자=노랑, 빈자리=회색
 function pips(id){
   const cap=CAP[id]||4;
   const hostOn=(me.mode==="host" && me.pick===id)?1:0;
-  const part=Math.min((demoOthers[id]||0)+((me.mode==="participant"&&me.pick===id)?1:0), cap-hostOn);
+  const part=Math.min((liveSeats[id]||0)+((me.mode==="participant"&&me.pick===id)?1:0), cap-hostOn);
   let out="";
   for(let i=0;i<cap;i++){
     const cls = i<hostOn ? "pip host" : (i<hostOn+part ? "pip part" : "pip");
