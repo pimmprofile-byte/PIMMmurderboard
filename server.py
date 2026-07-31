@@ -154,6 +154,7 @@ def fresh_room() -> dict:
         "grades": {},             # roleId -> grade dict (name 포함)
         "finalAnswers": {},       # roleId -> [answer str] (백엔드 미설정 시 진행자 수동채점용 보관)
         "typing": None,
+        "events": [],            # 진행 세션이 따라 읽는 사건 기록
         "turn": None,             # 조사 페이즈 현재 차례 roleId (하이브리드 턴)
         "interrogate": {"seq": None, "used": 0, "votes": [], "bonus": False},  # 토론 페이즈 심층심문 예산
         "started": False,         # 호스트가 '이대로 진행'을 확정하면 True — 이후 배역 변경 불가
@@ -178,6 +179,18 @@ def use_scenario(sid: str) -> bool:
 
 def bump():
     ROOM["rev"] += 1
+
+
+def _ev(kind: str, **fields) -> None:
+    """진행 세션이 따라 읽는 사건 기록.
+
+    세션은 푸시를 못 받는다 — 자기 차례가 와야 움직인다. 그래서 서버가 일어난 일을
+    번호 붙여 쌓아두고, 세션이 커서 이후만 받아 간다. state를 통째로 비교하는 것보다
+    싸고, 무엇이 새로 생겼는지가 분명하다.
+    """
+    evs = ROOM.setdefault("events", [])
+    evs.append({"id": len(evs) + 1, "seq": ROOM["seq"], "kind": kind, **fields})
+    del evs[:-400]
 
 
 def _auto_reveal_obligatory():
@@ -649,6 +662,53 @@ def _openable_cards(role_id: str) -> list:
     return out
 
 
+def _recent_text(n: int = 8) -> str:
+    """최근 '사람과 인물이 한 말'만 모은다. GM 안내와 페이즈 지문은 뺀다 —
+    그 지문에는 이번 라운드에 볼 것들이 미리 적혀 있어서, 걸러내지 않으면
+    아무도 입에 올린 적 없는 물건이 화제인 것처럼 잡힌다."""
+    said = [m for m in ROOM["table"] if m.get("kind") in ("human", "ai")]
+    return " ".join((m.get("text") or "") for m in said[-n:])
+
+
+def _title_tokens(card: dict) -> list[str]:
+    """카드 제목·위치에서 대화에 나올 만한 낱말을 뽑는다.
+
+    형태소 분석기 없이 부분문자열로 맞춘다 — 한국어는 조사가 붙어 늘어나므로
+    '단말기'는 '단말기가/단말기를'에도 걸린다. 짧은 토막은 오탐이 나서 버린다.
+    """
+    out = []
+    for part in (card.get("title", "") + " " + card.get("spot", "")).replace("·", " ").split():
+        w = part.strip("()[],.의를을이가는은도만")
+        if len(w) >= 2 and not w.isdigit():
+            out.append(w)
+    return out
+
+
+def _topic_boost(role_id: str) -> dict:
+    """지금 대화가 향하는 곳을 카드 단위로 환산한다.
+
+    구역만 보던 신호(_hot_locs)로는 '단말기 얘기 중'이나 '지금 유태오가 몰리는 중'
+    같은 흐름을 못 읽는다. 그래서 카드 제목의 낱말과 사람 이름까지 본다.
+    LLM 없이 도는 부분이라 대화가 붙는 만큼만 정확하다 — 그 정도면 충분하다.
+    """
+    txt = _recent_text(8)
+    if not txt:
+        return {}
+    boost = {}
+    for c in SC.CARDS:
+        hit = sum(1 for w in _title_tokens(c) if w in txt)
+        if hit:
+            boost[c["id"]] = boost.get(c["id"], 0) + 2.2 * hit
+    # 지금 몰리고 있는 사람은 자기 구역을 뒤져 방어할 거리를 찾는다
+    me = SC.get_character(role_id)
+    if me and txt.count(me["name"]) >= 2:
+        home = set(((getattr(SC, "INVEST_AI", {}) or {}).get(role_id, {})).get("home", []))
+        for c in SC.CARDS:
+            if c["loc"] in home:
+                boost[c["id"]] = boost.get(c["id"], 0) + 1.8
+    return boost
+
+
 def _hot_locs() -> dict:
     """최근 대화·공개에서 언급된 구역 = 추리가 향하는 곳."""
     locs = {}
@@ -672,6 +732,7 @@ def _ai_pick(role_id: str, n: int) -> list:
     interest = prof.get("interest", {})   # cardId -> 가중치(음수면 회피)
     role_kind = prof.get("role", "normal")
     hot = _hot_locs()
+    topic = _topic_boost(role_id)          # 대화가 지금 가리키는 카드들
     cur = current_round(ROOM["seq"])
     loc_count = {}
     for cid in ROOM["hands"].get(role_id, []):
@@ -692,6 +753,7 @@ def _ai_pick(role_id: str, n: int) -> list:
             if c["round"] == cur:
                 s += 1.2                                # 이번 라운드 새 카드
             s += 0.5 * hot.get(c["loc"], 0)             # 추리 따라가기(과하면 전원이 한 구역에 몰린다)
+            s += topic.get(c["id"], 0)                  # 방금 입에 오른 물건을 직접 보러 간다
             s -= 0.8 * loc_count.get(c["loc"], 0)       # 같은 구역 과다 회피
             if role_kind == "troll" and c.get("bait"):
                 s += 2.5                                # 진범: 미끼로 유도
@@ -802,7 +864,7 @@ def _publish_from(role_id: str, card_id: str) -> None:
     """그 배역의 손패에서 카드를 빼 전체공개로 돌리고 테이블에 알린다."""
     c = SC.get_card(card_id)
     who = SC.get_character(role_id) or {}
-    _publish(card_id)
+    _publish(card_id, by=role_id)
     if c:
         nm = who.get("name", role_id)
         where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c["locName"]
@@ -812,12 +874,20 @@ def _publish_from(role_id: str, card_id: str) -> None:
         bump()
 
 
-def _publish(card_id: str) -> None:
+def _publish(card_id: str, by: str = "") -> None:
+    """공개는 여기 한 곳으로 모인다 — 사건 기록도 여기서 낸다.
+    호출 경로가 여럿이라(본인 공개·GM 공개·정리) 위쪽에서 내면 빠지는 길이 생긴다."""
     for hl in ROOM["hands"].values():
         if card_id in hl:
             hl.remove(card_id)
     if card_id not in ROOM["revealed"]:
         ROOM["revealed"].append(card_id)
+        c = SC.get_card(card_id)
+        if c:
+            who = SC.get_character(by) or {}
+            _ev("reveal", roleId=by, speaker=who.get("name", ""), cardId=card_id,
+                title=c["title"], loc=c["loc"], locName=c["locName"], spot=c.get("spot", ""),
+                text=c.get("text", ""), hint=c.get("hint", ""))
         bump()
 
 
@@ -1038,6 +1108,31 @@ def ai_investigate_auto(b: TurnReq):
             "picked": [{"id": i, "title": cat[i]["title"], "loc": cat[i]["loc"], "locName": cat[i]["locName"]} for i in picks]}
 
 
+@app.get("/api/events")
+def events(key: str = "", since: int = 0, wait: int = 0):
+    """진행 세션이 따라 읽는 사건 목록. since 이후 것만 준다.
+
+    세션은 푸시를 못 받으니 스스로 물어봐야 한다. wait를 주면 새 사건이 생길 때까지
+    그만큼(최대 25초) 붙들고 있다가 답한다 — 짧은 간격으로 되묻지 않아도 되도록.
+    새 게 없으면 빈 목록으로 돌아온다.
+    """
+    if not _agent_ok(key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    deadline = time.monotonic() + max(0, min(25, wait))
+    while True:
+        with LOCK:
+            evs = [e for e in ROOM.get("events", []) if e["id"] > since]
+            all_ev = ROOM.get("events") or []
+            cursor = all_ev[-1]["id"] if all_ev else 0
+            ph = SC.phase_by_seq(ROOM["seq"])
+            turn = ROOM.get("turn")
+        if evs or time.monotonic() >= deadline:
+            return {"cursor": cursor, "events": evs, "turn": turn,
+                    "phase": {"seq": ph["seq"], "name": ph["name"],
+                              "key": ph.get("key", ""), "ap": int(ph.get("ap", 0) or 0)}}
+        time.sleep(0.6)
+
+
 @app.get("/api/handoff", response_class=PlainTextResponse)
 def handoff_brief(key: str = "", base: str = ""):
     """진행 세션이 스스로 받아 가는 지침. 배포된 코드에서 만들어지므로 낡을 일이 없다.
@@ -1113,6 +1208,7 @@ def advance(b: HostReq):
 
 
 def _advance():
+    _ev("phase_leaving", name=SC.phase_by_seq(ROOM["seq"])["name"])
     with LOCK:
         if ROOM["seq"] < len(SC.PHASES):
             ROOM["seq"] += 1
@@ -1122,6 +1218,8 @@ def _advance():
             if il:
                 ROOM["table"].append({"kind": "system", "broadcast": True, "text": f"📻 교내방송 — {il}"})
             ROOM["table"].append({"kind": "system", "text": f'{ph["name"]} — {ph["gm"]}'})
+            _ev("phase", name=ph["name"], key=ph.get("key", ""), min=ph.get("min", 0),
+                ap=int(ph.get("ap", 0) or 0), gm=ph.get("gm", ""), interlude=il or "")
             _reset_turn_for_seq(seq)   # 조사 페이즈면 순번 초기화
             _auto_reveal_obligatory()
             bump()
@@ -1136,6 +1234,7 @@ def human_say(b: HumanSay):
             return JSONResponse({"error": "그 배역으로 말할 수 없습니다"}, status_code=403)
         c = SC.get_character(b.roleId)
         ROOM["table"].append({"kind": "human", "roleId": b.roleId, "speaker": c["name"], "text": b.text.strip()})
+        _ev("say", who="human", roleId=b.roleId, speaker=c["name"], text=b.text.strip())
         bump()
     return {"ok": True}
 
@@ -1173,6 +1272,7 @@ def _speak(role_id: str, nudge: str = "") -> dict:
     entry = {"kind": "ai", "roleId": role_id, "speaker": c["name"], "text": reply or "…"}
     with LOCK:
         ROOM["table"].append(entry)
+        _ev("say", who="ai", roleId=role_id, speaker=c["name"], text=entry["text"])
         ROOM["typing"] = None
         bump()
     return entry
