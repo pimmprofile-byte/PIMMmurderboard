@@ -903,7 +903,8 @@ function maybePhaseFx(ph){
   fxSeq=STATE.seq;
   playPhaseFx(ph);
   // 토론 페이즈: 새 기억 파편 안내(자기 배역이 있을 때)
-  if(ph.key==="talk"&&TALK_SEQ[STATE.seq]&&myRoleValid()) banner("🧠 기억의 파편이 떠올랐다 — 상단 ‘내 정보’를 확인하세요.");
+  if(ph.key==="talk"&&TALK_SEQ[STATE.seq]&&myRoleValid())
+    banner((SCEN&&SCEN.fragNotice)||"🧠 기억의 파편이 떠올랐다 — 상단 ‘내 정보’를 확인하세요.");
 }
 function playPhaseFx(ph){
   if(!ph||!ph.key) return;
@@ -1622,7 +1623,7 @@ function cardState(c){
   const apOut=myRoleValid()&&ap>0&&used>=ap;
   const turn=STATE.turn, myTurn=(!turn)||turn===myRoleId;
   if(roundOk&&reqOk&&myRoleValid()&&!apOut&&myTurn) return {k:"open", label:"조사하기", act:`investigate('${c.id}')`};
-  return {k:"lock", label:(!roundOk?`조사 R${c.round}에 열림`:(!myRoleValid()?"관전 중":(!myTurn?"내 차례 아님":(apOut?"이번 턴 소진":"선행 단서 필요")))), act:""};
+  return {k:"lock", label:(!roundOk?`조사 R${c.round}에 열림`:(!myRoleValid()?"관전 중":(!myTurn?"내 차례 아님":(apOut?"이번 턴 소진":"먼저 밝혀질 것이 있다")))), act:""};
 }
 /* 그 구역에서 지금 볼 수 있는 카드 */
 function zoneCards(loc){
@@ -1958,8 +1959,11 @@ async function showMySheet(){
     <div class="bc-body">${esc(x.b)}</div></div>`); });
   // 3) 떠오른 기억
   const frags=(s.fragments||[]);
-  if(frags.length){ const fh=frags.map((f,i,arr)=>{ const isNew=(f.when===curPhase&&i===arr.length-1); return `<div class="frag${isNew?" newfrag":""}"><div class="w">기억의 파편 · ${esc(f.when)}${isNew?" · NEW":""}</div>${esc(f.text)}</div>`; }).join("");
-    slides.push(`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">떠오른 기억</div><div class="bc-title" style="font-size:18px">기억의 파편</div><div style="margin-top:14px">${fh}</div></div>`); }
+  // 이 묶음의 이름은 시나리오가 정한다 — 망령은 기억을 되찾지만, 가라앉는 배의 사람들은
+  // 잃은 기억이 없다. 거기서 늘어나는 건 이제 꺼내기로 한 말이다.
+  const fragL=(SCEN&&SCEN.fragLabel)||"기억의 파편", fragE=(SCEN&&SCEN.fragEyebrow)||"떠오른 기억";
+  if(frags.length){ const fh=frags.map((f,i,arr)=>{ const isNew=(f.when===curPhase&&i===arr.length-1); return `<div class="frag${isNew?" newfrag":""}"><div class="w">${esc(fragL)} · ${esc(f.when)}${isNew?" · NEW":""}</div>${esc(f.text)}</div>`; }).join("");
+    slides.push(`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">${esc(fragE)}</div><div class="bc-title" style="font-size:18px">${esc(fragL)}</div><div style="margin-top:14px">${fh}</div></div>`); }
   // 4) 배치도 — 전원이 갖는다. 포드는 아는 사람 지도에만 그려진다.
   if(s.hasMap){
     const svg=await loadMapSVG();
