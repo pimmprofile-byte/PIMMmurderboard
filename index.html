@@ -597,6 +597,24 @@
   .mapwrap.live svg .z-done .z-cnt{fill:#7ee0a8}
   .mapwrap.live svg .z-empty{opacity:.35}
 
+  /* 이 기기 설정 — GM 진행석도 배역처럼 여기서 켜고 끈다.
+     예전엔 'GM으로 진행' 버튼이 따로 있어서 진행과 참가가 배타적으로 보였다. */
+  .setbar{display:flex;align-items:center;gap:9px;margin-top:14px;flex-wrap:wrap}
+  .setbar .spacer{flex:1}
+  .setnote{margin-top:7px;font-size:12px;line-height:1.65;color:var(--muted);word-break:keep-all}
+  .setnote b{color:var(--sub)}
+  .swt{display:inline-flex;align-items:center;gap:9px;background:var(--panel2);
+    border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 7px;
+    color:var(--sub);cursor:pointer;font-size:13.5px;transition:.15s}
+  .swt:hover{border-color:var(--gold)}
+  .swt .swk{width:34px;height:19px;border-radius:999px;background:#2a2635;
+    border:1px solid var(--line);position:relative;flex:0 0 auto;transition:.18s}
+  .swt .swk::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;
+    border-radius:50%;background:var(--muted);transition:.18s}
+  .swt[aria-checked="true"]{border-color:var(--gold);color:#fff;background:rgba(201,162,74,.12)}
+  .swt[aria-checked="true"] .swk{background:var(--gold);border-color:var(--gold)}
+  .swt[aria-checked="true"] .swk::after{left:17px;background:#1a1509}
+
   /* 구역 안 — 카드를 마주하는 자리.
      머리에 약식 지도를 붙여 "지금 배 어디에 서 있는지"를 글자 없이 색으로만 말한다. */
   .zhead{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-bottom:12px}
@@ -690,12 +708,16 @@
     <div class="head"><span class="t serif">배역 선택</span><span class="pill" id="lobbyScen" style="cursor:pointer" title="사건 허브로 돌아가기" onclick="location.href='/'">🎬 <span id="lobbyScenName"></span> · 홈으로</span><span class="pill" id="beChip2"></span></div>
     <div class="lead">각자 자기 기기에서 배역을 고르세요. 내 비밀 정보는 이 기기에만 보입니다.</div>
     <div id="lobbyList"></div>
-    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn gold" onclick="enterGM()">🎬 GM으로 진행</button>
-      <button class="btn" onclick="go('play')">관전으로 보기</button>
-      <button class="btn sm" onclick="resetRoom()">방 초기화</button>
+    <div class="setbar">
+      <button class="swt" id="gmToggle" role="switch" aria-checked="false" onclick="toggleGM()">
+        <span class="swk"></span><span class="swl">🎬 이 기기로 진행하기 (GM)</span></button>
+      <button class="btn quiet sm" id="gmKeyBtn" onclick="askGMKey()" style="display:none">GM 키 바꾸기</button>
+      <span class="spacer"></span>
+      <button class="btn quiet sm" onclick="go('play')">관전으로 보기</button>
+      <button class="btn quiet sm" onclick="resetRoom()">방 초기화</button>
     </div>
-    <div class="lead" style="margin-top:6px;font-size:12px;opacity:.75">진행자(GM)는 페이즈를 넘기고 <b>누가 어떤 카드를 조사했는지 마킹</b>만 합니다. 카드 내용은 진행자에게 보이지 않아 스포일러가 없습니다.</div>
+    <div class="setnote">진행석은 배역과 겹쳐도 됩니다 — 배역을 맡은 채로 켜두면 진행 화면과 플레이 화면을 오갈 수 있습니다.<br>
+      진행석은 페이즈를 넘기고 <b>누가 어떤 카드를 조사했는지 마킹</b>만 합니다. 카드 내용은 보이지 않아 스포일러가 없습니다.</div>
   </div>
 </div>
 
@@ -706,6 +728,7 @@
     <span class="me" id="pMe"></span>
     <span class="spacer"></span>
     <button class="btn sm" onclick="go('lobby')">배역</button>
+    <button class="btn sm" id="toGM" onclick="go('gm')" style="display:none">🎬 진행석</button>
     <button class="btn gold sm" id="handBtn" onclick="showMyHand()">🃏 내 단서 <span id="handN">0</span></button>
     <button class="btn sm" id="sheetBtn" onclick="showMySheet()">🗂️ 내 정보</button>
     <button class="btn sm" id="advBtn" onclick="advance()">다음 페이즈 ›</button>
@@ -731,7 +754,8 @@
     <span class="rt"><span class="pmark">P</span> GM 진행</span>
     <span class="ph" id="gmPhase"></span>
     <span class="spacer"></span>
-    <button class="btn sm" onclick="go('lobby')">나가기</button>
+    <button class="btn sm" onclick="go('lobby')">배역</button>
+    <button class="btn sm" id="gmToPlay" onclick="go('play')" style="display:none">🎭 내 자리</button>
     <button class="btn sm" onclick="resetRoom()">방 초기화</button>
     <button class="btn gold sm" id="gmAdvBtn" onclick="advance()">다음 페이즈 ›</button>
   </div>
@@ -818,14 +842,38 @@ async function poll(){
   else myHand=[];
   applyState();
 }
-function go(name){ scr=name; ["lobby","play","gm"].forEach(s=>$("s-"+s).classList.remove("on")); $("s-"+name).classList.add("on"); if(name==="play")$("s-play").style.display="flex"; if(name==="gm")$("s-gm").style.display="flex"; lastRev=-1; fxSeq=null; renderPanel._sig=null; if(name==="gm")gmSeenMarks=null; if(name==="play")handSeen=null; applyState(); }
+function go(name){ if(name==="gm"&&!gmOn)name="lobby"; scr=name; ["lobby","play","gm"].forEach(s=>$("s-"+s).classList.remove("on")); $("s-"+name).classList.add("on"); if(name==="play")$("s-play").style.display="flex"; if(name==="gm")$("s-gm").style.display="flex"; lastRev=-1; fxSeq=null; renderPanel._sig=null; if(name==="gm")gmSeenMarks=null; if(name==="play")handSeen=null; applyGM(); applyState(); }
+
+/* ── GM 진행석 — 배역과 배타적이지 않은 토글이다 ─────────────────────
+   호스트가 곧 GM인 자리가 많고, GM이 배역까지 맡는 자리도 있다. 그래서 진행석은
+   '들어가는 화면'이 아니라 이 기기에 켜두는 스위치고, 켜져 있으면 두 화면을 오간다. */
+let seated=false;   // 시작 직후 자기 화면으로 한 번만 밀어주기 위한 빗장
 let gmKey=localStorage.getItem("pmb.gmkey")||"";
-function enterGM(){
-  if(gmKey==null)gmKey="";
+let gmOn=localStorage.getItem("pmb.gm")==="1";
+function askGMKey(){
   const k=prompt("GM 키를 입력하세요.\n· 로컬(내 PC)에서 인터넷 없이 진행하면 그냥 [확인]\n· 클라우드(Render) 배포본이면 배포 때 넣은 AGENT_KEY", gmKey||"");
-  if(k===null)return;               // 취소
-  gmKey=k.trim(); localStorage.setItem("pmb.gmkey",gmKey);
-  go("gm");
+  if(k===null) return false;        // 취소
+  gmKey=k.trim(); localStorage.setItem("pmb.gmkey",gmKey); localStorage.setItem("pmb.gmkeyset","1");
+  return true;
+}
+function toggleGM(){
+  if(gmOn){
+    gmOn=false; localStorage.removeItem("pmb.gm");
+    if(scr==="gm") go(myRoleValid()?"play":"lobby"); else applyGM();
+    return;
+  }
+  // 키는 처음 켤 때만 묻는다. 틀렸으면 '키 바꾸기'로 다시 넣는다.
+  if(localStorage.getItem("pmb.gmkeyset")!=="1" && !askGMKey()) return;
+  gmOn=true; localStorage.setItem("pmb.gm","1"); applyGM();
+}
+/* 진행석 상태를 화면 곳곳에 반영한다 — 스위치, 화면 전환 버튼, 로비 안내 */
+function applyGM(){
+  const t=$("gmToggle");
+  if(t){ t.setAttribute("aria-checked",gmOn?"true":"false");
+    t.querySelector(".swl").textContent=gmOn?"🎬 진행석 켜짐 (GM)":"🎬 이 기기로 진행하기 (GM)"; }
+  const kb=$("gmKeyBtn"); if(kb) kb.style.display=gmOn?"":"none";
+  const tg=$("toGM");     if(tg) tg.style.display=gmOn?"":"none";
+  const tp=$("gmToPlay"); if(tp) tp.style.display=myRoleValid()?"":"none";
 }
 
 function applyState(){
@@ -838,13 +886,21 @@ function applyState(){
   } else if(myRoleId&&(!STATE.roles[myRoleId]||STATE.roles[myRoleId].mode!=="human")){
     myRoleId=null; localStorage.removeItem("pmb.role");
   }
+  applyGM();   // 배역이 바뀌면 진행석 쪽 '내 자리' 버튼도 따라 바뀐다
   // 오프닝은 화면에도 배역에도 매이지 않는다.
   // 예전엔 플레이 화면의 오프닝 패널이 그릴 때만 열렸는데, 거기로 넘어가는 조건에
   // myRoleValid()가 붙어 있어서 '배역 없는 GM'은 로비에 남고 영영 못 봤다 —
   // 정작 이 연출을 틀어야 할 사람이 GM인데.
   if(STATE.started&&(STATE.phase||{}).key==="open"&&isBoard()) openVN(false);
-  // 호스트가 확정하면 배역을 가진 사람은 그대로 오프닝으로 들어간다
-  if(STATE.started&&scr==="lobby"&&myRoleValid()){ go("play"); return; }
+  // 확정되면 각자 제 자리로 — 배역이 있으면 플레이 화면, 배역 없이 진행석만 켠 기기는 진행석으로.
+  // 딱 한 번만 밀어준다. 매번 밀면 시작 뒤엔 로비로 못 돌아가서 헤더의 '배역' 버튼이
+  // 눌러도 되돌아오는 죽은 버튼이 되고, 진행석 토글도 손댈 수 없다.
+  if(!STATE.started) seated=false;
+  else if(scr==="lobby"&&!seated){
+    seated=true;
+    if(myRoleValid()){ go("play"); return; }
+    if(gmOn){ go("gm"); return; }
+  }
   if(scr==="lobby") renderLobby();
   else if(scr==="gm"){ renderGM(); maybePhaseFx(STATE.phase||{}); }
   else if(scr==="play"){
@@ -1330,26 +1386,29 @@ function startBoxHTML(){
   if(!STATE||STATE.started) return "";
   const opens=SCEN.characters.filter(c=>(STATE.roles[c.id]||{}).mode==="open");
   if(opens.length) return "";
-  if(!STATE.isHost) return `<div class="startbox wait">모든 배역이 정해졌습니다. 호스트가 시작하기를 기다리는 중…</div>`;
+  // 시작 버튼은 하나다 — 진행석을 켠 기기이거나 호스트면 누를 수 있다.
+  if(!(STATE.isHost||gmOn)) return `<div class="startbox wait">모든 배역이 정해졌습니다. 호스트가 시작하기를 기다리는 중…</div>`;
   return `<div class="startbox"><div class="sb-t">모든 배역이 정해졌습니다</div>
-    <div class="sb-d">시작하면 배역을 더는 바꿀 수 없습니다.</div>
+    <div class="sb-d">시작하면 배역을 더는 바꿀 수 없습니다.${gmOn?" 시작과 함께 진행석이 열립니다.":""}</div>
     <button class="btn ember" onclick="startGame()">이대로 진행하기 ›</button></div>`;
 }
 async function startGame(){
   if(!confirm("이대로 진행하시겠습니까?\n\n시작하면 배역을 바꿀 수 없습니다.")) return;
-  const r=await post("/api/start",{clientId});
+  const r=await post("/api/start",{clientId,key:gmKey});
   if(r&&r.error){ banner(r.error); return; }
   await poll();
 }
 function roleBarHTML(){
   if(STATE&&STATE.started){
+    // 진행석은 배역과 별개로 켜져 있을 수 있다 — 둘 다면 두 입구를 나란히 준다.
+    const gmIn=gmOn?`<button class="btn" onclick="go('gm')">🎬 진행석 열기</button>`:"";
     return myRoleValid()
-      ? `<button class="btn gold" onclick="showMySheet()">🗂️ 내 정보 확인하기</button>
-         ${isBoard()?`<button class="btn" onclick="replayVN()">🎬 오프닝 보기</button>`:""}
-         <button class="btn" onclick="go('play')">입장하기 ›</button>
+      ? `<button class="btn primary" onclick="showMySheet()">🗂️ 내 정보 확인하기</button>
+         ${isBoard()?`<button class="btn quiet" onclick="replayVN()">🎬 오프닝 보기</button>`:""}
+         <button class="btn" onclick="go('play')">내 자리로 ›</button>${gmIn}
          <span class="hint">게임이 시작돼 배역은 바꿀 수 없습니다</span>`
-      : `${isBoard()?`<button class="btn gold" onclick="replayVN()">🎬 오프닝 보기</button>`:""}
-         <button class="btn" onclick="go('play')">관전으로 보기</button>
+      : `${isBoard()?`<button class="btn quiet" onclick="replayVN()">🎬 오프닝 보기</button>`:""}
+         ${gmIn||`<button class="btn" onclick="go('play')">관전으로 보기</button>`}
          <span class="hint">게임이 시작됐습니다</span>`;
   }
   const opens=SCEN.characters.filter(c=>(STATE.roles[c.id]||{}).mode==="open");
@@ -1527,7 +1586,7 @@ async function setAI(id){ const r=await post("/api/setai",{roleId:id,clientId});
 async function resetRoom(){
   if(!confirm("방을 초기화할까요?\n\n배역과 조사 기록이 모두 지워지고 배역 선택으로 돌아갑니다.")) return;
   // clientId를 실어야 호스트로 인정된다. 안 보내면 403인데 예전엔 조용히 삼켰다.
-  const r=await post("/api/reset",{clientId});
+  const r=await post("/api/reset",{clientId,key:gmKey});
   if(r&&r.error){ banner(r.error==="host"?"호스트만 방을 초기화할 수 있습니다":"초기화 실패: "+r.error); return; }
   await post("/api/host/claim",{clientId});   // 초기화가 호스트를 풀었으니 곧바로 되잡는다
   myRoleId=null; localStorage.removeItem("pmb.role");
@@ -1858,7 +1917,7 @@ async function humanSay(){ if(!myRoleValid())return; const inp=$("input"); const
 async function advance(){
   if(!confirm("다음 페이즈로 넘어갈까요?")) return;
   // clientId를 실어야 서버가 호스트로 알아본다. 안 보내면 403인데 예전엔 조용히 삼켰다.
-  const r=await post("/api/advance",{clientId});
+  const r=await post("/api/advance",{clientId,key:gmKey});
   if(r&&r.error){ banner(r.error==="host"?"호스트만 페이즈를 넘길 수 있습니다":"진행 실패: "+r.error); return; }
   banner(""); await poll();
 }

@@ -337,6 +337,9 @@ class SelectScenario(BaseModel):
 
 class HostReq(BaseModel):
     clientId: str = ""
+    # GM 진행석은 호스트와 별개다 — 호스트가 아닌 기기가 진행을 맡을 수 있으므로
+    # 그 기기는 키로 자기를 밝힌다. AGENT_KEY를 안 걸어둔 로컬 판에서는 빈 값도 통과한다.
+    key: str = ""
 
 
 class TurnReq(BaseModel):
@@ -404,7 +407,7 @@ def state(clientId: str = ""):
 def start_game(b: HostReq):
     """호스트가 배역 확정 — 이후 배역은 바꿀 수 없고, 모두가 오프닝으로 들어간다."""
     with LOCK:
-        if ROOM.get("host") is not None and not _is_host(b.clientId):
+        if ROOM.get("host") is not None and not (_is_host(b.clientId) or _agent_ok(b.key)):
             return JSONResponse({"error": "호스트만 시작할 수 있습니다"}, status_code=403)
         opens = [rid for rid, r in ROOM["roles"].items() if r["mode"] == "open"]
         if opens:
@@ -1272,8 +1275,8 @@ def agent_narrate(b: AgentSay):  # roleId 무시, text=GM 내레이션(전체 �
 
 @app.post("/api/advance")
 def advance(b: HostReq):
-    # 호스트가 지정돼 있으면 호스트만, 없으면 누구나(현행 앱 호환)
-    if ROOM.get("host") is not None and not _is_host(b.clientId):
+    # 호스트가 지정돼 있으면 호스트나 GM 진행석만, 없으면 누구나(현행 앱 호환)
+    if ROOM.get("host") is not None and not (_is_host(b.clientId) or _agent_ok(b.key)):
         return JSONResponse({"error": "host"}, status_code=403)
     return _advance()
 
@@ -1637,7 +1640,7 @@ def ai_final(b: RoleOnly):
 def reset(b: HostReq):
     global ROOM
     with LOCK:
-        if ROOM.get("host") not in (None, b.clientId):
+        if ROOM.get("host") not in (None, b.clientId) and not _agent_ok(b.key):
             return JSONResponse({"error": "host"}, status_code=403)
         ROOM = fresh_room()
         # 호스트도 함께 푼다. 붙들고 있으면 그 브라우저가 사라졌을 때 방이 영영 잠긴다 —
