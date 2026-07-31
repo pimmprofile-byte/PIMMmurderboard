@@ -319,6 +319,29 @@
   .gm-guide .g{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--gold-b);border:1px solid var(--gold);border-radius:6px;padding:1px 7px;margin-right:8px}
   .gm-guide .il{margin-top:8px;color:#e8dfb0;font-style:italic;font-size:13px}
   .gm-note{color:var(--muted);font-size:12px;margin:2px 0 14px}
+  .gm-pick{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
+  .gm-pick .pl{font-size:11.5px;color:var(--muted);letter-spacing:.06em;margin-right:2px}
+  .gm-pick .pk{display:inline-flex;align-items:center;gap:6px;background:var(--panel);
+    border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12.5px;cursor:pointer}
+  .gm-pick .pk.on{border-color:var(--pc);background:color-mix(in srgb,var(--pc) 20%,var(--panel));color:#fff}
+  .gm-pick .pk.full{opacity:.5}
+  .gm-pick .pk .n{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .gm-zone{margin:12px 0}
+  .gm-zone .zh{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);
+    padding:0 2px 6px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .gm-zone .zn{margin-left:auto;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .gcells{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:7px}
+  .gcell{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+    padding:9px 8px;min-height:62px;cursor:pointer;transition:.13s;display:flex;flex-direction:column;gap:3px}
+  .gcell:hover{border-color:var(--gold)}
+  .gcell.nopick{cursor:default;opacity:.75}
+  .gcell .cid{font-family:"SF Mono",Consolas,monospace;font-size:11px;color:var(--muted)}
+  .gcell .cspot{font-size:11.5px;color:var(--sub);line-height:1.35}
+  .gcell .cwho{font-size:12px;font-weight:700;color:var(--cc)}
+  .gcell.took{background:linear-gradient(150deg,#3a2c12,#241d0e);border-color:var(--cc)}
+  .gcell .rq{position:absolute;top:5px;right:6px;font-size:9.5px;color:var(--warn);opacity:.8}
+  @keyframes gmMarkPop{0%{transform:scale(.9)}60%{transform:scale(1.04)}100%{transform:none}}
+  .gcell.justmark{animation:gmMarkPop .35s ease}
   .gm-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--sub);margin-bottom:10px}
   .gm-legend b{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:4px}
   .gm-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
@@ -1071,7 +1094,7 @@ async function clearAI(){
 }
 /* ===== GM 마킹 보드 (페이즈 구동 · 시네마틱) ===== */
 let gmSig=null, gmSeenMarks=null;
-function renderGM(){
+function renderGM(_force){
   const ph=STATE.phase||{}; const cur=STATE.round||0; const ap=ph.ap||0; const k=ph.key;
   $("gmPhase").textContent=(ph.name||"")+(cur?` · R${cur}`:"")+(ap?` · 인당 ${ap}장`:"");
   $("gmAdvBtn").style.display=(STATE.seq>=9)?"none":"";
@@ -1108,28 +1131,53 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
     "각자 자기 기기에서 서술로 답합니다. 답이 모이면 이 세션(Claude)이 진상 기준으로 채점하고, 엔딩을 낭독합니다.");
   if(k==="reveal") return gmCinematic("진상 공개", (STATE.ending?STATE.ending.desc:"채점이 끝나면 엔딩이 열립니다."), (STATE.ending?("— "+STATE.ending.name):""),
     "이 세션이 진상과 엔딩을 전해주면, 낭독으로 밤을 닫으세요.");
-  // invest / talk → 마킹 매트릭스 (그 라운드에 열린 카드만)
+  // invest / talk → 공용 카드 한 벌. 같은 카드가 인물 수만큼 반복되던 매트릭스를 걷어냈다 —
+  // 조사카드는 한 사람만 가져갈 수 있으니, 카드는 한 장씩만 있고 '누가 가져갔나'를 표시하면 된다.
   const cat=(SCEN.cardCatalog||[]).filter(c=>c.round<=cur);
-  const locs=[]; const byLoc={};
-  cat.forEach(c=>{ if(!byLoc[c.loc]){byLoc[c.loc]=[];locs.push(c.loc);} byLoc[c.loc].push(c); });
+  const holder={};                       // cardId -> roleId
+  Object.keys(checked||{}).forEach(rid=>(checked[rid]||[]).forEach(id=>{ holder[id]=rid; }));
+  const target=gmMarkTarget();           // 지금 마킹할 인물
+
   let h=`<div class="gm-guide"><span class="g">GM 지문</span>${esc(ph.gm||"")}${inter?`<div class="il">📢 “${esc(inter)}”</div>`:""}</div>`;
-  if(k==="invest") h+=gmTurnBar();
-  if(k==="invest") h+=`<div class="gm-note">순번대로 조사합니다. <b>AI 차례</b>면 <b>🤖 자동 조사</b>를 눌러 그 인물이 알아서 카드를 고르게 하세요(즉시). 사람 차례면 “○○ 카드 봤어요”라고 말할 때 그 줄의 칸을 눌러 마킹하고, 끝나면 <b>다음 차례 ›</b>. 다시 누르면 해제 — 카드 <b>내용은 진행자에게 보이지 않습니다</b>.</div>`;
-  else h+=`<div class="gm-note">토론 페이즈 — 새로 조사할 카드는 없습니다. 아래는 지금까지의 조사 현황입니다. 충분히 이야기했으면 <b>다음 페이즈 ›</b>.</div>`;
-  h+=`<div class="gm-legend"><span><b style="background:var(--panel2)"></b>미조사</span><span><b style="background:linear-gradient(150deg,#3a2c12,#6a5320)"></b>조사함 ✓</span></div>`;
-  SCEN.characters.forEach(c=>{
-    const rl=STATE.roles[c.id]||{}; const kind=rl.mode==="human"?"사람":(rl.mode==="ai"?"AI":"빈자리");
-    const u=used[c.id]||0; const full=ap>0&&u>=ap; const ck=checked[c.id]||[];
-    let cells="";
-    locs.forEach(loc=>{
-      const cards=byLoc[loc]; let cc="";
-      cards.forEach(cd=>{ const on=ck.includes(cd.id); const jm=fresh&&fresh.has(c.id+":"+cd.id);
-        cc+=`<div class="cell${on?' on':''}${jm?' justmark':''}" style="--cc:${c.color}" onclick="gmMark('${c.id}','${cd.id}')" title="${esc(cd.locName)}${cd.spot?' · '+esc(cd.spot):''} · R${cd.round}${cd.requires?' · '+cd.requires+' 선행':''}">${cd.id}${cd.requires?`<span class="rq">${cd.requires}▶</span>`:""}</div>`;
-      });
-      cells+=`<div class="gm-loc"><div class="lh">${loc} · ${esc(cards[0].locName)}</div><div class="cs">${cc}</div></div>`;
-    });
-    const cnt=k==="invest"?`이번 턴 ${u}/${ap} 조사`:`조사 ${ck.length}장`;
-    h+=`<div class="gm-row"><div class="who"><div class="nm" style="color:${c.color}">${c.avatar} ${esc(c.name)}</div><div class="kind">${kind}</div><div class="cnt${full?' full':''}">${cnt}</div></div><div class="gm-cells">${cells}</div></div>`;
+  if(k==="invest"){
+    h+=gmTurnBar();
+    h+=`<div class="gm-note">카드는 <b>한 장씩</b>만 있습니다. 누군가 조사하면 그 카드에 이름이 붙고 남은 사람은 못 가져갑니다.
+      <b>AI 차례</b>면 <b>🤖 자동 조사</b>를 누르세요. 사람 차례면 그 사람이 고른 카드를 눌러 마킹하고 <b>다음 차례 ›</b>.
+      다시 누르면 해제 — 카드 <b>내용은 진행자에게 보이지 않습니다</b>.</div>`;
+  } else {
+    h+=`<div class="gm-note">토론 페이즈 — 새로 조사할 카드는 없습니다. 아래는 지금까지의 조사 현황입니다.</div>`;
+  }
+
+  // 마킹 대상 — 조사 페이즈면 차례인 사람이 기본값이다
+  h+=`<div class="gm-pick"><span class="pl">마킹 대상</span>${SCEN.characters.map(c=>{
+      const u=used[c.id]||0, full=ap>0&&u>=ap;
+      return `<button class="pk${c.id===target?" on":""}${full?" full":""}" style="--pc:${c.color}"
+        onclick="setGmTarget('${c.id}')">${c.avatar} ${esc(c.name)}
+        <span class="n">${(checked[c.id]||[]).length}</span></button>`;
+    }).join("")}</div>`;
+
+  h+=`<div class="gm-legend"><span><b style="background:var(--panel2)"></b>미조사</span>
+    <span><b style="background:linear-gradient(150deg,#3a2c12,#6a5320)"></b>조사됨 — 이름 표시</span></div>`;
+
+  // 구역별로 카드 한 벌
+  const zones=(SCEN.map&&SCEN.map.length)?SCEN.map:[...new Set(cat.map(c=>c.loc))].map(l=>({loc:l,name:l}));
+  zones.forEach(z=>{
+    const cards=cat.filter(c=>c.loc===z.loc);
+    if(!cards.length) return;
+    const cc=cards.map(cd=>{
+      const rid=holder[cd.id]; const who=rid?(roleById(rid)||{}):null;
+      const jm=fresh&&rid&&fresh.has(rid+":"+cd.id);
+      const tip=`${esc(cd.locName)}${cd.spot?" · "+esc(cd.spot):""} · R${cd.round}${cd.requires?" · "+cd.requires+" 선행":""}`;
+      if(who) return `<div class="gcell took${jm?" justmark":""}" style="--cc:${who.color}"
+        onclick="gmMark('${rid}','${cd.id}')" title="${tip}">
+        <div class="cid">${cd.id}</div><div class="cwho">${who.avatar} ${esc(who.name)}</div></div>`;
+      return `<div class="gcell${target?"":" nopick"}" onclick="gmMarkHere('${cd.id}')" title="${tip}">
+        <div class="cid">${cd.id}</div><div class="cspot">${esc(cd.spot||cd.locName||"")}</div>
+        ${cd.requires?`<span class="rq">${cd.requires}▶</span>`:""}</div>`;
+    }).join("");
+    h+=`<div class="gm-zone"><div class="zh">${z.icon||"📍"} ${esc(z.name||z.loc)}
+      <span class="zn">${cards.filter(c=>holder[c.id]).length}/${cards.length}</span></div>
+      <div class="gcells">${cc}</div></div>`;
   });
   return h;
 }
@@ -1156,6 +1204,18 @@ async function gmSay(){
   const r=await post("/api/agent/say",{roleId:role,text:t,key:gmKey});
   if(r&&r.error){ gmBanner(r.error==="key"?"GM 키가 올바르지 않습니다 — AI 대사 전송에도 AGENT_KEY가 필요합니다.":("전송 오류: "+r.error)); return; }
   inp.value=""; inp.style.height="auto"; gmBanner(""); await poll();
+}
+/* 마킹 대상 — 조사 페이즈면 차례인 사람이 기본. 토론 중엔 직접 고른다. */
+let gmTarget=null;
+function gmMarkTarget(){
+  if(gmTarget&&STATE.roles[gmTarget]) return gmTarget;
+  return STATE.turn||null;
+}
+function setGmTarget(id){ gmTarget=(gmTarget===id?null:id); renderGM(true); }
+async function gmMarkHere(cardId){
+  const t=gmMarkTarget();
+  if(!t){ gmBanner("먼저 위에서 마킹 대상을 고르세요"); return; }
+  await gmMark(t,cardId);
 }
 async function gmMark(role,cardId){
   const r=await post("/api/mark",{roleId:role,cardId,key:gmKey});
