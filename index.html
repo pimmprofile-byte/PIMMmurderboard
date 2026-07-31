@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>졸업사진 卒業寫眞 — PIMMmurderboard</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%95%AF%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230b0a0d' stroke='%23c9a24a' stroke-width='2'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='17' font-weight='700' fill='%23c9a24a'%3EP%3C/text%3E%3C/svg%3E">
 
 <style>
   /* 한글 웹폰트를 직접 얹는다. 예전에는 "Noto Sans KR" 같은 이름만 적어뒀는데
@@ -38,6 +38,10 @@
   .btn.gold{background:linear-gradient(90deg,#8a7038,var(--gold));border-color:var(--gold);color:#1a1509;font-weight:700}
   .btn.ember{background:linear-gradient(90deg,#7a1410,var(--ember));border-color:var(--ember-b);color:#fff;font-weight:700}
   .btn.gold:hover,.btn.ember:hover{filter:brightness(1.1)}
+  /* 랜딩과 같은 P 마크 */
+  .pmark{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;
+    border:1.5px solid var(--gold);color:var(--gold);font-family:Georgia,serif;
+    font-weight:700;font-size:12px;line-height:1}
   .btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
   /* 위계 — 한 화면에 primary는 하나. quiet는 물러나는 보조 동작. */
   .btn.primary{background:linear-gradient(90deg,#8a7038,var(--gold));border-color:var(--gold);
@@ -345,7 +349,7 @@
     padding:9px 8px;min-height:62px;cursor:pointer;transition:.13s;display:flex;flex-direction:column;gap:3px}
   .gcell:hover{border-color:var(--gold)}
   .gcell.nopick{cursor:default;opacity:.75}
-  .gcell .cid{font-family:"SF Mono",Consolas,monospace;font-size:11px;color:var(--muted)}
+  .gcell .cid{font-size:12px;color:var(--sub);line-height:1.35}
   .gcell .cspot{font-size:11.5px;color:var(--sub);line-height:1.35}
   .gcell .cwho{font-size:12px;font-weight:700;color:var(--cc)}
   .gcell.took{background:linear-gradient(150deg,#3a2c12,#241d0e);border-color:var(--cc)}
@@ -576,13 +580,12 @@
   .mapbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 8px}
   .mapbar .mh{font-size:13.5px;font-weight:700}
   .mapbar .mnote{font-size:12px;color:var(--muted);flex:1}
-  .mapwrap.live svg .z-live .zone-fill{transition:fill .15s,opacity .15s}
-  .mapwrap.live svg .z-live:hover .zone-fill{fill:rgba(201,162,74,.16)}
-  .mapwrap.live svg .z-live:hover text{fill:#fff}
-  .mapwrap.live svg .z-done{opacity:.5}
-  .mapwrap.live svg .z-empty{opacity:.3}
-  .mapwrap.live svg text.z-count{fill:var(--gold-b);font-size:11px;letter-spacing:.02em}
-  .mapwrap.live svg .z-done text.z-count{fill:var(--muted)}
+  .mapwrap.live svg .z-live{cursor:pointer}
+  .mapwrap.live svg .z-live:hover .zone-fill{fill:#1b3648;stroke:var(--gold)}
+  .mapwrap.live svg .z-live .z-cnt{fill:var(--gold-b)}
+  .mapwrap.live svg .z-done .zone-fill{stroke:#4e8a6a}
+  .mapwrap.live svg .z-done .z-cnt{fill:#7ee0a8}
+  .mapwrap.live svg .z-empty{opacity:.35}
 
   /* 구역 안 — 카드를 마주하는 자리 */
   .zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:9px;
@@ -602,6 +605,9 @@
   .por.noimg::after{content:attr(data-emo);position:absolute;inset:0;display:grid;place-items:center;
     font-size:44px;opacity:.55;filter:saturate(.7)}
   .rc .por img.pt{width:100%;height:100%;object-fit:cover;display:block}
+  .unlocknote{margin-top:10px;padding:9px 12px;border:1px dashed var(--gold);border-radius:9px;
+    background:rgba(201,162,74,.09);color:var(--gold-b);font-size:12.5px;line-height:1.55}
+  .unlocknote b{color:#fff}
   .podwarn{margin-top:10px;padding:9px 12px;border:1px solid rgba(200,68,47,.45);
     border-radius:9px;background:rgba(200,68,47,.1);color:#f2d7d1;font-size:12.5px;line-height:1.55}
   .podwarn b{color:var(--ember-b)}
@@ -667,7 +673,7 @@
 
 <div id="s-play" class="screen">
   <div class="chead">
-    <span class="rt"><span class="mk">◈</span> <span id="pTitle">졸업사진</span></span>
+    <span class="rt"><span class="pmark">P</span> <span id="pTitle">졸업사진</span></span>
     <span class="ph" id="pPhase"></span>
     <span class="me" id="pMe"></span>
     <span class="spacer"></span>
@@ -690,7 +696,7 @@
 
 <div id="s-gm" class="screen">
   <div class="chead">
-    <span class="rt"><span class="mk">🎬</span> GM 진행</span>
+    <span class="rt"><span class="pmark">P</span> GM 진행</span>
     <span class="ph" id="gmPhase"></span>
     <span class="spacer"></span>
     <button class="btn sm" onclick="go('lobby')">나가기</button>
@@ -792,7 +798,14 @@ function enterGM(){
 
 function applyState(){
   if(!STATE)return;
-  if(myRoleId&&(!STATE.roles[myRoleId]||STATE.roles[myRoleId].mode!=="human")){ myRoleId=null; localStorage.removeItem("pmb.role"); }
+  // 내 배역은 서버 말을 따른다. 로컬 기억과 어긋나면 서버가 맞다 —
+  // 잡은 직후 폴링이 먼저 오면 내 카드가 '참여 중'으로 보이던 원인이었다.
+  if(STATE.myRole!==undefined){
+    if(STATE.myRole){ if(myRoleId!==STATE.myRole){ myRoleId=STATE.myRole; localStorage.setItem("pmb.role",myRoleId); } }
+    else if(myRoleId){ myRoleId=null; localStorage.removeItem("pmb.role"); }
+  } else if(myRoleId&&(!STATE.roles[myRoleId]||STATE.roles[myRoleId].mode!=="human")){
+    myRoleId=null; localStorage.removeItem("pmb.role");
+  }
   // 오프닝은 화면에도 배역에도 매이지 않는다.
   // 예전엔 플레이 화면의 오프닝 패널이 그릴 때만 열렸는데, 거기로 넘어가는 조건에
   // myRoleValid()가 붙어 있어서 '배역 없는 GM'은 로비에 남고 영영 못 봤다 —
@@ -1142,10 +1155,10 @@ async function openMapDetail(){
   const svg=await loadMapSVG();
   if(!svg){ banner("배치도를 불러오지 못했습니다"); return; }
   mz={s:1,x:0,y:0};
-  $("mapBox").innerHTML=`<div class="mvhead"><h2>🗺️ 테티스호 배치도</h2>
+  $("mapBox").innerHTML=`<div class="mvhead"><h2>🗺️ 이원록함 배치도</h2>
       <span class="mvsub">끌어서 옮기고 확대합니다</span>
       <button class="btn quiet sm" onclick="closeModal('mapModal')">닫기</button></div>
-    <div class="mzoom" id="mzoom"><div class="mvp" id="mvp">${mapHTML(svg,"nopod")}</div></div>
+    <div class="mzoom" id="mzoom"><div class="mvp" id="mvp">${mapHTML(svg,(STATE&&STATE.podOpen)?"":"nopod")}</div></div>
     <div class="mzbar"><button class="btn sm" onclick="mzZoom(-1)">－</button>
       <button class="btn sm" onclick="mzZoom(1)">＋</button>
       <button class="btn sm" onclick="mzReset()">처음으로</button>
@@ -1380,12 +1393,12 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
         const act=isPub?`openCard('${cd.id}')`:(k==="invest"?`gmMark('${rid}','${cd.id}')`:`gmHeld()`);
         return `<div class="gcell took${isPub?" pub":""}${jm?" justmark":""}" style="--cc:${(who&&who.color)||'var(--gold)'}"
           onclick="${act}" title="${tip}">
-          <div class="cid">${cd.id}${isPub?`<span class="pubtag">전체공개</span>`:""}</div>
+          <div class="cid">${esc(cd.spot||cd.locName)}${isPub?`<span class="pubtag">전체공개</span>`:""}</div>
           ${who?`<div class="cwho">${who.avatar} ${esc(who.name)}</div>`:`<div class="cwho">공개됨</div>`}
           ${isPub?`<div class="cspot">${esc(pubById[cd.id].title)}</div>`:""}</div>`;
       }
       return `<div class="gcell${target?"":" nopick"}" onclick="gmMarkHere('${cd.id}')" title="${tip}">
-        <div class="cid">${cd.id}</div><div class="cspot">${esc(cd.spot||cd.locName||"")}</div>
+        <div class="cid">${esc(cd.spot||cd.locName||"")}</div>
         ${cd.requires?`<span class="rq">${cd.requires}▶</span>`:""}</div>`;
     }).join("");
     h+=`<div class="gm-zone"><div class="zh">${z.icon||"📍"} ${esc(z.name||z.loc)}
@@ -1528,10 +1541,11 @@ function zonePips(loc){
 /* 조사 화면 — 지도가 바깥에 그대로 떠 있다. 구역을 누르면 그 안으로 들어간다.
    구역 이름과 개수는 배치도가 원래 갖고 있는 글자를 쓴다. 위에 카드를 또 얹지 않는다. */
 function renderMap(el){
+  const podCls=(STATE&&STATE.podOpen)?"":"nopod";
   el.innerHTML=`<div class="mapbar"><span class="mh">🗺️ 배 안</span>
       <span class="mnote">구역을 누르면 들어갑니다</span>
       <button class="btn quiet sm" onclick="openMapDetail()">🔍 크게</button></div>
-    <div class="mapwrap nopod live" id="mapArt"></div>
+    <div class="mapwrap ${podCls} live" id="mapArt"></div>
     <div class="dash" id="dash"></div>`;
   paintMap();
 }
@@ -1543,25 +1557,18 @@ async function paintMap(){
   wireZones(svg);
   const d=$("dash"); if(d) d.innerHTML=dashHTML();
 }
-/* 배치도의 구역을 그대로 버튼으로 쓴다 — 남은 개수는 구역 안에 글자로 적는다 */
+/* 배치도의 구역이 곧 버튼이다. 개수는 SVG가 이미 갖고 있는 자리(#cnt-X)에 채워 넣는다 —
+   글자를 새로 만들어 얹으면 지도를 고칠 때마다 자리가 어긋난다. */
 function wireZones(svg){
-  const NS="http://www.w3.org/2000/svg";
   ((SCEN.map)||[]).forEach(z=>{
     const g=svg.querySelector("#zone-"+z.loc); if(!g) return;
     const p=zonePips(z.loc);
+    const cnt=svg.querySelector("#cnt-"+z.loc);
+    if(cnt) cnt.textContent=`${p.done}/${p.cards.length}`;
     if(!p.cards.length){ g.classList.add("z-empty"); return; }
     g.classList.add("z-live");
     if(p.done>=p.cards.length) g.classList.add("z-done");
-    g.style.cursor="pointer";
     g.addEventListener("click",()=>openZone(z.loc));
-    const f=g.querySelector(".zone-fill")||g, bb=f.getBBox();
-    const t=document.createElementNS(NS,"text");
-    t.setAttribute("class","z-count");
-    t.setAttribute("x", bb.x+bb.width-8);
-    t.setAttribute("y", bb.y+bb.height-8);
-    t.setAttribute("text-anchor","end");
-    t.textContent=`${p.cards.length-p.done}곳 남음`;
-    g.appendChild(t);
   });
 }
 function dashHTML(){
@@ -1840,7 +1847,7 @@ async function showMySheet(){
     const svg=await loadMapSVG();
     if(svg) slides.push(`<div class="bigcard role" style="--rc:${s.color}">
       <div class="bc-eyebrow">${s.showPod?"너만 가진 판본":"배 안내도"}</div>
-      <div class="bc-title" style="font-size:18px">테티스호 배치도</div>
+      <div class="bc-title" style="font-size:18px">이원록함 배치도</div>
       <div class="bc-body" style="margin-bottom:10px">${s.showPod
         ? "승선 전에 본 도면이다. <b>탈출 포드</b>까지 그려져 있다."
         : "승선할 때 받은 안내도다. 구획 배치와 통로만 그려져 있다."}</div>
@@ -1873,7 +1880,8 @@ function showMyHand(){
       <div class="bc-eyebrow">${isPub?"전체공개 · 모두가 봅니다":"손패 · 비공개"}</div>
       <div class="bc-title" style="color:${isPub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</div>
       <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${c.bait?'<span class="pill bad">※미끼일 수도</span>':''}</div>
-      <div class="bc-body">${esc(c.text)}</div>${cnote(c)}</div>`; });
+      <div class="bc-body">${esc(c.text)}</div>${cnote(c)}
+      ${c.unlocks&&!isPub?`<div class="unlocknote">🔓 이 카드를 <b>전체공개</b>하면 무언가 밝혀질 수 있습니다.</div>`:""}</div>`; });
     h+=buildSwipe(slides); }
   h+=`<div style="margin-top:14px;text-align:right"><button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
   $("handBox").innerHTML=h;

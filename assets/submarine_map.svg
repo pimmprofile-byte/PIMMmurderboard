@@ -1,207 +1,85 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" role="img"
      preserveAspectRatio="xMidYMid meet"
      font-family="-apple-system,BlinkMacSystemFont,'Noto Sans KR','Apple SD Gothic Neo',sans-serif">
-  <title>심해 조사정 테티스호 구획 배치도</title>
-  <desc>함교(A) 기관실(B) 화물실(C) 의무실(D) 통신실(E) 선실·격벽통로(F) 여섯 구역과 탈출 포드</desc>
+  <title>심해 조사정 구획 배치도</title>
+  <desc>함교 선실·격벽통로 통신실 의무실 화물실 기관실 여섯 구역</desc>
 
   <defs>
-    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
-      <path d="M24 0H0V24" fill="none" stroke="#7fb4d6" stroke-width=".5" opacity=".13"/>
-    </pattern>
-    <pattern id="grid5" width="120" height="120" patternUnits="userSpaceOnUse">
-      <path d="M120 0H0V120" fill="none" stroke="#7fb4d6" stroke-width=".8" opacity=".2"/>
-    </pattern>
-    <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <line x1="0" y1="0" x2="0" y2="7" stroke="#7fb4d6" stroke-width="1" opacity=".34"/>
-    </pattern>
-    <radialGradient id="vig" cx="50%" cy="48%" r="72%">
-      <stop offset="0" stop-color="#12202b" stop-opacity=".55"/>
-      <stop offset="1" stop-color="#0b0a0d" stop-opacity=".9"/>
-    </radialGradient>
-    <linearGradient id="floodGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#cfeaff" stop-opacity=".9"/>
-      <stop offset=".035" stop-color="#5aa6cd" stop-opacity=".46"/>
-      <stop offset="1" stop-color="#0d2c42" stop-opacity=".62"/>
-    </linearGradient>
-    <!-- 선체 안쪽만 물이 차오르게 하는 클립 -->
+    <!-- 선체 안쪽만 물이 차오르게 자르는 틀 -->
     <clipPath id="hullClip">
-      <path d="M150 100H570A78 120 0 0 1 570 340H150A100 120 0 0 1 150 100Z"/>
+      <path d="M150 66 H570 a118 118 0 0 1 0 268 H150 a118 118 0 0 1 0-268 Z"/>
     </clipPath>
+    <linearGradient id="floodGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"   stop-color="#cfeaff" stop-opacity=".85"/>
+      <stop offset=".04" stop-color="#5aa6cd" stop-opacity=".42"/>
+      <stop offset="1"   stop-color="#0d2c42" stop-opacity=".58"/>
+    </linearGradient>
+    <style><![CDATA[
+      text { pointer-events:none; }
+      .hull { fill:none; stroke:#7fb4d6; stroke-width:2.4; }
+      .trim { fill:none; stroke:#7fb4d6; stroke-width:1.4; opacity:.4; }
+      .zone-fill { fill:#0f1b24; stroke:#5f8fae; stroke-width:1.3;
+                   transition:fill .15s ease, stroke .15s ease; }
+      .z-name { fill:#e8f2f8; font-size:19px; font-weight:700; }
+      .z-cnt  { fill:#9fc4d8; font-size:14px; font-weight:700;
+                font-variant-numeric:tabular-nums; }
+      #floodwater { transition:y .9s linear, height .9s linear; }
+    ]]></style>
   </defs>
 
-  <style><![CDATA[
-    text{pointer-events:none}
-    .zone{cursor:pointer}
-    /* JS는 이 fill / opacity 만 바꾸면 된다 */
-    .zone-fill{fill:#0f1c26;stroke:#5c8fae;stroke-width:1.5;transition:fill .2s ease,opacity .2s ease,stroke .2s ease}
-    .zone:hover .zone-fill{fill:#173444}
-    .zone.is-active .zone-fill{fill:#1d3d51;stroke:#c9a24a;stroke-width:2.2}
-    .zone.is-done   .zone-fill{fill:#14261d;stroke:#4e8a6a}
-    .zone.is-locked .zone-fill{opacity:.34}
-    .zone.is-alert  .zone-fill{fill:#2b1a1c;stroke:#c8442f}
-    .zone-name{font-size:29px;font-weight:700;fill:#dcecf6;letter-spacing:.03em}
-    .ztag{font-size:19px;font-weight:700;fill:#c9a24a;letter-spacing:.08em}
-    .zone-note{font-size:21px;fill:#93bad1}
-    .det{fill:none;stroke:#7fb4d6;stroke-width:1.2;opacity:.55}
-    .det-f{fill:#7fb4d6;opacity:.13}
-    .gold{fill:none;stroke:#c9a24a;stroke-width:2}
-    .goldf{fill:#c9a24a}
-    .cap{font-size:19px;fill:#8ab0c7}
-    .cap-g{font-size:19px;fill:#c9a24a}
-    .ttl{font-size:22px;font-weight:700;fill:#a8cde4;letter-spacing:.12em}
-    .sub{font-size:17px;fill:#7896ac;letter-spacing:.05em}
-    .hull{fill:none;stroke:#7fb4d6;stroke-width:2.4}
-    .hull-in{fill:none;stroke:#5c8fae;stroke-width:1.2;opacity:.75}
-    #floodwater{transition:y .9s linear,height .9s linear}
-  ]]></style>
+  <rect width="720" height="400" fill="#0b1016"/>
 
-  <!-- 배경 · 격자 -->
-  <rect x="0" y="0" width="720" height="400" fill="#0b0a0d"/>
-  <rect x="0" y="0" width="720" height="400" fill="url(#vig)"/>
-  <rect x="0" y="0" width="720" height="400" fill="url(#grid)"/>
-  <rect x="0" y="0" width="720" height="400" fill="url(#grid5)"/>
-
-  <!-- 표제 -->
-  <text class="ttl" x="24" y="32">테티스호 · 구획 배치도</text>
-  <text class="sub" x="24" y="56">심해 조사정 · 수심 400 m</text>
-
-  <!-- 선체 외곽 + 벽체 해치 -->
-  <path fill="url(#hatch)" fill-rule="evenodd" stroke="none"
-        d="M150 88H570A90 132 0 0 1 570 352H150A112 132 0 0 1 150 88Z
-           M150 100H570A78 120 0 0 1 570 340H150A100 120 0 0 1 150 100Z"/>
-  <path class="hull" d="M150 88H570A90 132 0 0 1 570 352H150A112 132 0 0 1 150 88Z"/>
-  <path class="hull-in" d="M150 100H570A78 120 0 0 1 570 340H150A100 120 0 0 1 150 100Z"/>
-
-  <!-- 선수 음탐 돔 · 선미 방향타 · 프로펠러 -->
-  <path class="hull" stroke-width="1.8" d="M44 178C20 196 13 210 11 220 13 230 20 244 44 262"/>
-  <g class="det">
-    <path d="M656 220h30"/>
-    <path d="M666 188v64" stroke-width="2.4"/>
-    <path d="M686 200C702 208 702 232 686 240"/>
-    <path d="M686 200C670 208 670 232 686 240"/>
+  <!-- 선체 — 뱃머리 돔과 선미 방향타까지만. 격자·해칭·범례·소항목은 걷어냈다. -->
+  <g class="trim">
+    <path d="M150 128 q-42 72 0 144"/>
+    <path d="M570 128 q42 72 0 144"/>
+    <path d="M668 176 h26 M668 224 h26"/>
   </g>
+  <path class="hull" d="M150 66 H570 a118 118 0 0 1 0 268 H150 a118 118 0 0 1 0-268 Z"/>
 
-  <!-- 탈출 포드 (별도 구획) -->
+  <!-- 세일 구획 · 탈출 포드 — 아는 사람 지도에만 뜬다(기본은 CSS에서 감춘다) -->
   <g id="pod">
-    <path class="det-f" d="M306 88 312 54Q314 50 318 50H394Q398 50 400 54L406 88Z"/>
-    <path fill="none" stroke="#c9a24a" stroke-width="1.8" d="M306 88 312 54Q314 50 318 50H394Q398 50 400 54L406 88Z"/>
-    <rect class="goldf" x="340" y="45" width="34" height="7" rx="2"/>
-    <g class="gold" stroke-width="1.4">
-      <circle cx="328" cy="74" r="6" fill="none"/>
-      <circle cx="353" cy="74" r="6" fill="none"/>
-      <circle cx="378" cy="74" r="6" fill="none"/>
-    </g>
-    <text class="cap-g" x="357" y="38" text-anchor="middle">발사창 ▲</text>
-    <path class="gold" stroke-width="1.2" d="M404 64h16"/>
-    <text class="cap-g" x="424" y="69">탈출 포드 · 정원 3</text>
+    <path d="M300 66 v-24 h120 v24" fill="#171308" stroke="#c9a24a" stroke-width="1.6"/>
+    <circle cx="332" cy="54" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
+    <circle cx="360" cy="54" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
+    <circle cx="388" cy="54" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
+    <text x="432" y="58" fill="#c9a24a" font-size="12" font-weight="700">탈출 포드 · 정원 3</text>
   </g>
 
-  <!-- ── 구역 6개 ───────────────────────────────── -->
+  <!-- 침수 연출용. 기본 높이 0 -->
+  <g clip-path="url(#hullClip)"><rect id="floodwater" x="0" y="334" width="720" height="0" fill="url(#floodGrad)"/></g>
+
   <g id="zones">
-
-    <g id="zone-A" class="zone" data-loc="A">
-      <title>A 함교</title>
-      <path class="zone-fill" d="M134 106H272V188H58L86 140Z"/>
-      <g class="det">
-        <circle cx="92" cy="172" r="10"/>
-        <circle cx="92" cy="172" r="5.5"/>
-        <rect x="200" y="110" width="66" height="10" rx="2"/>
-        <circle cx="180" cy="120" r="8"/>
-      </g>
-      <path class="gold" d="M144 116 158 130M158 116 144 130"/>
-      <text class="zone-name" x="176" y="152" text-anchor="middle"><tspan class="ztag">A</tspan><tspan dx="9">함교</tspan></text>
-      <text class="zone-note" x="178" y="177" text-anchor="middle">조타석·계기반</text>
+    <g id="zone-A" data-loc="A">
+      <rect class="zone-fill" x="152" y="88" width="176" height="98" rx="6"/>
+      <text class="z-name" x="168" y="126">함교</text>
+      <text class="z-cnt" id="cnt-A" x="312" y="174" text-anchor="end">0/0</text>
+    </g>
+    <g id="zone-F" data-loc="F">
+      <rect class="zone-fill" x="340" y="88" width="164" height="98" rx="6"/>
+      <text class="z-name" x="356" y="126" font-size="16">선실·격벽통로</text>
+      <text class="z-cnt" id="cnt-F" x="488" y="174" text-anchor="end">0/0</text>
+    </g>
+    <g id="zone-E" data-loc="E">
+      <rect class="zone-fill" x="516" y="88" width="146" height="98" rx="6"/>
+      <text class="z-name" x="532" y="126">통신실</text>
+      <text class="z-cnt" id="cnt-E" x="646" y="174" text-anchor="end">0/0</text>
     </g>
 
-    <g id="zone-F" class="zone" data-loc="F">
-      <title>F 선실·격벽통로</title>
-      <path class="zone-fill" d="M56 198H470V246H56Z M288 104H452V188H288Z"/>
-      <g class="det">
-        <rect x="300" y="136" width="44" height="20" rx="2"/>
-        <rect x="352" y="136" width="44" height="20" rx="2"/>
-        <rect x="404" y="136" width="44" height="20" rx="2"/>
-        <rect x="300" y="162" width="44" height="20" rx="2"/>
-        <rect x="352" y="162" width="44" height="20" rx="2"/>
-        <rect x="404" y="162" width="44" height="20" rx="2"/>
-        <path d="M370 188v10M176 188v10M338 246v10M138 246v10"/>
-      </g>
-      <text class="zone-note" x="370" y="126" text-anchor="middle">선실</text>
-      <text class="zone-name" x="212" y="230" text-anchor="middle"><tspan class="ztag">F</tspan><tspan dx="9">선실·격벽통로</tspan></text>
-      <text class="cap-g" x="440" y="230" text-anchor="middle">격벽</text>
+    <g id="zone-D" data-loc="D">
+      <rect class="zone-fill" x="152" y="206" width="176" height="98" rx="6"/>
+      <text class="z-name" x="168" y="244">의무실</text>
+      <text class="z-cnt" id="cnt-D" x="312" y="292" text-anchor="end">0/0</text>
     </g>
-
-    <g id="zone-E" class="zone" data-loc="E">
-      <title>E 통신실</title>
-      <path class="zone-fill" d="M468 104H586L626 140 644 188H468Z"/>
-      <g class="det">
-        <path d="M474 178v-18h24v18zM486 160v-16"/>
-        <path d="M478 144a12 12 0 0 1 16 0M474 136a20 20 0 0 1 24 0"/>
-      </g>
-      <text class="zone-name" x="556" y="146" text-anchor="middle"><tspan class="ztag">E</tspan><tspan dx="9">통신실</tspan></text>
-      <text class="zone-note" x="556" y="172" text-anchor="middle">무선 콘솔</text>
+    <g id="zone-C" data-loc="C">
+      <rect class="zone-fill" x="340" y="206" width="164" height="98" rx="6"/>
+      <text class="z-name" x="356" y="244">화물실</text>
+      <text class="z-cnt" id="cnt-C" x="488" y="292" text-anchor="end">0/0</text>
     </g>
-
-    <g id="zone-B" class="zone" data-loc="B">
-      <title>B 기관실</title>
-      <path class="zone-fill" d="M482 198H644V260L628 300 590 336H482Z"/>
-      <g class="det">
-        <circle cx="622" cy="224" r="11"/>
-        <path d="M622 213v22M611 224h22M614 216l16 16M630 216l-16 16"/>
-      </g>
-      <text class="zone-name" x="548" y="236" text-anchor="middle"><tspan class="ztag">B</tspan><tspan dx="9">기관실</tspan></text>
-      <text class="zone-note" x="498" y="270">밸러스트 밸브</text>
-      <text class="zone-note" x="498" y="298">제어 콘솔</text>
-      <text class="zone-note" x="498" y="326">폐수조</text>
+    <g id="zone-B" data-loc="B">
+      <rect class="zone-fill" x="516" y="206" width="146" height="98" rx="6"/>
+      <text class="z-name" x="532" y="244">기관실</text>
+      <text class="z-cnt" id="cnt-B" x="646" y="292" text-anchor="end">0/0</text>
     </g>
-
-    <g id="zone-C" class="zone" data-loc="C">
-      <title>C 화물실</title>
-      <path class="zone-fill" d="M212 256H464V336H212Z"/>
-      <g class="det">
-        <rect x="220" y="264" width="54" height="38" rx="2"/>
-        <path d="M220 283h54M247 264v38"/>
-        <rect x="402" y="264" width="54" height="38" rx="2"/>
-        <path d="M402 283h54M429 264v38"/>
-      </g>
-      <rect x="214" y="310" width="248" height="24" fill="url(#hatch)" opacity=".55"/>
-      <path d="M214 310h248" stroke="#c9a24a" stroke-width="1.4" stroke-dasharray="7 5" fill="none" opacity=".85"/>
-      <text class="zone-name" x="338" y="286" text-anchor="middle"><tspan class="ztag">C</tspan><tspan dx="9">화물실</tspan></text>
-      <text class="cap-g" x="338" y="328" text-anchor="middle">이중바닥</text>
-    </g>
-
-    <g id="zone-D" class="zone" data-loc="D">
-      <title>D 의무실</title>
-      <path class="zone-fill" d="M58 256H200V336H128L86 310Z"/>
-      <g class="det">
-        <rect x="150" y="264" width="44" height="22" rx="3"/>
-        <path d="M150 279h44"/>
-      </g>
-      <text class="zone-name" x="138" y="296" text-anchor="middle"><tspan class="ztag">D</tspan><tspan dx="9">의무실</tspan></text>
-      <text class="zone-note" x="138" y="322" text-anchor="middle">검안대</text>
-    </g>
-  </g>
-
-  <!-- 기관실로 넘어가는 격벽 (통로 끝) -->
-  <g id="bulkhead">
-    <rect x="470" y="192" width="12" height="148" fill="url(#hatch)"/>
-    <rect x="470" y="192" width="12" height="148" fill="none" stroke="#c9a24a" stroke-width="2"/>
-    <path class="goldf" d="M470 210h12v10h-12zM470 300h12v10h-12z"/>
-  </g>
-
-  <!-- 침수 애니메이션용 — 초기 높이 0 -->
-  <g clip-path="url(#hullClip)">
-    <rect id="floodwater" x="0" y="340" width="720" height="0" fill="url(#floodGrad)"/>
-  </g>
-
-  <!-- 방위 · 범례 -->
-  <g>
-    <text class="cap" x="24" y="378">◂ 선수</text>
-    <path class="gold" stroke-width="1.8" d="M148 368 158 378M158 368 148 378"/>
-    <text class="cap" x="166" y="378">선장 발견 지점</text>
-    <rect x="300" y="366" width="9" height="13" fill="url(#hatch)" stroke="#c9a24a" stroke-width="1.4"/>
-    <text class="cap" x="317" y="378">기관실 격벽</text>
-    <rect x="440" y="367" width="14" height="10" fill="url(#hatch)" stroke="#c9a24a" stroke-width="1.2" stroke-dasharray="4 3"/>
-    <text class="cap" x="462" y="378">화물실 이중바닥</text>
-    <text class="cap" x="696" y="378" text-anchor="end">선미 ▸</text>
   </g>
 </svg>

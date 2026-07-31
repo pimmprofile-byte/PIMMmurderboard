@@ -158,6 +158,7 @@ def fresh_room() -> dict:
         "finalAnswers": {},       # roleId -> [answer str] (백엔드 미설정 시 진행자 수동채점용 보관)
         "typing": None,
         "events": [],            # 진행 세션이 따라 읽는 사건 기록
+        "podOpen": False,        # 특정 카드가 전체공개되면 지도에 탈출 포드가 드러난다
         "turn": None,             # 조사 페이즈 현재 차례 roleId (하이브리드 턴)
         "interrogate": {"seq": None, "used": 0, "votes": [], "bonus": False},  # 토론 페이즈 심층심문 예산
         "started": False,         # 호스트가 '이대로 진행'을 확정하면 True — 이후 배역 변경 불가
@@ -217,6 +218,7 @@ def public_state() -> dict:
         return {
             "rev": ROOM["rev"], "seq": seq, "round": cur, "scenarioId": SC.ID,
             "roomId": ROOM.get("roomId", ""),
+            "podOpen": bool(ROOM.get("podOpen")),
             "chat": {"on": CHAT["on"], "gap": CHAT["gap"]},
             "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"]},
             "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
@@ -383,10 +385,18 @@ def state(clientId: str = ""):
     st = public_state()
     with LOCK:
         st["hasHost"] = ROOM.get("host") is not None
+        # 내가 맡은 배역. 예전엔 클라이언트가 localStorage 기억만 보고 판단해서,
+        # 잡은 직후나 새로고침 뒤에 자기 배역을 '참여 중'(남이 맡음)으로 그리곤 했다.
+        st["myRole"] = next((rid for rid, r in ROOM["roles"].items()
+                             if clientId and r["clientId"] == clientId), None)
         st["isHost"] = bool(clientId) and ROOM.get("host") == clientId
         # 호스트를 아무도 안 잡은 방도 있다. 그때는 '호스트 전용' 연출을 아무도 못 보게 되므로
         # 클라이언트가 그 사정을 알 수 있게 해준다(다른 엔드포인트도 같은 규칙으로 통과시킨다).
         st["hasHost"] = ROOM.get("host") is not None
+        # 내가 맡은 배역. 예전엔 클라이언트가 localStorage 기억만 보고 판단해서,
+        # 잡은 직후나 새로고침 뒤에 자기 배역을 '참여 중'(남이 맡음)으로 그리곤 했다.
+        st["myRole"] = next((rid for rid, r in ROOM["roles"].items()
+                             if clientId and r["clientId"] == clientId), None)
     return st
 
 
@@ -892,6 +902,11 @@ def _publish(card_id: str, by: str = "") -> None:
     if card_id not in ROOM["revealed"]:
         ROOM["revealed"].append(card_id)
         c = SC.get_card(card_id)
+        if c and c.get("unlocks") == "pod" and not ROOM.get("podOpen"):
+            ROOM["podOpen"] = True
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": "🛟 계통도가 가리키던 것이 드러났습니다 — 배치도에 탈출 포드가 표시됩니다."})
+            _ev("unlock", what="pod", cardId=card_id)
         if c:
             who = SC.get_character(by) or {}
             _ev("reveal", roleId=by, speaker=who.get("name", ""), cardId=card_id,
