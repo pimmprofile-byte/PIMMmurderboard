@@ -597,7 +597,25 @@
   .mapwrap.live svg .z-done .z-cnt{fill:#7ee0a8}
   .mapwrap.live svg .z-empty{opacity:.35}
 
-  /* 구역 안 — 카드를 마주하는 자리 */
+  /* 구역 안 — 카드를 마주하는 자리.
+     머리에 약식 지도를 붙여 "지금 배 어디에 서 있는지"를 글자 없이 색으로만 말한다. */
+  .zhead{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-bottom:12px}
+  .zhead .zh-t{flex:1;min-width:140px}
+  .zhead .zh-t h2{margin:0 0 2px;font-size:18px}
+  .zhead .zh-t .mvsub{font-size:12.5px;color:var(--muted)}
+  .minimap{flex:0 0 auto;width:208px;border:1px solid var(--line);border-radius:9px;
+    overflow:hidden;background:#0b1016}
+  .minimap svg{width:100%;height:auto;display:block}
+  .minimap text{display:none}
+  .minimap .trim,.minimap #m-floodwater,.minimap #m-pod{display:none}
+  .minimap.podon #m-pod{display:block}
+  .minimap .hull{stroke:#4c748f;stroke-width:2}
+  .minimap .zone-fill{fill:#121d27;stroke:#2b4557;stroke-width:1.2}
+  .minimap .z-here .zone-fill{fill:var(--gold);fill-opacity:.88;stroke:var(--gold-b);stroke-width:2.6}
+  /* 좁은 화면에서는 폭을 줄여 제목 옆에 세운다 — 칸 여섯 개는 이 크기에서도 읽힌다 */
+  @media(max-width:560px){ .zhead{gap:10px;flex-wrap:nowrap} .minimap{width:128px}
+    .zhead .zh-t{min-width:0} .zhead .zh-t h2{font-size:16px;word-break:keep-all} }
+
   .zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:9px;
     max-height:min(68vh,560px);overflow-y:auto}
   .zcard{display:flex;flex-direction:column;gap:7px;background:var(--panel2);
@@ -1162,22 +1180,39 @@ async function loadMapSVG(){
   return MAPSVG;
 }
 function mapHTML(svg,cls){ return svg?`<div class="mapwrap ${cls||""}">${svg}</div>`:""; }
+/* 같은 배치도를 두 군데(바깥 지도 + 구역 안 약식 지도)에 동시에 얹으면 id가 겹친다.
+   약식 쪽 id에 m- 을 붙여 갈라놓는다 — clip-path 참조까지 같이 옮겨야 한다. */
+function miniSVG(txt){
+  return txt.replace(/\bid="([^"]+)"/g,'id="m-$1"').replace(/url\(#([^)]+)\)/g,'url(#m-$1)');
+}
 
 /* 구역 안으로 들어간다 — 그 자리에서 볼 수 있는 곳들이 나온다 */
 function openZone(loc){
   const z=((SCEN.map)||[]).find(x=>x.loc===loc)||{loc,name:loc};
   const cards=zoneCards(loc);
+  const done=cards.filter(c=>{ const k=cardState(c).k; return k!=="open"&&k!=="lock"; }).length;
   const list=cards.map(c=>{ const st=cardState(c);
     return `<div class="zcard ${st.k}"${st.who?` style="--tc:${st.who.color}"`:""}>
       <div class="zc-spot">${esc(c.spot||z.name||"")}</div>
       <div class="zc-body">${st.k==="pub"||st.k==="hand"?`<b>${esc(c.title)}</b>`:`<span class="zc-q">아직 보지 않은 곳</span>`}</div>
       ${st.act?`<button class="btn ${st.k==="open"?"primary":"quiet"} sm" onclick="${st.act}">${st.label}</button>`
               :`<span class="zc-off">${esc(st.label)}</span>`}</div>`; }).join("");
-  $("mapBox").innerHTML=`<div class="mvhead"><h2>${z.icon||"📍"} ${esc(z.name||loc)}</h2>
-      <span class="mvsub">${cards.length}곳</span>
+  $("mapBox").innerHTML=`<div class="zhead">
+      <div class="minimap ${(STATE&&STATE.podOpen)?"podon":""}" id="miniMap"></div>
+      <div class="zh-t"><h2>${z.icon||"📍"} ${esc(z.name||loc)}</h2>
+        <span class="mvsub">볼 곳 ${cards.length} · 확인 ${done}</span></div>
       <button class="btn quiet sm" onclick="closeModal('mapModal')">닫기</button></div>
     <div class="zgrid">${list||'<div class="panel-note">여기는 아직 볼 것이 없습니다.</div>'}</div>`;
+  paintMini(loc);
   openModal("mapModal");
+}
+/* 약식 지도 — 글자는 CSS가 지우고, 지금 서 있는 구역만 색이 든다 */
+async function paintMini(loc){
+  if(!$("miniMap")) return;
+  const txt=await loadMapSVG();
+  const box=$("miniMap"); if(!txt||!box) return;
+  box.innerHTML=miniSVG(txt);
+  const g=box.querySelector(`[data-loc="${loc}"]`); if(g) g.classList.add("z-here");
 }
 /* 지도만 크게 — 글자까지 있는 전체 배치도, 끌어서 이동·확대 */
 let mz={s:1,x:0,y:0};
