@@ -529,6 +529,70 @@
     #vn .vn-line.typing::after{animation:none}
   }
 
+  /* ── 조사 지도 ─────────────────────────────────────────────
+     넓은 화면: 배치도 위 구역마다 카드가 얹힌다.
+     좁은 화면: 구역이 120px도 안 돼 카드를 못 얹으므로, 지도는 위에 그림으로 두고
+     카드는 아래로 세로로 쌓는다. 어느 쪽이든 같은 칩을 쓴다. */
+  .mapbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 9px}
+  .mapbar .mh{font-size:13.5px;font-weight:700}
+  .mapbar .mnote{font-size:12px;color:var(--muted);flex:1;min-width:120px}
+  .mapscroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+  .mapstage{position:relative}
+  .zslot{display:flex;flex-direction:column;gap:3px}
+  .zlabel{font-size:11px;color:var(--sub);letter-spacing:.03em}
+  .zchips{display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;min-height:0}
+  .mchip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;cursor:pointer;
+    background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+    padding:4px 7px;font-family:inherit;color:var(--ink);text-align:left;transition:.13s;
+    max-width:100%;overflow:hidden}
+  .mchip .ms{font-size:11.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:13ch}
+  .mchip .mk{font-size:9.5px;color:var(--muted);letter-spacing:.02em}
+  .mchip.open{border-color:#6b5730;background:linear-gradient(180deg,#3a2f14,#2a2210)}
+  .mchip.open:hover{border-color:var(--gold)}
+  .mchip.open .mk{color:var(--gold-b)}
+  .mchip.hand{border-color:var(--gold);background:linear-gradient(180deg,#3a2f14,#221b0d)}
+  .mchip.hand .mk{color:var(--gold-b)}
+  .mchip.pub{border-color:var(--cold);background:linear-gradient(180deg,#16303f,#0f1b23)}
+  .mchip.pub .mk{color:var(--cold)}
+  .mchip.taken{border-color:var(--tc);opacity:.72;cursor:default}
+  .mchip.taken .mk{color:var(--tc)}
+  .mchip.lock{opacity:.45;cursor:default}
+  .mchip:disabled{cursor:default}
+
+  @media(min-width:761px){
+    /* 지도가 좁아지면 칸이 뭉개진다 — 최소 폭을 주고 넘치면 가로로 민다 */
+    .mapstage{min-width:720px;max-width:1000px}
+    .zslot{position:absolute;left:var(--zx);top:var(--zy);width:var(--zw);height:var(--zh);
+      padding:3px;overflow:hidden;justify-content:center}
+    .zlabel{display:none}
+    .mapstage .mapwrap{border:0;border-radius:0}
+    /* 구역이 좁아 칩이 서로 밀려 겹쳤다 — 지도 위에서는 한 단계 작게 */
+    .mapstage .mchip{padding:2px 5px;border-radius:5px}
+    .mapstage .mchip .ms{font-size:10.5px;max-width:10ch}
+    .mapstage .mchip .mk{font-size:8.5px}
+    .mapstage .zchips{gap:3px;justify-content:center}
+  }
+  @media(max-width:760px){
+    /* 세로 구성 — 지도는 위에 그림으로, 카드는 아래로 쌓는다 */
+    .mapstage .mapwrap{margin-bottom:12px}
+    .zslot{margin:0 0 11px;padding:9px 10px;background:var(--panel);
+      border:1px solid var(--line);border-radius:10px}
+    .zlabel{font-size:12.5px;color:var(--ink);font-weight:700;margin-bottom:5px}
+    .mchip{padding:7px 10px}
+    .mchip .ms{font-size:13px;max-width:none}
+    .mchip .mk{font-size:11px}
+  }
+
+  /* 크게 보기 — 글자까지 있는 전체 지도, 끌어서 이동 + 확대 */
+  #mapModal .box{max-width:min(96vw,1100px);padding:14px}
+  .mzoom{position:relative;overflow:hidden;background:#0b1016;border:1px solid var(--line);
+    border-radius:10px;height:min(66vh,560px);touch-action:none;cursor:grab}
+  .mzoom.drag{cursor:grabbing}
+  .mzoom .mvp{position:absolute;left:0;top:0;transform-origin:0 0;width:100%}
+  .mzoom .mapwrap{border:0;border-radius:0}
+  .mzbar{display:flex;gap:7px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .mzbar .hint{font-size:12px;color:var(--muted);flex:1;min-width:130px}
+
   /* 배치도 — 인라인 SVG. plain은 글자를 지운 레이아웃, nopod은 포드를 감춘다. */
   .por.noimg::after{content:attr(data-emo);position:absolute;inset:0;display:grid;place-items:center;
     font-size:44px;opacity:.55;filter:saturate(.7)}
@@ -649,6 +713,7 @@
 <div class="modal" id="handModal"><div class="box" id="handBox"></div></div>
 <div class="modal" id="trimModal"><div class="box" id="trimBox"></div></div>
 <div class="modal" id="interrogModal"><div class="box" id="interrogBox"></div></div>
+<div class="modal" id="mapModal"><div class="box" id="mapBox"></div></div>
 <div id="vn" onclick="vnAdvance()">
   <div class="vn-stage" id="vnStage">
     <div class="vn-bg" id="vnBg"></div>
@@ -1046,6 +1111,66 @@ async function loadMapSVG(){
 }
 function mapHTML(svg,cls){ return svg?`<div class="mapwrap ${cls||""}">${svg}</div>`:""; }
 
+/* 크게 보기 — 글자가 있는 전체 배치도. 끌어서 이동, 휠·버튼·손가락으로 확대.
+   포드는 여기서도 감춘다(공용 지도다). 포드가 그려진 판본은 롤카드에만 있다. */
+let mz={s:1,x:0,y:0};
+async function openMapDetail(){
+  const svg=await loadMapSVG();
+  if(!svg){ banner("배치도를 불러오지 못했습니다"); return; }
+  mz={s:1,x:0,y:0};
+  $("mapBox").innerHTML=`<h2 style="font-size:18px">🗺️ 테티스호 배치도</h2>
+    <div class="mlead">끌어서 옮기고, 손가락을 벌리거나 아래 버튼으로 확대합니다.</div>
+    <div class="mzoom" id="mzoom"><div class="mvp" id="mvp">${mapHTML(svg,"nopod")}</div></div>
+    <div class="mzbar">
+      <button class="btn sm" onclick="mzZoom(-1)">－</button>
+      <button class="btn sm" onclick="mzZoom(1)">＋</button>
+      <button class="btn sm" onclick="mzReset()">처음으로</button>
+      <span class="hint" id="mzPct">100%</span>
+      <button class="btn" onclick="closeModal('mapModal')">확인</button>
+    </div>`;
+  openModal("mapModal"); wireZoom();
+}
+function mzApply(){
+  const v=$("mvp"); if(!v) return;
+  v.style.transform=`translate(${mz.x}px,${mz.y}px) scale(${mz.s})`;
+  const pct=$("mzPct"); if(pct) pct.textContent=Math.round(mz.s*100)+"%";
+}
+function mzZoom(dir,cx,cy){
+  const box=$("mzoom"); if(!box) return;
+  const r=box.getBoundingClientRect();
+  const px=(cx==null?r.width/2:cx-r.left), py=(cy==null?r.height/2:cy-r.top);
+  const ns=Math.max(1,Math.min(5,mz.s*(dir>0?1.25:1/1.25)));
+  // 가리키는 지점을 기준으로 확대해야 손이 따라간다
+  mz.x=px-(px-mz.x)*(ns/mz.s); mz.y=py-(py-mz.y)*(ns/mz.s); mz.s=ns;
+  if(mz.s===1){ mz.x=0; mz.y=0; }
+  mzApply();
+}
+function mzReset(){ mz={s:1,x:0,y:0}; mzApply(); }
+function wireZoom(){
+  const box=$("mzoom"); if(!box) return;
+  const pts=new Map(); let last=0, from=null;
+  box.addEventListener("pointerdown",e=>{ box.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); box.classList.add("drag");
+    if(pts.size===2){ const [a,b]=[...pts.values()]; last=Math.hypot(a.x-b.x,a.y-b.y); from=mz.s; } });
+  box.addEventListener("pointermove",e=>{
+    const prev=pts.get(e.pointerId); if(!prev) return;
+    const dx=e.clientX-prev.x, dy=e.clientY-prev.y;
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===2){                                   // 손가락 두 개 — 확대
+      const [a,b]=[...pts.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(last>0){ const r=box.getBoundingClientRect();
+        const ns=Math.max(1,Math.min(5,from*(d/last)));
+        const cx=(a.x+b.x)/2-r.left, cy=(a.y+b.y)/2-r.top;
+        mz.x=cx-(cx-mz.x)*(ns/mz.s); mz.y=cy-(cy-mz.y)*(ns/mz.s); mz.s=ns;
+        if(mz.s===1){ mz.x=0; mz.y=0; } mzApply(); }
+    } else if(mz.s>1){ mz.x+=dx; mz.y+=dy; mzApply(); }   // 한 개 — 이동
+  });
+  const end=e=>{ pts.delete(e.pointerId); if(pts.size<2){ last=0; }
+    if(!pts.size) box.classList.remove("drag"); };
+  box.addEventListener("pointerup",end); box.addEventListener("pointercancel",end);
+  box.addEventListener("wheel",e=>{ e.preventDefault(); mzZoom(e.deltaY<0?1:-1,e.clientX,e.clientY); },{passive:false});
+}
+
 function portraitHTML(c){
   // 규약: /assets/{시나리오}_portrait_{배역}.{webp|png}
   // webp가 없으면 png로, 그것도 없으면 스스로 지워져 이모지가 드러난다.
@@ -1400,8 +1525,12 @@ async function paintMap(){
   document.querySelectorAll("#mapStage .zslot").forEach(sl=>{
     const g=svg.querySelector("#zone-"+sl.dataset.zone); if(!g){ sl.style.display="none"; return; }
     const f=g.querySelector(".zone-fill")||g; const bb=f.getBBox();
-    sl.style.left=(bb.x/W*100)+"%"; sl.style.top=(bb.y/H*100)+"%";
-    sl.style.width=(bb.width/W*100)+"%"; sl.style.height=(bb.height/H*100)+"%";
+    // 인라인으로 position을 박지 않는다 — 좁은 화면에서는 세로로 쌓아야 하고,
+    // 그 판단은 CSS 미디어쿼리가 하는 게 창 크기 변화까지 공짜로 따라온다.
+    sl.style.setProperty("--zx",(bb.x/W*100)+"%");
+    sl.style.setProperty("--zy",(bb.y/H*100)+"%");
+    sl.style.setProperty("--zw",(bb.width/W*100)+"%");
+    sl.style.setProperty("--zh",(bb.height/H*100)+"%");
   });
 }
 /* ── 심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다(예산 소모, 그 자리에서 공개) ── */
