@@ -483,8 +483,8 @@ def private_sheet(cid: str) -> dict | None:
     return {"id": c["id"], "name": c["name"], "job": c["job"], "avatar": c["avatar"], "color": c["color"],
             "hidden": c["hidden"], "persona": c["persona"], "sheet": c["sheet"], "goals": c["goals"],
             "cards": c.get("cards", []),
-            # 배치도를 가진 배역에게만 True — 포드가 표시된 그림이라 아무나 보면 안 된다
-            "hasMap": cid in MAP_HOLDERS}
+            # 배치도는 전원이 갖되, 포드가 그려진 판본은 아는 사람만
+            "hasMap": True, "showPod": cid in POD_KNOWERS}
 
 
 def memory_up_to(cid: str, current_seq: int) -> list[dict]:
@@ -523,8 +523,9 @@ def phase_by_seq(seq: int) -> dict:
     return next((p for p in PHASES if p["seq"] == seq), PHASES[0])
 
 
-# 이 배역들만 배치도를 갖고 있다(포드 표시 포함). 나머지는 롤카드에 지도가 없다.
-MAP_HOLDERS = ["jinharam", "handokyung"]
+# 배치도는 전원이 갖는다. 다만 탈출 포드가 그려진 판본은 이 둘뿐이다 —
+# 남의 화면을 곁눈질해도 자기 지도와 다르다는 걸 알아채면 그 자체가 단서가 된다.
+POD_KNOWERS = ["jinharam", "handokyung"]
 
 # 말수 — 페르소나 그대로다. 강윤서는 조급해서 말이 많고, 진하람은 좀처럼 입을 안 연다.
 # talk: 자발 발언 가중치 / ask: 남에게 직접 말을 거는 성향

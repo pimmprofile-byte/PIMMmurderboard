@@ -1622,7 +1622,9 @@ def reset(b: HostReq):
     with LOCK:
         if ROOM.get("host") not in (None, b.clientId):
             return JSONResponse({"error": "host"}, status_code=403)
+        prev_host = ROOM.get("host")
         ROOM = fresh_room()
+        ROOM["host"] = prev_host     # 초기화해도 진행자는 그대로 — 매번 다시 잡게 하면 번거롭다
     return {"ok": True}
 
 

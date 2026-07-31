@@ -530,6 +530,12 @@
   }
 
   /* 배치도 — 인라인 SVG. plain은 글자를 지운 레이아웃, nopod은 포드를 감춘다. */
+  .por.noimg::after{content:attr(data-emo);position:absolute;inset:0;display:grid;place-items:center;
+    font-size:44px;opacity:.55;filter:saturate(.7)}
+  .rc .por img.pt{width:100%;height:100%;object-fit:cover;display:block}
+  .podwarn{margin-top:10px;padding:9px 12px;border:1px solid rgba(200,68,47,.45);
+    border-radius:9px;background:rgba(200,68,47,.1);color:#f2d7d1;font-size:12.5px;line-height:1.55}
+  .podwarn b{color:var(--ember-b)}
   .mapwrap{width:100%;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0b1016}
   .mapwrap svg{width:100%;height:auto;display:block}
   .mapwrap.plain text{display:none}
@@ -1032,50 +1038,59 @@ function portraitHTML(c){
   const sid=(STATE&&STATE.scenarioId)||"";
   const src=sid?`/assets/${sid}_portrait_${c.id}.webp`:"";
   const png=sid?`/assets/${sid}_portrait_${c.id}.png`:"";
-  return `<span class="emo">${c.avatar}</span>`+(src?`<img src="${src}" alt="" loading="lazy"
-    onerror="if(this.dataset.f){this.remove()}else{this.dataset.f=1;this.src='${png}'}">`:"");
+  // 이모지를 뒤에 깔지 않는다 — 다시 그릴 때마다 사진이 로드되는 사이에 비쳐서 깜빡여 보였다.
+  // 사진을 끝내 못 찾은 경우에만 .por의 data-emo가 CSS로 드러난다.
+  if(!src) return "";
+  return `<img class="pt" src="${src}" alt="" decoding="async"
+    onerror="if(this.dataset.f){this.closest('.por').classList.add('noimg');this.remove()}else{this.dataset.f=1;this.src='${png}'}">`;
 }
 /* 1.5초마다 폴링하는데 그때마다 그리드를 통째로 다시 그리면 <img>가 새로 만들어져
    인물 사진이 깜빡인다. 로비에 실제로 영향을 주는 값만 뽑아 비교하고,
    달라진 게 없으면 손대지 않는다. */
-let lobbySig="";
-function lobbySignature(){
-  const r=(STATE&&STATE.roles)||{};
-  return JSON.stringify([
-    STATE&&STATE.started, STATE&&STATE.isHost, myRoleId, STATE&&STATE.scenarioId,
-    SCEN.characters.map(c=>[(r[c.id]||{}).mode,(r[c.id]||{}).claimed]),
-  ]);
+function roleCardState(c){
+  const r=(STATE.roles||{})[c.id]||{}; const mine=myRoleId===c.id;
+  const otherHuman=!mine&&r.mode==="human";
+  const locked=!!(STATE&&STATE.started);
+  // 카드의 버튼은 '고르는 일'만 한다. 내 정보 보기는 아래 바에 따로 있다.
+  let badge="", btn="";
+  if(mine){ badge=`<span class="badge me">● 나</span>`; btn=`<span class="rc-go done">✓ 선택함</span>`; }
+  else if(otherHuman){ badge=`<span class="badge hu">사람</span>`; btn=`<span class="rc-go off">참여 중</span>`; }
+  else if(r.mode==="ai"){ badge=`<span class="badge ai">AI</span>`;
+    btn=locked?`<span class="rc-go off">AI</span>`:`<button class="rc-go" onclick="setAI('${c.id}')">AI 해제</button>`; }
+  else { btn=locked?`<span class="rc-go off">-</span>`:`<button class="rc-go pick" onclick="claim('${c.id}')">선택</button>`; }
+  return {cls:"rc"+(mine?" mine":"")+(otherHuman?" off":""), badge, btn};
 }
+
+/* 카드 뼈대는 시나리오가 바뀔 때만 새로 만든다. 배역을 고를 때마다 통째로 다시 그리면
+   <img>가 매번 새로 만들어져 인물 사진이 깜빡인다 — 상태가 바뀌면 배지와 버튼만 갈아끼운다. */
+let lobbyBuilt="";
 function renderLobby(force){
-  const sig=lobbySignature();
-  if(!force && sig===lobbySig && $("lobbyList").children.length) return;
-  lobbySig=sig;
-  const locked=!!(STATE&&STATE.started);   // 시작 후에는 배역을 바꿀 수 없다
-  const cards=SCEN.characters.map(c=>{
-    const r=STATE.roles[c.id]||{}; const mine=myRoleId===c.id;
-    const otherHuman=!mine&&r.mode==="human";
-    // 카드의 버튼은 '고르는 일'만 한다. 내 정보 보기는 아래 바에 따로 있다 —
-    // 카드마다 버튼이 하는 일이 달라지면 어느 걸 눌러야 할지 매번 헷갈린다.
-    let badge="", btn="";
-    if(mine){
-      badge=`<span class="badge me">● 나</span>`;
-      btn=`<span class="rc-go done">✓ 선택함</span>`;
-    }else if(otherHuman){
-      badge=`<span class="badge hu">사람</span>`;
-      btn=`<span class="rc-go off">참여 중</span>`;
-    }else if(r.mode==="ai"){
-      badge=`<span class="badge ai">AI</span>`;
-      btn=locked?`<span class="rc-go off">AI</span>`:`<button class="rc-go" onclick="setAI('${c.id}')">AI 해제</button>`;
-    }else{
-      btn=locked?`<span class="rc-go off">-</span>`:`<button class="rc-go pick" onclick="claim('${c.id}')">선택</button>`;
-    }
-    return `<div class="rc${mine?" mine":""}${otherHuman?" off":""}" style="--rc:${c.color}">
-      <div class="por">${portraitHTML(c)}${badge}
-        <div class="scrim"><div class="nm">${esc(c.name)}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div></div>
-      </div>
-      <div class="tg">${esc(c.look||c.tagline)}</div>${btn}</div>`;
-  }).join("");
-  $("lobbyList").innerHTML=`<div class="role-grid">${cards}</div>${startBoxHTML()}<div class="rolebar">${roleBarHTML()}</div>`;
+  const shape=((STATE&&STATE.scenarioId)||"")+"|"+SCEN.characters.map(c=>c.id).join(",");
+  const host=$("lobbyList");
+  if(force||shape!==lobbyBuilt||!host.querySelector(".role-grid")){
+    lobbyBuilt=shape;
+    host.innerHTML=`<div class="role-grid">${SCEN.characters.map(c=>{
+      const st=roleCardState(c);
+      return `<div class="${st.cls}" data-rc="${c.id}" style="--rc:${c.color}">
+        <div class="por" data-emo="${esc(c.avatar)}">${portraitHTML(c)}<span class="badgeslot">${st.badge}</span>
+          <div class="scrim"><div class="nm">${esc(c.name)}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div></div>
+        </div>
+        <div class="tg">${esc(c.look||c.tagline)}</div><span class="btnslot">${st.btn}</span></div>`;
+    }).join("")}</div><div class="startslot">${startBoxHTML()}</div><div class="rolebar">${roleBarHTML()}</div>`;
+    return;
+  }
+  // 이미 있는 카드에 상태만 덧입힌다 — 사진은 손대지 않는다
+  SCEN.characters.forEach(c=>{
+    const el=host.querySelector(`.rc[data-rc="${c.id}"]`); if(!el) return;
+    const st=roleCardState(c);
+    if(el.className!==st.cls) el.className=st.cls;
+    const bs=el.querySelector(".badgeslot"); if(bs&&bs.innerHTML!==st.badge) bs.innerHTML=st.badge;
+    const bt=el.querySelector(".btnslot");   if(bt&&bt.innerHTML!==st.btn)   bt.innerHTML=st.btn;
+  });
+  const sb=host.querySelector(".startslot"), nb=startBoxHTML();
+  if(sb&&sb.innerHTML!==nb) sb.innerHTML=nb;
+  const rb=host.querySelector(".rolebar"), nr=roleBarHTML();
+  if(rb&&rb.innerHTML!==nr) rb.innerHTML=nr;
 }
 /* 모두 정해지면 호스트에게 확정을 묻는다 — 확정 순간부터 배역은 고정된다 */
 function startBoxHTML(){
@@ -1271,7 +1286,16 @@ async function claimRandom(){ const r=await post("/api/claim-random",{clientId})
 async function setMy(id){ myRoleId=id; localStorage.setItem("pmb.role",id); await poll(); }
 async function releaseRole(){ if(myRoleId){ await post("/api/release",{roleId:myRoleId,clientId}); myRoleId=null; localStorage.removeItem("pmb.role"); await poll(); } }
 async function setAI(id){ const r=await post("/api/setai",{roleId:id,clientId}); if(r&&r.error)banner(r.error); await poll(); }
-async function resetRoom(){ if(!confirm("방을 초기화할까요?"))return; await post("/api/reset",{}); myRoleId=null; localStorage.removeItem("pmb.role"); Object.keys(localStorage).filter(k=>k.indexOf("pmb.final.")===0).forEach(k=>localStorage.removeItem(k)); await poll(); go("lobby"); }
+async function resetRoom(){
+  if(!confirm("방을 초기화할까요?\n\n배역과 조사 기록이 모두 지워지고 배역 선택으로 돌아갑니다.")) return;
+  // clientId를 실어야 호스트로 인정된다. 안 보내면 403인데 예전엔 조용히 삼켰다.
+  const r=await post("/api/reset",{clientId});
+  if(r&&r.error){ banner(r.error==="host"?"호스트만 방을 초기화할 수 있습니다":"초기화 실패: "+r.error); return; }
+  myRoleId=null; localStorage.removeItem("pmb.role");
+  Object.keys(localStorage).filter(k=>k.indexOf("pmb.final.")===0).forEach(k=>localStorage.removeItem(k));
+  lobbyBuilt=""; handSeen=null; myHand=[];    // 뼈대를 다시 세워야 새 방이 그대로 그려진다
+  banner(""); await poll(); go("lobby");
+}
 
 /* 페이즈 패널 */
 function renderPanel(ph){
@@ -1594,14 +1618,18 @@ async function showMySheet(){
   const frags=(s.fragments||[]);
   if(frags.length){ const fh=frags.map((f,i,arr)=>{ const isNew=(f.when===curPhase&&i===arr.length-1); return `<div class="frag${isNew?" newfrag":""}"><div class="w">기억의 파편 · ${esc(f.when)}${isNew?" · NEW":""}</div>${esc(f.text)}</div>`; }).join("");
     slides.push(`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">떠오른 기억</div><div class="bc-title" style="font-size:18px">기억의 파편</div><div style="margin-top:14px">${fh}</div></div>`); }
-  // 4) 배치도 — 가진 배역만. 포드가 표시된 그림이라 나머지에겐 아예 없다.
+  // 4) 배치도 — 전원이 갖는다. 포드는 아는 사람 지도에만 그려진다.
   if(s.hasMap){
     const svg=await loadMapSVG();
     if(svg) slides.push(`<div class="bigcard role" style="--rc:${s.color}">
-      <div class="bc-eyebrow">너만 가진 것</div>
+      <div class="bc-eyebrow">${s.showPod?"너만 가진 판본":"배 안내도"}</div>
       <div class="bc-title" style="font-size:18px">테티스호 배치도</div>
-      <div class="bc-body" style="margin-bottom:10px">승선 전에 본 도면이다. 탈출 포드 위치까지 그려져 있다 — 다른 사람 화면에는 이 그림이 없다.</div>
-      ${mapHTML(svg)}</div>`);
+      <div class="bc-body" style="margin-bottom:10px">${s.showPod
+        ? "승선 전에 본 도면이다. <b>탈출 포드</b>까지 그려져 있다."
+        : "승선할 때 받은 안내도다. 구획 배치와 통로만 그려져 있다."}</div>
+      ${mapHTML(svg, s.showPod?"":"nopod")}
+      ${s.showPod?`<div class="podwarn">⚠ 다른 사람의 지도에는 <b>포드가 없다.</b>
+        이 화면을 보여주는 순간, 네가 알고 있었다는 게 드러난다.</div>`:""}</div>`);
   }
   // 5) 나의 목표
   slides.push(`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">나의 목표</div><div class="bc-title" style="font-size:18px">이번 밤, 내가 노리는 것</div>
