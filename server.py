@@ -1316,7 +1316,8 @@ def _advance():
             ph = SC.phase_by_seq(seq)
             il = SC.interlude_for(seq)
             if il:
-                ROOM["table"].append({"kind": "system", "broadcast": True, "text": f"📻 교내방송 — {il}"})
+                ROOM["table"].append({"kind": "system", "broadcast": True,
+                                      "text": f"📻 {getattr(SC, 'PA_LABEL', '교내방송')} — {il}"})
             # phase.gm은 진행자에게 주는 지시문이다("…확실히 짚어주세요"). 테이블에 넣으면
             # 플레이어 대화창에 그대로 뜬다. 막이 바뀌었다는 표시만 남긴다.
             ROOM["table"].append({"kind": "system", "text": f'— {ph["name"]} —'})

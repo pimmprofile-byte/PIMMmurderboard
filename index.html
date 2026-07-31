@@ -179,26 +179,6 @@
   /* 카드맵 */
   .clue-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
   .clue-h h3{margin:0;font-size:15px;color:var(--gold-b)}
-  .loc-group{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
-  .loc-group .lh{padding:8px 12px;background:var(--panel2);font-weight:700;font-size:13px}
-  .cardmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,104px),1fr));gap:8px;padding:9px}
-  /* 학교 구획도(플로어 플랜) */
-  .floormap{display:grid;gap:11px;grid-template-columns:repeat(3,1fr);
-    grid-template-areas:"roof roof roof" "art bcast staff" "class class class"}
-  /* 데이터 구동 존 그리드(시나리오 map 기반) */
-  .floormap.generic{grid-template-columns:repeat(auto-fill,minmax(min(100%,215px),1fr));grid-template-areas:none}
-  .room{border:1px solid var(--line);border-radius:13px;padding:10px 11px;background:linear-gradient(160deg,#161320,#111017);position:relative;animation:roomIn .5s ease both}
-  @keyframes roomIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-  .room .rmh{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#d7d0e4;margin-bottom:9px;border-bottom:1px dashed var(--line);padding-bottom:6px}
-  .room .rmh .fl{margin-left:auto;font-size:9.5px;color:var(--muted);font-weight:400;letter-spacing:.03em}
-  .room .cardmap{padding:0;grid-template-columns:repeat(auto-fill,minmax(min(100%,80px),1fr));gap:7px}
-  .room.roof{grid-area:roof;background:linear-gradient(160deg,#131a21,#0e1218)}
-  .room.art{grid-area:art}.room.bcast{grid-area:bcast}.room.staff{grid-area:staff}
-  .room.class{grid-area:class;border-color:#553236;background:linear-gradient(160deg,#1d1417,#140f13)}
-  .room.class .scene{border:1px solid #6e3a3a;border-radius:10px;padding:8px;background:rgba(120,42,42,.14);margin-bottom:8px}
-  .room.class .scene .sh{font-size:11px;font-weight:700;color:#f0a99e;margin-bottom:6px;letter-spacing:.02em}
-  .room .cardmap .gcard{aspect-ratio:auto;min-height:100px}
-  @media(max-width:640px){ .floormap{grid-template-columns:1fr;grid-template-areas:"roof" "art" "bcast" "staff" "class"} }
   .gcard{aspect-ratio:3/4;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(160deg,#1a1722,#141119);transition:.15s}
   .gcard:hover{transform:translateY(-2px);border-color:var(--gold)}
   .gcard .rb{font-size:9.5px;color:var(--muted)}
@@ -241,7 +221,7 @@
   .gcard.face.taken .q{font-size:20px;filter:grayscale(.2)}
   .gcard.face.taken .rb{color:var(--tc,var(--muted));font-size:9.5px}
   .gcard.hand{border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219)}.gcard.hand .t{color:var(--gold-b)}
-  .gcard.pub{border-color:var(--cold);background:linear-gradient(160deg,#111a22,#0e1620)}.gcard.pub.baitc{border-color:#5a4a2c}
+  .gcard.pub{border-color:var(--cold);background:linear-gradient(160deg,#111a22,#0e1620)}
   .gcard .tag{position:absolute;top:6px;right:6px;font-size:8.5px;padding:1px 5px;border-radius:6px;background:rgba(0,0,0,.45)}
   .gcard.hand .tag{color:var(--gold-b)}.gcard.pub .tag{color:var(--cold)}
 
@@ -260,7 +240,6 @@
   .modal h2{margin:0 0 4px;font-size:20px}.modal .mlead{color:var(--sub);font-size:13px;margin-bottom:14px}
   .sec{border-top:1px dashed var(--line);padding-top:11px;margin-top:11px}.sec:first-of-type{border-top:0;margin-top:0;padding-top:0}
   .sec .h{font-weight:700;color:var(--gold-b);font-size:13.5px;margin-bottom:4px}.sec .b{font-size:14px;color:#ded8ea;line-height:1.72}
-  .hb{background:#2a1214;border:1px solid #5a2c2c;color:#ffb9b9;border-radius:10px;padding:11px 14px;font-weight:700;text-align:center;margin-bottom:12px}
   .frag{background:#0e1620;border:1px solid #2c465a;border-radius:10px;padding:9px 12px;margin:8px 0;color:#cfe0ee;font-size:13.5px}.frag .w{font-size:11px;color:var(--cold);margin-bottom:3px}
   .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif}
   /* ── 스와이프 카드 캐러셀 (롤카드·손패 넘겨보기) ── */
@@ -332,7 +311,6 @@
   #s-gm{display:none;flex-direction:column;height:100vh}#s-gm.on{display:flex}
   .gm-main{flex:1 1 auto;display:flex;min-height:0}
   .gm-matrix{flex:1.3 1 0;overflow-y:auto;padding:14px 16px 30px;min-width:0}
-  .gm-wrap{padding:0}
   .gm-side{flex:1 1 0;max-width:440px;display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--line);background:var(--bg2)}
   .gm-side-h{padding:10px 14px;font-weight:700;font-size:13px;color:var(--gold-b);border-bottom:1px solid var(--line);flex:0 0 auto}
   .gm-side #gmChat{flex:1 1 auto;overflow-y:auto;min-height:0}
@@ -372,16 +350,6 @@
   .gcell.justmark{animation:gmMarkPop .35s ease}
   .gm-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--sub);margin-bottom:10px}
   .gm-legend b{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:4px}
-  .gm-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
-  .gm-row .who{min-width:118px;flex-shrink:0}
-  .gm-row .who .nm{font-weight:700;font-size:14px}
-  .gm-row .who .cnt{font-size:11.5px;color:var(--muted);margin-top:2px}
-  .gm-row .who .cnt.full{color:var(--ember-b);font-weight:700}
-  .gm-row .who .kind{font-size:10.5px;color:var(--gold-b)}
-  .gm-cells{display:flex;flex-wrap:wrap;gap:6px;flex:1}
-  .gm-loc{display:flex;flex-direction:column;gap:4px;padding:6px;border:1px dashed var(--line);border-radius:9px;background:#120f18}
-  .gm-loc .lh{font-size:9.5px;color:var(--muted);letter-spacing:.04em}
-  .gm-loc .cs{display:flex;gap:5px;flex-wrap:wrap}
   .cell{width:44px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--sub);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.12s;position:relative}
   .cell:hover:not(.locked){border-color:var(--gold);color:#fff}
   .cell.on{background:linear-gradient(150deg,#211b28,#2b2333);border-color:var(--cc,var(--gold));color:#fff;box-shadow:0 0 13px -3px var(--cc,var(--gold))}
@@ -402,12 +370,10 @@
   @media (prefers-reduced-motion: reduce){ .cine-intro .cine-p{animation-duration:.01ms!important} }
   @media (prefers-reduced-motion: reduce){ .gm-cine .ln,.gm-cine .vic,.gm-cine .go{animation-duration:.01ms!important} }
   .cell .rq{position:absolute;bottom:-3px;left:0;right:0;text-align:center;font-size:7.5px;color:var(--muted)}
-  @media(max-width:560px){ .gm-row .who{min-width:88px} .cell{width:40px;height:32px} }
+  @media(max-width:560px){ .cell{width:40px;height:32px} }
 
   /* ============ 연출 애니메이션 ============ */
   /* 조사카드 뒤집힘(맵) */
-  @keyframes cardFlip{0%{transform:rotateY(90deg) scale(.9);opacity:0}55%{opacity:1}100%{transform:rotateY(0) scale(1);opacity:1}}
-  .gcard.just-open{animation:cardFlip .5s cubic-bezier(.2,.7,.2,1) both}
   /* 조사카드 모달 공개 */
   @keyframes boxReveal{0%{transform:perspective(1200px) rotateX(14deg) translateY(24px) scale(.94);opacity:0;filter:blur(6px)}100%{transform:none;opacity:1;filter:none}}
   .modal .box.reveal{animation:boxReveal .5s cubic-bezier(.16,.8,.24,1) both}
@@ -562,7 +528,6 @@
   /* ── 조사 대시보드 ──────────────────────────────────────────
      본문은 '누가 어디를 봤나'만 보여주는 현황판이다.
      실제 조사는 지도를 열고 그 구역 안으로 들어가서 한다. */
-  .btn.wide{display:block;width:100%;text-align:center;padding:13px;font-size:15px;font-weight:800}
   .dashhead{display:flex;align-items:baseline;gap:9px;margin:18px 0 8px;font-size:13.5px;font-weight:700}
   .dashhead .dh-note{font-size:12px;color:var(--muted);font-weight:400}
   .dash{display:flex;flex-direction:column;gap:6px}
@@ -590,8 +555,6 @@
   .mvhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px}
   .mvhead h2{margin:0;font-size:18px}
   .mvhead .mvsub{font-size:12.5px;color:var(--muted);flex:1}
-  .mvmap{position:relative;background:#0b1016;border:1px solid var(--line);border-radius:11px;overflow:hidden}
-  .mvmap .mapwrap{border:0;border-radius:0}
   /* 배치도의 구역이 곧 버튼이다 — 위에 무엇도 얹지 않는다 */
   .mapbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 8px}
   .mapbar .mh{font-size:13.5px;font-weight:700}
@@ -687,7 +650,7 @@
   #phaseFx.k-invest .fx-name{color:#dfe9f2}
   #phaseFx.k-talk .fx-kick{color:var(--gold-b)}
   /* 교내방송(인터루드가 있는 페이즈) — 방송 라벨 + 스캔라인 깜빡임 */
-  #phaseFx.pa .fx-kick::after{content:"  ·  📢 교내방송";opacity:.85}
+  #phaseFx.pa .fx-kick::after{content:"  ·  📢 " attr(data-pa);opacity:.85}
   #phaseFx.pa .fx-line{color:#e8dfb0;font-style:normal;letter-spacing:.04em}
   @keyframes paFlicker{0%,100%{opacity:1}42%{opacity:.62}44%{opacity:1}70%{opacity:.5}72%{opacity:1}}
   #phaseFx.pa.play .fx-line{animation:paFlicker 2.4s steps(1) both}
@@ -703,7 +666,7 @@
   #phaseFx.k-reveal .fx-name{color:#f3ecd6;text-shadow:0 0 50px rgba(201,162,74,.55)}
 
   @media (prefers-reduced-motion: reduce){
-    .gcard.just-open,.modal .box.reveal,.frag,#phaseFx.play,#phaseFx.play .fx-in{animation-duration:.01ms!important}
+    .modal .box.reveal,.frag,#phaseFx.play,#phaseFx.play .fx-in{animation-duration:.01ms!important}
   }
 </style>
 </head>
@@ -948,6 +911,8 @@ function playPhaseFx(ph){
   const fx=$("phaseFx"); if(!fx) return;
   const inter=(SCEN&&SCEN.interludes)?SCEN.interludes[String(ph.seq)]:"";
   $("fxKick").textContent=FX_KICK[ph.key]||"";
+  // 방송 이름은 시나리오가 정한다 — 배에서 '교내방송'이 울리면 안 된다
+  $("fxKick").dataset.pa=(SCEN&&SCEN.paLabel)||"교내방송";
   $("fxName").textContent=ph.name||"";
   $("fxLine").textContent=inter||"";
   fx.className="on k-"+ph.key+(inter?" pa":"");

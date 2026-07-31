@@ -16,6 +16,9 @@ META = {"title": TITLE, "subtitle": SUBTITLE,
         "blurb": "심해 400m. 선장이 살해됐고 배는 가라앉고 있다. 통신은 끊겼고, 나갈 방법은 아무도 모른다.",
         "players": "5~6인", "tone": "밀실 스릴러 · 이중미션", "difficulty": "★★★★"}
 
+# 라운드 사이에 울리는 방송의 이름. 배마다 부르는 말이 다르다.
+PA_LABEL = "선내 방송"
+
 # ── 조사 맵 — CARDS의 loc 문자와 대응, 렌더 순서대로 ──
 MAP = [
     {"loc": "A", "icon": "🧭", "name": "함교"},
@@ -459,6 +462,7 @@ def public_scenario() -> dict:
         "openingCuts": OPENING_CUTS,
         "finalQuestions": FINAL_QUESTIONS,
         "interludes": {str(k): v for k, v in INTERLUDES.items()},
+        "paLabel": PA_LABEL,
     }
 
 
