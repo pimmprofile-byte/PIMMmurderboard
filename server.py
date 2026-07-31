@@ -201,6 +201,21 @@ def _auto_reveal_obligatory():
     return  # '전체공개' 개념 미사용(우선) — 공개의무 카드도 GM이 대화로 내레이션한다
 
 
+TABLE_TAIL = 140          # 클라이언트로 내보내는 대화 줄 수. 전체 기록은 서버에만 남는다.
+
+
+def table_tail(n: int = TABLE_TAIL):
+    """대화 기록의 꼬리만, 각 줄에 통 번호를 붙여 내보낸다.
+
+    예전엔 폴링(1.5초)마다 전체 기록을 통째로 보냈다. 80분 세션이면 500줄이 넘고,
+    그때쯤엔 한 번 폴 때마다 54KB를 내려받아 다시 파싱하고 화면을 통째로 다시 그렸다.
+    번호를 붙여 두면 클라이언트가 새로 온 줄만 덧붙일 수 있다."""
+    rows = ROOM["table"]
+    tail = rows[-n:] if n and len(rows) > n else rows
+    base = len(rows) - len(tail)
+    return [dict(m, n=base + i) for i, m in enumerate(tail)]
+
+
 def public_state() -> dict:
     with LOCK:
         seq = ROOM["seq"]
@@ -222,7 +237,7 @@ def public_state() -> dict:
             "chat": {"on": CHAT["on"], "gap": CHAT["gap"]},
             "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"]},
             "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
-            "table": ROOM["table"],
+            "table": table_tail(),
             "revealed": [SC.public_card(cid) for cid in ROOM["revealed"]],
             "revealedIds": list(ROOM["revealed"]),
             "checked": checked,
@@ -253,9 +268,20 @@ except Exception:
 # 규약: assets/{scenarioId}_portrait_{roleId}.png  (없으면 클라이언트가 이모지로 폴백)
 try:
     from fastapi.staticfiles import StaticFiles
+
+    class _CachedAssets(StaticFiles):
+        """초상·배경·폰트는 한 판 도는 동안 바뀌지 않는다. 캐시 지시를 안 붙이면
+        브라우저가 페이지를 넘길 때마다 파일마다 304를 확인하러 다시 다녀온다 —
+        폰에서 오프닝을 열 때 컷마다 눈에 띄게 걸리던 원인이다."""
+
+        async def get_response(self, path, scope):
+            r = await super().get_response(path, scope)
+            r.headers.setdefault("Cache-Control", "public, max-age=3600")
+            return r
+
     _ASSETS = _HERE / "assets"
     _ASSETS.mkdir(exist_ok=True)
-    app.mount("/assets", StaticFiles(directory=str(_ASSETS)), name="assets")
+    app.mount("/assets", _CachedAssets(directory=str(_ASSETS)), name="assets")
 except Exception:
     pass
 

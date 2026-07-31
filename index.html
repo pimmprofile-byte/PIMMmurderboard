@@ -439,7 +439,8 @@
     width:min(100vw,calc(100vh * 16 / 9));height:min(100vh,calc(100vw * 9 / 16));
     container-type:inline-size}
   #vn .vn-bg{position:absolute;inset:0;background-size:cover;background-position:center;
-    transition:opacity .55s ease, transform 7s linear;opacity:0;transform:scale(1.07)}
+    transition:opacity .55s ease, transform 7s linear;opacity:0;transform:scale(1.07);
+    will-change:transform,opacity}
   #vn .vn-bg.show{opacity:1;transform:scale(1)}
   /* 이미지가 없을 때의 폴백 — 컷 분위기를 색으로만 낸다 */
   #vn .vn-bg.calm{background-image:radial-gradient(120% 90% at 50% 35%,#1b2733,#0a0f16 60%,#05070a)}
@@ -465,8 +466,13 @@
     opacity:0;transform:translateY(1.2cqw);transition:opacity .42s ease,transform .42s ease;
     filter:drop-shadow(0 0 2cqw rgba(0,0,0,.9)) saturate(.7)}
   #vn .vn-emo.show{opacity:.9;transform:none}
-  #vn .vn-bg{filter:none;transition:opacity .55s ease,transform 7s linear,filter .5s ease}
-  #vn.speak .vn-bg{filter:brightness(.5) saturate(.75)}
+  /* 말하는 동안 뒤를 눌러 인물을 앞으로 낸다. 예전엔 .vn-bg 에 filter:brightness 를 걸었는데,
+     같은 레이어가 7초짜리 확대를 동시에 돌고 있어서 브라우저가 매 프레임 배경 전체를
+     필터링해 다시 그렸다. 어둡게 하는 일은 겹쳐놓은 검은 판의 불투명도로 옮긴다 —
+     opacity 는 합성 단계에서 끝나 다시 그리지 않는다. */
+  #vn .vn-dim{position:absolute;inset:0;pointer-events:none;background:#05040a;
+    opacity:0;transition:opacity .5s ease}
+  #vn.speak .vn-dim{opacity:.52}
 
   /* 텍스트박스 */
   #vn .vn-box{position:absolute;left:0;right:0;bottom:0;padding:0 6cqw 5cqw;
@@ -477,9 +483,9 @@
     background:var(--spk,#c9c2b4);box-shadow:0 -.2cqw 1.2cqw rgba(0,0,0,.5)}
   #vn.speak .vn-name{display:block}
   #vn .vn-panel{width:100%;min-height:15cqw;padding:2.6cqw 3cqw;
-    background:linear-gradient(180deg,rgba(9,8,13,.82),rgba(6,5,9,.93));
+    background:linear-gradient(180deg,rgba(9,8,13,.9),rgba(6,5,9,.96));
     border:1px solid rgba(255,255,255,.13);border-radius:.9cqw;
-    backdrop-filter:blur(6px);box-shadow:0 .6cqw 4cqw rgba(0,0,0,.6)}
+    box-shadow:0 .6cqw 4cqw rgba(0,0,0,.6)}
   #vn.speak .vn-panel{border-left:.35cqw solid var(--spk,#c9c2b4)}
   #vn .vn-line{font-family:"PIMM Myeongjo","Nanum Myeongjo","AppleMyungjo",serif;color:#f2ecdf;
     font-size:2.5cqw;line-height:1.78;letter-spacing:-.005em;
@@ -504,7 +510,7 @@
   #vn .vn-tools{position:absolute;top:2.2cqw;right:2.2cqw;z-index:4;display:flex;gap:1cqw}
   #vn .vn-tool{background:rgba(6,4,8,.62);border:1px solid rgba(255,255,255,.18);
     color:rgba(255,255,255,.72);border-radius:999px;padding:.8cqw 1.9cqw;
-    font-size:1.5cqw;font-family:inherit;cursor:pointer;backdrop-filter:blur(5px);line-height:1.3}
+    font-size:1.5cqw;font-family:inherit;cursor:pointer;line-height:1.3}
   #vn .vn-tool:hover{color:#fff;border-color:var(--ember-b)}
 
   /* 극 진행 연출 — 컷의 fx 값이 무대에 클래스로 붙는다 */
@@ -784,6 +790,7 @@
 <div id="vn" onclick="vnAdvance()">
   <div class="vn-stage" id="vnStage">
     <div class="vn-bg" id="vnBg"></div>
+    <div class="vn-dim"></div>
     <div class="vn-flash"></div>
     <img class="vn-sprite" id="vnSprite" alt="">
     <div class="vn-emo" id="vnEmo"></div>
@@ -1002,13 +1009,15 @@ async function aiFinal(id){ banner("AI 최종답변 채점 중…"); const r=awa
 /* 로비 — 2열 포스터 그리드. 카드 자체가 버튼이고, 부가 동작은 아래 액션바로 뺀다. */
 /* 에셋은 webp를 먼저, 없으면 png를 찾는다 — 어느 포맷으로 넣어도 동작하게. */
 const ASSET_EXT=["webp","png"];
+const ASSET_HIT={};                    // 찾아본 결과는 기억한다 — 컷마다 다시 뒤지지 않게
 function findAsset(base, cb){
+  if(base in ASSET_HIT){ cb(ASSET_HIT[base]); return; }
   let i=0;
   const tryNext=()=>{
-    if(i>=ASSET_EXT.length){ cb(null); return; }
+    if(i>=ASSET_EXT.length){ ASSET_HIT[base]=null; cb(null); return; }
     const url=`${base}.${ASSET_EXT[i++]}`;
     const im=new Image();
-    im.onload=()=>cb(url); im.onerror=tryNext; im.src=url;
+    im.onload=()=>{ ASSET_HIT[base]=url; cb(url); }; im.onerror=tryNext; im.src=url;
   };
   tryNext();
 }
@@ -1185,16 +1194,19 @@ function vnType(lines,who){
   const host=$("vnLines");
   host.innerHTML=lines.map(t=>`<div class="vn-line">${vnLineHTML(t,0)}</div>`).join("");
   const els=Array.prototype.slice.call(host.children);
+  // 두 조각(읽은 쪽·안 읽은 쪽)은 처음 한 번만 만들고, 이후엔 그 안의 글자만 바꾼다.
+  // 예전엔 한 글자마다 innerHTML을 다시 넣어 줄 전체를 파싱하고 배치를 다시 계산했다.
+  const pair=els.map(el=>[el.querySelector(".vn-on"),el.querySelector(".vn-off")]);
   let li=0, ci=0;
   vnTyping=true; vnHintText();
   const step=()=>{
     if(li>=lines.length){ vnTyping=false; vnHintText(); return; }
-    const txt=lines[li], el=els[li];
+    const txt=lines[li], el=els[li], [on,off]=pair[li];
     if(ci===0) el.classList.add("typing");
     if(ci>=txt.length){ el.classList.remove("typing"); li++; ci=0; vnTimer=setTimeout(step,360); return; }
     const ch=txt.charAt(ci); ci++;
-    el.innerHTML=vnLineHTML(txt,ci);
-    if(ci%2===0) vnBlip(who);
+    on.textContent=txt.slice(0,ci); off.textContent=txt.slice(ci);
+    if(ci%3===0) vnBlip(who);
     vnTimer=setTimeout(step, ".…—?!,".indexOf(ch)>=0 ? 165 : 34);
   };
   clearTimeout(vnTimer); step();
@@ -1891,18 +1903,35 @@ function renderReveal(p){
 }
 
 /* 채팅 */
+/* 새로 온 줄만 덧붙인다. 예전엔 누가 한마디 할 때마다 대화창을 통째로 지우고
+   전부 다시 그렸다 — 500줄쯤 쌓인 후반부엔 그 한 번이 80ms를 먹었고, 그게 말이
+   오갈 때마다 모든 기기에서 동시에 일어났다. 서버가 줄마다 통 번호(n)를 준다. */
+const CHAT_KEEP=220;                 // 화면에 남겨두는 최대 줄 수
+let chatDrawn={};                    // 대화창 id -> 마지막으로 그린 줄 번호
+function chatRow(m){
+  if(m.kind==="system"){ const s=document.createElement("div"); s.className="sys"+(m.broadcast?" bc":""); s.textContent=m.text; return s; }
+  if(m.kind==="interrogate"){ const s=document.createElement("div"); s.className="interrog "+(m.outcome||"plain");
+    s.innerHTML=`<div class="ig-head">${esc(m.text)}</div><div class="ig-line">${esc(m.line||"")}</div>`; return s; }
+  const c=roleById(m.roleId);
+  const row=document.createElement("div"); row.className="msg"+(m.roleId===myRoleId?" own":"");
+  row.innerHTML=`<div class="av">${c?c.avatar:"❔"}</div><div><div class="nm" style="color:${c?c.color:"#999"}">${esc(m.speaker)}${m.kind==="human"?'<span class="tag-me">사람</span>':''}</div><div class="bub">${esc(m.text)}</div></div>`;
+  return row;
+}
 function renderChat(boxId){
-  const box=$(boxId||"chat"); const near=box.scrollHeight-box.scrollTop-box.clientHeight<120; box.innerHTML="";
-  (STATE.table||[]).forEach(m=>{
-    if(m.kind==="system"){ const s=document.createElement("div"); s.className="sys"+(m.broadcast?" bc":""); s.textContent=m.text; box.appendChild(s); return; }
-    if(m.kind==="interrogate"){ const s=document.createElement("div"); s.className="interrog "+(m.outcome||"plain");
-      s.innerHTML=`<div class="ig-head">${esc(m.text)}</div><div class="ig-line">${esc(m.line||"")}</div>`; box.appendChild(s); return; }
-    const c=roleById(m.roleId); const own=m.roleId===myRoleId;
-    const row=document.createElement("div"); row.className="msg"+(own?" own":"");
-    row.innerHTML=`<div class="av">${c?c.avatar:"❔"}</div><div><div class="nm" style="color:${c?c.color:"#999"}">${esc(m.speaker)}${m.kind==="human"?'<span class="tag-me">사람</span>':''}</div><div class="bub">${esc(m.text)}</div></div>`;
-    box.appendChild(row);
-  });
-  if(near) box.scrollTop=box.scrollHeight;
+  const id=boxId||"chat", box=$(id); if(!box) return;
+  const rows=STATE.table||[];
+  const near=box.scrollHeight-box.scrollTop-box.clientHeight<120;
+  let last=chatDrawn[id];
+  const first=rows.length?(rows[0].n||0):0, tail=rows.length?(rows[rows.length-1].n||0):-1;
+  // 못 본 사이에 창이 밀려났거나(오래 떠나 있었다) 방이 초기화돼 번호가 되감겼으면 다시 그린다
+  if(last===undefined||!rows.length||first>last+1||tail<last){ box.innerHTML=""; last=-1; }
+  let added=0;
+  const frag=document.createDocumentFragment();
+  for(const m of rows){ const n=(m.n==null?0:m.n); if(n<=last) continue; frag.appendChild(chatRow(m)); last=n; added++; }
+  if(added) box.appendChild(frag);
+  chatDrawn[id]=last;
+  while(box.children.length>CHAT_KEEP) box.removeChild(box.firstChild);
+  if(near&&added) box.scrollTop=box.scrollHeight;
 }
 function updateComposer(){
   const ok=myRoleValid(); const c=ok?roleById(myRoleId):null;
