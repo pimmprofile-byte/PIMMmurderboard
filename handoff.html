@@ -109,11 +109,17 @@
 const $=id=>document.getElementById(id);
 const BASE=location.origin;
 function shortBrief(k){
+  const u=`${BASE}/api/handoff?key=${k}&base=${encodeURIComponent(BASE)}`;
   return `머더미스터리 세션 진행을 맡아줘.\n\n`+
-  `아래 주소로 GET 요청을 보내면 진행 지침 전문이 나온다. 그대로 따르면 된다.\n`+
-  `  ${BASE}/api/handoff?key=${k}&base=${encodeURIComponent(BASE)}\n\n`+
-  `키는 ${k} 다. API 호출에만 쓰고 채팅에 다시 출력하지 마라.\n`+
-  `지침을 받아 읽고, 준비되면 ${BASE}/api/state 를 확인한 뒤 대기해줘.`;
+  `먼저 연결부터 확인해줘. 터미널에서:\n`+
+  `  curl -s -o /dev/null -w "%{http_code}\\n" "${BASE}/api/state"\n`+
+  `200이 아니면 거기서 멈추고 알려줘.\n\n`+
+  `200이면 아래로 진행 지침 전문을 받아서 그대로 따라줘.\n`+
+  `  curl -s "${u}"\n\n`+
+  `이 서버는 브라우저가 아니라 curl로만 다룬다. GET·POST 전부 Bash로 해줘.\n`+
+  `키는 ${k} 다. API 호출에만 쓰고 채팅에 다시 출력하지 마라.\n\n`+
+  `지침을 읽고 나면, 무엇을 하는 역할인지 세 줄로 요약해서 알려주고 대기해줘.\n`+
+  `내가 "시작하자"라고 하면 그때 진행을 시작하면 된다.`;
 }
 async function load(){
   const k=$("key").value.trim();
