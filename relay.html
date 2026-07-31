@@ -99,7 +99,10 @@
 
   <section>
     <div class="sh">지금 테이블</div>
+    <p class="sd">손으로 나를 때 쓰는 대화록입니다.
+      진행 세션이 이 서버를 부를 수 있으면 복사할 필요가 없습니다 — 알아서 읽어 갑니다.</p>
     <div class="feed" id="feed">…</div>
+    <div class="row"><button onclick="copyFeed(this)">대화록 복사</button></div>
   </section>
 </div>
 
@@ -156,10 +159,15 @@ async function load(){
 async function copyPrompt(btn){
   await nav($("prompt").textContent, btn, "프롬프트 복사");
 }
+/* 시간 순서대로, 붙여넣기 좋은 평문으로 */
+async function copyFeed(btn){
+  const t=(STATE&&STATE.table||[]).filter(m=>m.kind==="ai"||m.kind==="human").slice(-20);
+  await nav(t.map(m=>`${m.speaker}: ${m.text}`).join("\n") || "(대화 없음)", btn, "대화록 복사");
+}
 async function nav(text,btn,label){
   try{ await navigator.clipboard.writeText(text); }
-  catch(e){ const r=document.createRange(); r.selectNodeContents($("prompt"));
-    getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand("copy"); }
+  catch(e){ const ta=document.createElement("textarea"); ta.value=text;
+    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
   btn.textContent="복사됨 ✓"; btn.classList.add("ok");
   setTimeout(()=>{ btn.textContent=label; btn.classList.remove("ok"); },1400);
 }
