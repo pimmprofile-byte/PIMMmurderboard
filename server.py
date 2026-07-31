@@ -1133,6 +1133,22 @@ def events(key: str = "", since: int = 0, wait: int = 0):
         time.sleep(0.6)
 
 
+@app.get("/api/relay-next")
+def relay_next(key: str = "", clientId: str = ""):
+    """지금 말할 차례인 AI 배역만 알려준다. 내용은 주지 않는다.
+
+    진행 세션은 이 이름 하나만 받아서 그 배역의 서브에이전트를 띄우면 된다.
+    카드도 대본도 진행 세션을 지나가지 않는다.
+    """
+    if not (_agent_ok(key) or _is_host(clientId)):
+        return JSONResponse({"error": "key"}, status_code=403)
+    rid = _pick_reactor()
+    if not rid:
+        return JSONResponse({"error": "AI 배역이 없습니다"}, status_code=409)
+    c = SC.get_character(rid) or {}
+    return {"roleId": rid, "name": c.get("name", rid)}
+
+
 @app.get("/api/relay/{role_id}", response_class=PlainTextResponse)
 def relay_prompt(role_id: str, key: str = "", clientId: str = ""):
     """API 키가 없을 때 쓰는 통로 — 그 배역 하나짜리 지시문을 글로 내준다.
@@ -1169,7 +1185,9 @@ def handoff_brief(key: str = "", base: str = ""):
     """
     if not _agent_ok(key):
         return PlainTextResponse("key", status_code=403)
-    return handoff.runner_brief(SC, base or "", key or "<AGENT_KEY>")
+    # 배포에 LLM 키가 있느냐에 따라 지침이 갈린다 — 없는데 ai-react를 알려주면 502만 만난다
+    has_llm = bool(ANTHROPIC_API_KEY and anthropic) or BACKEND == "ollama"
+    return handoff.runner_brief(SC, base or "", key or "<AGENT_KEY>", has_llm=has_llm)
 
 
 @app.get("/api/player-notice", response_class=PlainTextResponse)
