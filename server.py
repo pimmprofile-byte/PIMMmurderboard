@@ -22,7 +22,7 @@ import zlib
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
 _HERE = Path(__file__).resolve().parent
@@ -32,6 +32,7 @@ try:
 except Exception:
     pass
 
+import handoff  # noqa: E402
 import scenarios  # noqa: E402
 
 # 활성 시나리오(앱 전역) — 모든 함수는 전역 SC를 읽으므로, SC를 재바인딩하면 앱 전체가 그 시나리오로 전환된다.
@@ -1035,6 +1036,30 @@ def ai_investigate_auto(b: TurnReq):
         cat = {c["id"]: c for c in SC.CARDS}
     return {"ok": True, "roleId": rid,
             "picked": [{"id": i, "title": cat[i]["title"], "loc": cat[i]["loc"], "locName": cat[i]["locName"]} for i in picks]}
+
+
+@app.get("/api/handoff", response_class=PlainTextResponse)
+def handoff_brief(key: str = "", base: str = ""):
+    """진행 세션이 스스로 받아 가는 지침. 배포된 코드에서 만들어지므로 낡을 일이 없다.
+
+    저장소를 진행 세션에 주지 않기로 한 이상, 지침을 사람이 복사해 나르면 판마다
+    조금씩 어긋난다. 이 주소 하나만 알려주면 그 문제가 없어진다.
+    진상은 들어 있지 않다.
+    """
+    if not _agent_ok(key):
+        return PlainTextResponse("key", status_code=403)
+    return handoff.runner_brief(SC, base or "", key or "<AGENT_KEY>")
+
+
+@app.get("/api/player-notice", response_class=PlainTextResponse)
+def player_notice(base: str = ""):
+    """플레이어에게 뿌릴 안내문. 비밀이 없으므로 키를 걸지 않는다."""
+    return handoff.player_notice(SC, base or "")
+
+
+@app.get("/handoff")
+def handoff_page():
+    return FileResponse(_HERE / "handoff.html")
 
 
 @app.get("/api/brief")
