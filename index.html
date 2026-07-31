@@ -120,6 +120,16 @@
   .pbanner .il{color:var(--cold);margin-top:5px;font-size:12.5px}
   .ppanel{flex:1 1 auto;overflow-y:auto;padding:14px}
   #s-play.talk .ppanel,#s-play.reveal .ppanel{flex:0 1 auto;max-height:30vh}
+  .chattab{display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;
+    background:var(--bg2);border:0;border-top:1px solid var(--line);color:var(--sub);
+    font-family:inherit;font-size:12.5px;padding:8px 14px;text-align:left}
+  .chattab:hover{color:var(--ink)}
+  .chattab .ct-t{font-weight:700}
+  .chattab .ct-n{color:var(--muted);font-variant-numeric:tabular-nums;flex:1}
+  .chattab .ct-a{transition:transform .18s ease}
+  #s-play.chatoff .chattab .ct-a{transform:rotate(-90deg)}
+  #s-play.chatoff .chat{display:none}
+
   /* 조사 페이즈엔 지도가 주인공이다 — 대화는 한 줄 눈치만 보이게 줄인다.
      32vh를 그대로 두면 폰에서 지도가 60px밖에 못 받는다. */
   #s-play.invest .chat{flex:0 0 18vh}
@@ -685,6 +695,10 @@
   <div class="banner" id="banner"></div>
   <div class="pbanner" id="pbanner"></div>
   <div class="ppanel" id="ppanel"></div>
+  <button class="chattab" id="chatTab" onclick="foldChat()">
+    <span class="ct-t">💬 대화</span><span class="ct-n" id="chatN"></span>
+    <span class="ct-a" id="chatArrow">▾</span>
+  </button>
   <div class="chat" id="chat"></div>
   <div class="aicall" id="aicall"></div>
   <div class="composer">
@@ -828,6 +842,7 @@ function applyState(){
     renderPanel(ph);
     // 채팅
     if(STATE.rev!==lastRev){ renderChat(); lastRev=STATE.rev; }
+    applyChatFold();
     $("advBtn").style.display=(STATE.seq>=9)?"none":"";
     renderAiCall();
     maybePhaseFx(ph);
@@ -881,6 +896,21 @@ function renderAiCall(){
   bar.innerHTML=h;
 }
 async function aiSay(id){ if(aiBusy)return; aiBusy=true; const r=await post("/api/ai-say",{roleId:id}); if(r&&r.error){ if(String(r.error).indexOf("말하는 중")<0) banner("AI 오류: "+r.error);} else banner(""); aiBusy=false; await poll(); }
+/* 채팅 접기 — 폰에서 패널을 다 보려면 대화창을 잠깐 치울 수 있어야 한다 */
+let chatOff=false;
+try{ chatOff=localStorage.getItem("pmb.chatoff")==="1"; }catch(e){}
+function foldChat(){
+  chatOff=!chatOff;
+  try{ localStorage.setItem("pmb.chatoff",chatOff?"1":"0"); }catch(e){}
+  applyChatFold();
+}
+function applyChatFold(){
+  const sc=$("s-play"); if(!sc) return;
+  sc.classList.toggle("chatoff",chatOff);
+  const n=(STATE&&STATE.table||[]).filter(m=>m.kind==="ai"||m.kind==="human").length;
+  const el=$("chatN"); if(el) el.textContent=n?`${n}줄`:"";
+}
+
 async function aiAll(){ const ais=SCEN.characters.filter(c=>STATE.roles[c.id].mode==="ai"); for(const c of ais){ await aiSay(c.id); } }
 /* 자율대화 — 켜두면 조용해질 때마다 서버가 알아서 한 명을 골라 말하게 한다 */
 async function toggleChat(){
