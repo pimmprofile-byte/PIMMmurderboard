@@ -1451,6 +1451,7 @@ async function resetRoom(){
   // clientId를 실어야 호스트로 인정된다. 안 보내면 403인데 예전엔 조용히 삼켰다.
   const r=await post("/api/reset",{clientId});
   if(r&&r.error){ banner(r.error==="host"?"호스트만 방을 초기화할 수 있습니다":"초기화 실패: "+r.error); return; }
+  await post("/api/host/claim",{clientId});   // 초기화가 호스트를 풀었으니 곧바로 되잡는다
   myRoleId=null; localStorage.removeItem("pmb.role");
   Object.keys(localStorage).filter(k=>k.indexOf("pmb.final.")===0).forEach(k=>localStorage.removeItem(k));
   lobbyBuilt=""; handSeen=null; myHand=[];    // 뼈대를 다시 세워야 새 방이 그대로 그려진다

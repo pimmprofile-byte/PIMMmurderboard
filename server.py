@@ -1624,9 +1624,9 @@ def reset(b: HostReq):
     with LOCK:
         if ROOM.get("host") not in (None, b.clientId):
             return JSONResponse({"error": "host"}, status_code=403)
-        prev_host = ROOM.get("host")
         ROOM = fresh_room()
-        ROOM["host"] = prev_host     # 초기화해도 진행자는 그대로 — 매번 다시 잡게 하면 번거롭다
+        # 호스트도 함께 푼다. 붙들고 있으면 그 브라우저가 사라졌을 때 방이 영영 잠긴다 —
+        # 초기화한 사람은 곧바로 다시 잡으면 된다(클라이언트가 이어서 요청한다).
     return {"ok": True}
 
 

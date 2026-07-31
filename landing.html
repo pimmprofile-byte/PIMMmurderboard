@@ -379,9 +379,14 @@ function pickScenario(id){
 async function launch(){
   const s=SCEN.find(x=>x.id===me.pick); if(!s) return;
   note(`《${s.title}》 여는 중…`);
-  await claimHost();
-  const r=await apiSelect(me.pick);
-  if(!r.ok){ note(r.error==="host"?"이미 다른 호스트가 진행 중이에요.":"사건을 여는 데 실패했어요."); return; }
+  const claim=await claimHost();
+  if(claim&&claim.isHost){
+    // 내가 호스트다 — 고른 사건으로 방을 연다
+    const r=await apiSelect(me.pick);
+    if(!r.ok){ note("사건을 여는 데 실패했어요."); return; }
+  }
+  // 이미 다른 사람이 호스트면 사건은 그쪽이 정한다. 나는 그냥 들어가면 된다 —
+  // 예전엔 여기서 막혀 폰으로 합류가 아예 안 됐다.
   location.href="/play";
 }
 function note(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(note._t); note._t=setTimeout(()=>t.classList.remove("on"),2600); }
