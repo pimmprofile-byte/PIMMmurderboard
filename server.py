@@ -848,7 +848,9 @@ def _mark_toggle(role_id: str, card_id: str) -> str | None:
         ROOM["checkedRound"].get(role_id, {}).pop(card_id, None)
         bump()
         return None
-    return _try_investigate(role_id, card_id)
+    # GM 마킹은 진행자가 테이블에서 벌어진 일을 그대로 옮겨 적는 것이라 조사 턴 제한을 걸지 않는다.
+    # 걸어두면 토론 페이즈(AP 0)에서 잘못 푼 마킹을 되돌릴 수가 없다 — 실제로 그래서 막혔다.
+    return _try_investigate(role_id, card_id, enforce_ap=False)
 
 
 def _subj(name: str) -> str:

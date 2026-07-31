@@ -339,6 +339,10 @@
   .gcell .cspot{font-size:11.5px;color:var(--sub);line-height:1.35}
   .gcell .cwho{font-size:12px;font-weight:700;color:var(--cc)}
   .gcell.took{background:linear-gradient(150deg,#3a2c12,#241d0e);border-color:var(--cc)}
+  .gcell.pub{background:linear-gradient(150deg,#16303f,#0f1b23);border-color:var(--cold)}
+  .gcell.pub .cwho{color:var(--cold)}
+  .gcell .pubtag{margin-left:5px;font-size:9px;color:var(--cold);border:1px solid var(--cold);
+    border-radius:4px;padding:0 3px;font-family:inherit;letter-spacing:.02em}
   .gcell .rq{position:absolute;top:5px;right:6px;font-size:9.5px;color:var(--warn);opacity:.8}
   @keyframes gmMarkPop{0%{transform:scale(.9)}60%{transform:scale(1.04)}100%{transform:none}}
   .gcell.justmark{animation:gmMarkPop .35s ease}
@@ -1140,6 +1144,7 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
   const holder={};                       // cardId -> roleId
   Object.keys(checked||{}).forEach(rid=>(checked[rid]||[]).forEach(id=>{ holder[id]=rid; }));
   const target=gmMarkTarget();           // 지금 마킹할 인물
+  const pubById={}; (STATE.revealed||[]).forEach(c=>{ pubById[c.id]=c; });
 
   let h=`<div class="gm-guide"><span class="g">GM 지문</span>${esc(ph.gm||"")}${inter?`<div class="il">📢 “${esc(inter)}”</div>`:""}</div>`;
   if(k==="invest"){
@@ -1171,9 +1176,16 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
       const rid=holder[cd.id]; const who=rid?(roleById(rid)||{}):null;
       const jm=fresh&&rid&&fresh.has(rid+":"+cd.id);
       const tip=`${esc(cd.locName)}${cd.spot?" · "+esc(cd.spot):""} · R${cd.round}${cd.requires?" · "+cd.requires+" 선행":""}`;
-      if(who) return `<div class="gcell took${jm?" justmark":""}" style="--cc:${who.color}"
-        onclick="gmMark('${rid}','${cd.id}')" title="${tip}">
-        <div class="cid">${cd.id}</div><div class="cwho">${who.avatar} ${esc(who.name)}</div></div>`;
+      const isPub=!!pubById[cd.id];
+      if(who||isPub){
+        // 토론 중엔 클릭으로 마킹이 풀리지 않는다 — 공개된 카드면 내용을 열고, 아니면 아무 일도 없다.
+        const act=isPub?`openCard('${cd.id}')`:(k==="invest"?`gmMark('${rid}','${cd.id}')`:`gmHeld()`);
+        return `<div class="gcell took${isPub?" pub":""}${jm?" justmark":""}" style="--cc:${(who&&who.color)||'var(--gold)'}"
+          onclick="${act}" title="${tip}">
+          <div class="cid">${cd.id}${isPub?`<span class="pubtag">전체공개</span>`:""}</div>
+          ${who?`<div class="cwho">${who.avatar} ${esc(who.name)}</div>`:`<div class="cwho">공개됨</div>`}
+          ${isPub?`<div class="cspot">${esc(pubById[cd.id].title)}</div>`:""}</div>`;
+      }
       return `<div class="gcell${target?"":" nopick"}" onclick="gmMarkHere('${cd.id}')" title="${tip}">
         <div class="cid">${cd.id}</div><div class="cspot">${esc(cd.spot||cd.locName||"")}</div>
         ${cd.requires?`<span class="rq">${cd.requires}▶</span>`:""}</div>`;
@@ -1215,6 +1227,7 @@ function gmMarkTarget(){
   return STATE.turn||null;
 }
 function setGmTarget(id){ gmTarget=(gmTarget===id?null:id); renderGM(true); }
+function gmHeld(){ gmBanner("토론 중에는 마킹을 바꾸지 않습니다 — 조사 페이즈에서 고치세요"); }
 async function gmMarkHere(cardId){
   const t=gmMarkTarget();
   if(!t){ gmBanner("먼저 위에서 마킹 대상을 고르세요"); return; }
@@ -1259,9 +1272,11 @@ function renderPanel(ph){
     p.innerHTML=`${handWarn()}${turnBar()}<div class="clue-h"><h3>조사 맵</h3>${apPill}<span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">${myRoleValid()?`내 차례에 <b>${ap}장</b>까지 조사할 수 있어요. 카드를 눌러 <b>조사</b>하면 <b>손패(비공개)</b>로 들어옵니다. 알아낸 것은 <b>대화로만</b> 공유하세요(감춰도 됩니다).`:`관전 중 — 배역을 맡아야 조사할 수 있어요.`}</div><div id="cmap"></div>`;
     renderMap($("cmap")); }
   else if(k==="talk"){
-    const hcards=myRoleValid()?myHand:[];
-    p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 단서 ${hcards.length}</span></div><div class="panel-note">아래 대화창에서 서로를 취조하세요. 내가 조사한 단서는 아래(비공개)에 있고, <b>내 단서</b> 버튼으로도 언제든 봅니다. 알릴지 감출지는 자유예요.</div>
-    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219);cursor:pointer" onclick="showMyHand()"><b style="color:var(--gold-b)">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span><div class="lead" style="margin:4px 0 0;font-size:12.5px">${esc(c.text)}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
+    const mineIds=new Set(myHand.map(c=>c.id));
+    const pubc=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
+    const hcards=(myRoleValid()?myHand:[]).map(c=>({...c,_pub:false})).concat(pubc.map(c=>({...c,_pub:true})));
+    p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span>${pubc.length?`<span class="pill" style="color:var(--cold)">전체공개 ${pubc.length}</span>`:""}</div><div class="panel-note">아래 대화창에서 서로를 취조하세요. <b>내 손패</b>는 알릴지 감출지 자유고, <b>전체공개</b> 카드는 이미 모두가 보고 있습니다.</div>
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"#5a4a2c"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,#221c14,#171219)"};cursor:pointer" onclick="showMyHand()"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span><div class="lead" style="margin:4px 0 0;font-size:12.5px">${esc(c.text)}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
     +interrogPanelHTML(); }
   else if(k==="final"){ renderFinal(p); }
   else if(k==="reveal"){ renderReveal(p); }
@@ -1568,15 +1583,20 @@ async function showMySheet(){
 /* 내 단서(손패) — 어느 페이즈에서든 다시 확인. 조사한 카드는 사라지지 않는다. 큼지막하게 스와이프. */
 function showMyHand(){
   if(!myRoleValid()){ banner("배역을 맡아야 단서가 있어요"); return; }
-  const cards=myHand.slice();
-  let h=`<h2 style="font-size:18px">🃏 내 단서 <span style="font-size:13px;color:var(--muted)">· 손패 ${cards.length}장 (비공개)</span></h2>
-    <div class="mlead">내가 조사한 단서예요. <b>언제든 다시 확인</b>할 수 있고 사라지지 않아요. 알리려면 대화로 말하세요.</div>`;
+  const mineIds=new Set(myHand.map(c=>c.id));
+  // 전체공개된 카드는 모두의 것이다 — 내 손패 뒤에 이어 붙여 한자리에서 다 보이게 한다.
+  const pub=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
+  const cards=myHand.concat(pub);
+  let h=`<h2 style="font-size:18px">🃏 내 단서 <span style="font-size:13px;color:var(--muted)">· 손패 ${myHand.length}장 (비공개)${pub.length?` + 전체공개 ${pub.length}장`:""}</span></h2>
+    <div class="mlead">내가 조사한 단서와, 테이블에 <b>전체공개된 카드</b>를 함께 봅니다. 손패는 알릴지 감출지 자유예요.</div>`;
   if(!cards.length){ h+=`<div class="panel-note">아직 조사한 단서가 없어요. 조사 페이즈에 카드를 열면 여기에 계속 쌓입니다.</div>`; }
-  else{ const slides=cards.map(c=>`<div class="bigcard clue">
-      <div class="bc-eyebrow">손패 · 비공개</div>
-      <div class="bc-title" style="color:var(--gold-b)">${esc(c.title)}</div>
+  else{ const slides=cards.map(c=>{
+      const isPub=!mineIds.has(c.id);
+      return `<div class="bigcard clue${isPub?" pubclue":""}">
+      <div class="bc-eyebrow">${isPub?"전체공개 · 모두가 봅니다":"손패 · 비공개"}</div>
+      <div class="bc-title" style="color:${isPub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</div>
       <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${c.bait?'<span class="pill bad">※미끼일 수도</span>':''}</div>
-      <div class="bc-body">${esc(c.text)}</div>${cnote(c)}</div>`);
+      <div class="bc-body">${esc(c.text)}</div>${cnote(c)}</div>`; });
     h+=buildSwipe(slides); }
   h+=`<div style="margin-top:14px;text-align:right"><button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
   $("handBox").innerHTML=h;
