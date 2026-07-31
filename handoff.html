@@ -49,6 +49,8 @@
   ul li{margin:5px 0}
   ul b{color:var(--ink)}
   .ok{color:var(--good)}
+  .warn.good{background:rgba(126,224,168,.09);border-color:rgba(126,224,168,.4);color:#cdebda}
+  .warn.good b{color:var(--good)}
 </style>
 </head>
 <body>
@@ -60,6 +62,8 @@
     <b>깃 저장소는 진행 세션에 주지 마세요.</b> 시나리오 파일에 진상이 들어 있습니다.
     아래 세 덩어리만 넘기면 됩니다.
   </div>
+
+  <div id="keystat" class="warn" style="display:none"></div>
 
   <div class="field">
     <label>AGENT_KEY</label>
@@ -144,6 +148,25 @@ async function copy(id,btn){
   const t=btn.textContent; btn.textContent="복사됨 ✓"; btn.classList.add("ok");
   setTimeout(()=>{ btn.textContent=t; btn.classList.remove("ok"); },1400);
 }
+/* 키가 실제로 걸려 있는지 스스로 확인해 알려준다.
+   키 없이 /api/handoff를 불러보면 된다 — 403이면 걸린 것, 200이면 무방비다. */
+fetch("/api/handoff").then(r=>{
+  const el=$("keystat"); el.style.display="block";
+  if(r.status===403){
+    el.className="warn good";
+    el.innerHTML="<b>AGENT_KEY가 걸려 있습니다.</b> 값은 렌더 → 서비스 → Settings의 "+
+      "Environment Variables에서 확인하거나, 기억이 안 나면 새 값으로 덮어쓰고 저장하세요.";
+  } else if(r.status===404){
+    el.className="warn";
+    el.innerHTML="<b>이 서버에 아직 오늘 코드가 없습니다.</b> 렌더에서 Manual Deploy를 눌러주세요.";
+  } else {
+    el.className="warn";
+    el.innerHTML="<b>AGENT_KEY가 설정돼 있지 않습니다.</b> 지금은 주소만 알면 누구나 "+
+      "페이즈를 넘기고 인물 대본까지 읽을 수 있습니다. 플레이 전에 렌더 환경변수에 "+
+      "AGENT_KEY를 넣고 재배포하세요.";
+  }
+}).catch(()=>{});
+
 fetch("/api/player-notice?base="+encodeURIComponent(BASE))
   .then(r=>r.text()).then(t=>$("notice").textContent=t)
   .catch(()=>$("notice").textContent="…");
