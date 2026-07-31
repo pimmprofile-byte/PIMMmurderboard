@@ -384,6 +384,9 @@ def state(clientId: str = ""):
     with LOCK:
         st["hasHost"] = ROOM.get("host") is not None
         st["isHost"] = bool(clientId) and ROOM.get("host") == clientId
+        # 호스트를 아무도 안 잡은 방도 있다. 그때는 '호스트 전용' 연출을 아무도 못 보게 되므로
+        # 클라이언트가 그 사정을 알 수 있게 해준다(다른 엔드포인트도 같은 규칙으로 통과시킨다).
+        st["hasHost"] = ROOM.get("host") is not None
     return st
 
 

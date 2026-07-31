@@ -994,6 +994,9 @@ function vnClose(){
   $("vn").classList.remove("on");
   try{ localStorage.setItem(vnSeenKey(),"1"); }catch(e){}
 }
+/* 오프닝을 트는 화면인가 — 호스트 화면이거나, 호스트를 아무도 안 잡은 방이면 그 화면이 곧 보드다.
+   isHost만 보면 호스트를 claim하지 않은 방에서는 아무에게도 오프닝이 안 뜬다. */
+function isBoard(){ return !!(STATE && (STATE.isHost || !STATE.hasHost)); }
 function replayVN(){ openVN(true); }
 
 function portraitHTML(c){
@@ -1246,12 +1249,12 @@ function renderPanel(ph){
     const lines=String(SCEN.intro||"").split("\n").filter(x=>x.trim());
     const chunks=[]; for(let i=0;i<lines.length;i+=2) chunks.push(lines.slice(i,i+2).join("\n"));
     const introHTML=chunks.map((c,i)=>`<p class="cine-p" style="animation-delay:${(i*0.9+0.15).toFixed(2)}s">${esc(c).replace(/\n/g,"<br>")}</p>`).join("");
-    p.innerHTML=`<div class="card"><div class="clue-h"><h2 style="margin:0">사건 · 공통지문</h2>${STATE&&STATE.isHost?`<button class="btn sm" onclick="replayVN()">🎬 오프닝 다시 보기</button>`:""}</div><div class="cine-intro">${introHTML}</div></div>
+    p.innerHTML=`<div class="card"><div class="clue-h"><h2 style="margin:0">사건 · 공통지문</h2>${isBoard()?`<button class="btn sm" onclick="replayVN()">🎬 오프닝 다시 보기</button>`:""}</div><div class="cine-intro">${introHTML}</div></div>
     <div class="card"><h2>피해자</h2><div class="panel-note">${esc(SCEN.victim||"")}</div></div>
     <div class="panel-note" style="text-align:center">각자 <b>내 정보</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`;
     // 오프닝은 GM 보드(호스트 화면)에서만 재생한다 — 16:9 큰 화면에 띄워 다 같이 보는 연출이라,
     // 각자 폰에서 따로 돌면 소리가 겹치고 진행이 흩어진다.
-    if(STATE&&STATE.isHost) openVN(false); }
+    if(isBoard()) openVN(false); }
   else if(k==="invest"){ const ap=ph.ap||0; const u=(STATE.usedAP||{})[myRoleId]||0; const left=Math.max(0,ap-u); const apPill=myRoleValid()?`<span class="pill" style="color:${left>0?'var(--good)':'var(--ember-b)'}">이번 턴 조사 ${u}/${ap}</span>`:"";
     p.innerHTML=`${handWarn()}${turnBar()}<div class="clue-h"><h3>조사 맵</h3>${apPill}<span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">${myRoleValid()?`내 차례에 <b>${ap}장</b>까지 조사할 수 있어요. 카드를 눌러 <b>조사</b>하면 <b>손패(비공개)</b>로 들어옵니다. 알아낸 것은 <b>대화로만</b> 공유하세요(감춰도 됩니다).`:`관전 중 — 배역을 맡아야 조사할 수 있어요.`}</div><div id="cmap"></div>`;
     renderMap($("cmap")); }
