@@ -145,6 +145,9 @@ def fresh_room() -> dict:
     return {
         "rev": 1, "seq": 1,
         "scenarioId": SC.ID,
+        # 판마다 새로 생기는 값. 클라이언트가 "이 판에서 오프닝을 봤나"를 이걸로 가른다 —
+        # 시나리오 이름으로 기억하면 한 번 본 브라우저에서 영영 안 나온다.
+        "roomId": f"r{random.randrange(16**8):08x}",
         "host": None,             # 방 권한자(호스트) clientId — 시나리오 선택·페이즈 진행 통제
         "roles": {c["id"]: {"mode": "open", "clientId": None} for c in SC.CHARACTERS},
         "table": [{"kind": "system", "text": f'{SC.PHASES[0]["name"]} — {SC.PHASES[0]["gm"]}'}],
@@ -213,6 +216,7 @@ def public_state() -> dict:
         used = {rid: sum(1 for r in cm.values() if r == cur) for rid, cm in ROOM["checkedRound"].items()}
         return {
             "rev": ROOM["rev"], "seq": seq, "round": cur, "scenarioId": SC.ID,
+            "roomId": ROOM.get("roomId", ""),
             "chat": {"on": CHAT["on"], "gap": CHAT["gap"]},
             "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"]},
             "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
