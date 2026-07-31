@@ -150,7 +150,7 @@ def fresh_room() -> dict:
         "roomId": f"r{random.randrange(16**8):08x}",
         "host": None,             # 방 권한자(호스트) clientId — 시나리오 선택·페이즈 진행 통제
         "roles": {c["id"]: {"mode": "open", "clientId": None} for c in SC.CHARACTERS},
-        "table": [{"kind": "system", "text": f'{SC.PHASES[0]["name"]} — {SC.PHASES[0]["gm"]}'}],
+        "table": [{"kind": "system", "text": f'— {SC.PHASES[0]["name"]} —'}],
         "revealed": [],           # 전체공개 card id
         "hands": {},              # roleId -> [cardId] (손패, 비공개 · 조사/마킹 통합)
         "checkedRound": {},       # roleId -> {cardId: round} (턴별 조사 수 제한 계산용)
@@ -1273,7 +1273,9 @@ def _advance():
             il = SC.interlude_for(seq)
             if il:
                 ROOM["table"].append({"kind": "system", "broadcast": True, "text": f"📻 교내방송 — {il}"})
-            ROOM["table"].append({"kind": "system", "text": f'{ph["name"]} — {ph["gm"]}'})
+            # phase.gm은 진행자에게 주는 지시문이다("…확실히 짚어주세요"). 테이블에 넣으면
+            # 플레이어 대화창에 그대로 뜬다. 막이 바뀌었다는 표시만 남긴다.
+            ROOM["table"].append({"kind": "system", "text": f'— {ph["name"]} —'})
             _ev("phase", name=ph["name"], key=ph.get("key", ""), min=ph.get("min", 0),
                 ap=int(ph.get("ap", 0) or 0), gm=ph.get("gm", ""), interlude=il or "")
             _reset_turn_for_seq(seq)   # 조사 페이즈면 순번 초기화
