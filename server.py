@@ -1133,6 +1133,32 @@ def events(key: str = "", since: int = 0, wait: int = 0):
         time.sleep(0.6)
 
 
+@app.get("/api/relay/{role_id}", response_class=PlainTextResponse)
+def relay_prompt(role_id: str, key: str = "", clientId: str = ""):
+    """API 키가 없을 때 쓰는 통로 — 그 배역 하나짜리 지시문을 글로 내준다.
+
+    보통 채팅 세션에는 임의의 주소로 요청을 보낼 손이 없다. 그래서 서버가 대신
+    부를 수 없고, 사람이 이 글을 복사해 채팅에 넣고 돌아온 대사를 도로 붙여넣는다.
+    ANTHROPIC_API_KEY를 넣으면 서버가 직접 부르므로 이 통로는 필요 없어진다.
+
+    담기는 것은 공개 카드와 '그 배역 자신의 손패'뿐이다. 남의 손패는 들어가지 않는다.
+    """
+    if not (_agent_ok(key) or _is_host(clientId)):
+        return PlainTextResponse("key", status_code=403)
+    if not SC.get_character(role_id):
+        return PlainTextResponse("없는 배역", status_code=404)
+    with LOCK:
+        r = ROOM["roles"].get(role_id) or {}
+    if r.get("mode") != "ai":
+        return PlainTextResponse("사람이 맡은 배역입니다", status_code=409)
+    return _role_prompt(role_id, _pick_nudge(role_id))
+
+
+@app.get("/relay")
+def relay_page():
+    return FileResponse(_HERE / "relay.html")
+
+
 @app.get("/api/handoff", response_class=PlainTextResponse)
 def handoff_brief(key: str = "", base: str = ""):
     """진행 세션이 스스로 받아 가는 지침. 배포된 코드에서 만들어지므로 낡을 일이 없다.
@@ -1164,13 +1190,16 @@ def brief(key: str = ""):
         return JSONResponse({"error": "key"}, status_code=403)
     with LOCK:
         cat = {c["id"]: c for c in SC.CARDS}
-        hands = {rid: [{"id": i, "title": cat[i]["title"], "locName": cat[i]["locName"], "text": cat[i].get("text", "")}
-                       for i in ids if i in cat]
-                 for rid, ids in ROOM["hands"].items() if ids}
-        revealed = [{"id": i, "title": cat[i]["title"], "text": cat[i].get("text", "")} for i in ROOM["revealed"] if i in cat]
+        # 손패는 '몇 장 들었나'까지만. 남이 조사한 카드의 내용은 진행 세션도 보지 않는다 —
+        # 진행자가 그걸 다 보고 있으면 판이 끝나기 전에 답을 짚어낼 수 있고,
+        # 그러면 '알아도 말하지 않는다'는 약속에 기대야 한다. 안 보는 게 낫다.
+        hand_counts = {rid: len(ids) for rid, ids in ROOM["hands"].items() if ids}
+        revealed = [{"id": i, "title": cat[i]["title"], "locName": cat[i]["locName"],
+                     "text": cat[i].get("text", ""), "hint": cat[i].get("hint", "")}
+                    for i in ROOM["revealed"] if i in cat]
         ph = SC.phase_by_seq(ROOM["seq"])
         return {"phase": ph["name"], "round": current_round(ROOM["seq"]), "turn": ROOM.get("turn"),
-                "turnOrder": _turn_order(), "hands": hands, "revealed": revealed}
+                "turnOrder": _turn_order(), "handCounts": hand_counts, "revealed": revealed}
 
 
 @app.post("/api/agent/reveal")
@@ -1243,6 +1272,27 @@ class Busy(RuntimeError):
     """다른 배역이 말하는 중."""
 
 
+def _role_prompt(role_id: str, nudge: str = "") -> str:
+    """그 배역 하나짜리 연기 지시문.
+
+    들어가는 것: 공개된 카드(모두가 아는 것) + **그 배역 자신의 손패**.
+    들어가지 않는 것: 남의 손패, 남의 비밀, 진상.
+    조사해놓고 자기가 뭘 찾았는지 모르면 그걸로 방어도 추궁도 못 한다.
+    """
+    with LOCK:
+        seq = ROOM["seq"]
+        revealed = list(ROOM["revealed"])
+        table = list(ROOM["table"])
+        hand = list(ROOM["hands"].get(role_id, []))   # 자기 것만. 남의 손패는 넘기지 않는다.
+    c = SC.get_character(role_id)
+    for args in ((nudge, hand), (nudge,), ()):        # 아직 손패·nudge를 안 받는 시나리오도 있다
+        try:
+            return SC.build_play_prompt(c, seq, revealed, table, *args)
+        except TypeError:
+            continue
+    return SC.build_play_prompt(c, seq, revealed, table)
+
+
 def _speak(role_id: str, nudge: str = "") -> dict:
     """AI 배역 한 명에게 한마디 시킨다. 프롬프트는 그 배역 것만 들어간다."""
     with LOCK:
@@ -1258,10 +1308,7 @@ def _speak(role_id: str, nudge: str = "") -> dict:
         table = list(ROOM["table"])
     c = SC.get_character(role_id)
     try:
-        try:
-            system = SC.build_play_prompt(c, seq, revealed, table, nudge)
-        except TypeError:            # nudge를 아직 안 받는 시나리오
-            system = SC.build_play_prompt(c, seq, revealed, table)
+        system = _role_prompt(role_id, nudge)
         reply = llm(system, f"이제 '{c['name']}'로서 다음 한마디를 하라 (1~3문장).", 400, fast=True)
         reply = re.sub(rf"^{re.escape(c['name'])}\s*[:：]\s*", "", reply or "").strip()
     except Exception:

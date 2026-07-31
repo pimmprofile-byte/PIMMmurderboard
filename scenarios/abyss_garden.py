@@ -529,8 +529,20 @@ CHAT_AI = {
 }
 
 
+def _hand_cards_text(hand_ids: list[str]) -> str:
+    if not hand_ids:
+        return "(아직 네가 손에 쥔 것은 없다.)"
+    lines = []
+    for cid in hand_ids:
+        c = get_card(cid)
+        if c:
+            where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c["locName"]
+            lines.append(f"[{where}] {c['title']}: {c['text']}")
+    return "\n".join(lines)
+
+
 def build_play_prompt(c: dict, seq: int, revealed_ids: list[str], table: list[dict],
-                      nudge: str = "") -> str:
+                      nudge: str = "", hand_ids: list[str] | None = None) -> str:
     phase = phase_by_seq(seq)
     others = ", ".join(o["name"] for o in CHARACTERS if o["id"] != c["id"])
     dossier_lines = "\n".join(f"● {s['h']}\n{s['b']}" for s in c["sheet"])
@@ -553,8 +565,13 @@ def build_play_prompt(c: dict, seq: int, revealed_ids: list[str], table: list[di
 [너의 목표]
 {goals}
 
-[지금까지 공개된 조사카드]
+[지금까지 공개된 조사카드 — 모두가 안다]
 {_revealed_cards_text(revealed_ids)}
+
+[네가 직접 조사해 손에 쥔 것 — 아직 아무도 모른다]
+{_hand_cards_text(hand_ids or [])}
+이건 네가 본 것이다. 유리하면 꺼내 들이대고, 불리하면 끝까지 쥐고 있어라.
+남이 조사한 것은 네가 알 길이 없다. 공개되기 전까지는 모르는 채로 굴어라.
 
 [현재 진행] {phase['name']} — {phase['gm']}
 
