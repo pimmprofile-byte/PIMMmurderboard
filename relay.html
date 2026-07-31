@@ -50,6 +50,7 @@
     color:#fff;font-weight:700}
   button:disabled{opacity:.45;cursor:default}
   .ok{color:var(--good)}
+  .cau{color:var(--gold)}
   .msg{font-size:12.5px;color:var(--sub);margin-top:9px;min-height:1.3em}
   .feed{font-size:13px;color:var(--sub);max-height:190px;overflow:auto}
   .feed div{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)}
@@ -64,6 +65,7 @@
   <div class="warn">
     <b>이 화면을 보는 사람은 플레이어가 아니어야 합니다.</b>
     인물의 대본이 그대로 보입니다. 진행만 맡은 사람이 여세요.
+    <br>중계는 <b>사람이 직접</b> 합니다 — 진행 세션은 이 내용을 보지 않습니다.
     <br>렌더에 <b>ANTHROPIC_API_KEY</b>를 넣으면 서버가 알아서 처리하므로 이 화면은 쓸 일이 없습니다.
   </div>
 
@@ -76,8 +78,10 @@
   <div class="who" id="who"></div>
 
   <section>
-    <div class="sh">1 · 이 글을 채팅에 붙여넣기</div>
-    <p class="sd">고른 인물의 지시문입니다. 공개된 카드와 <b>그 인물이 직접 조사한 것</b>만 들어 있습니다.</p>
+    <div class="sh">1 · 이 글을 <span id="whoName">그 인물</span> 전용 대화창에 붙여넣기</div>
+    <p class="sd">공개된 카드와 <b>그 인물이 직접 조사한 것</b>만 들어 있습니다.
+      <b class="cau">인물마다 대화창을 따로 쓰세요.</b> 두 사람 지시문을 같은 창에 넣으면
+      그 창이 양쪽 손패를 다 알게 되고, 인물이 알 리 없는 것을 아는 것처럼 말하게 됩니다.</p>
     <pre id="prompt">위에서 인물을 고르세요.</pre>
     <div class="row">
       <button class="go" onclick="copyPrompt(this)" id="cp" disabled>프롬프트 복사</button>
@@ -133,7 +137,12 @@ function renderFeed(){
 }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
-async function pick(id){ cur=id; renderWho(); await load(); }
+async function pick(id){
+  cur=id; renderWho();
+  const c=(SCEN.characters||[]).find(x=>x.id===id);
+  $("whoName").textContent = c ? c.name : "그 인물";
+  await load();
+}
 async function load(){
   if(!cur) return;
   $("prompt").textContent="받는 중…";
