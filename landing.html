@@ -155,8 +155,9 @@
     background:repeating-linear-gradient(45deg,#141013 0 14px,#c8392b 14px 28px);border-top:1px solid #000;border-bottom:1px solid #000;box-shadow:0 4px 14px rgba(0,0,0,.6)}
   .lockband span{display:block;text-align:center;font-family:var(--mono);font-weight:700;font-size:.7rem;letter-spacing:.3em;color:#fff;padding:6px 0;text-shadow:0 1px 2px #000;background:rgba(20,16,19,.35)}
 
-  .confirm{position:sticky;bottom:14px;display:flex;justify-content:center;margin-top:6px;pointer-events:none}
-  .confirm .in{pointer-events:auto;display:flex;align-items:center;gap:14px;background:rgba(20,16,22,.94);backdrop-filter:blur(10px);
+  .confirm{display:flex;justify-content:center;margin:14px 0 2px;min-height:52px;align-items:center}
+  .pickhint{margin:0;font-size:.82rem;color:var(--bone-dim)}
+  .confirm .in{display:flex;align-items:center;gap:14px;background:rgba(20,16,22,.94);backdrop-filter:blur(10px);
     border:1px solid var(--line2);border-radius:14px;padding:10px 12px 10px 18px;box-shadow:0 12px 34px rgba(0,0,0,.55);max-width:calc(100% - 20px)}
   .confirm .lbl{font-size:.85rem;color:var(--bone-dim)}.confirm .lbl b{color:var(--bone);font-family:var(--serif)}
   .confirm .lbl.warn{color:var(--blood-bri)}
@@ -261,10 +262,9 @@
       <div class="scr-head">
         <div class="eyebrow">Select a Case File</div>
         <h2>어떤 사건을 여시겠습니까</h2>
-        <p>← 옆으로 넘겨 고르세요 · 호스트가 열면 전원 함께 입장 →</p>
+        <div class="confirm" id="confbar"></div>
       </div>
       <div class="rail" id="rail"></div>
-      <div class="confirm" id="confbar"></div>
     </section>
 
   </div>
@@ -425,7 +425,8 @@ function renderBar(){
   } else {
     h=`<div class="lbl">호스트가 고른 사건으로 함께 시작해요</div><button class="go" onclick="joinGame()">입장하기</button>`;
   }
-  $("confbar").innerHTML=`<div class="in">${h}</div>`;
+  $("confbar").innerHTML=h?`<div class="in">${h}</div>`
+    :`<p class="pickhint">← 옆으로 넘겨 고르세요 · 호스트가 열면 전원 함께 입장 →</p>`;
 }
 
 /* ── 관리자 / 열람(테스트) 모드 ── 비밀번호로 진입, 모든 사건 내용을 읽어보는 모드 ── */
