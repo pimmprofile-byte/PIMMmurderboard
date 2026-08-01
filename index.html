@@ -17,9 +17,13 @@
     font-weight:400;font-style:normal;font-display:swap}
   @font-face{font-family:"PIMM Sans";src:url("/assets/fonts/NotoSansKR-700.woff2") format("woff2");
     font-weight:700;font-style:normal;font-display:swap}
+  /* 바탕은 무채색이다 — 다크그레이와 블랙만 쓴다.
+     예전 팔레트는 --bg 부터 --line 까지 전부 보라 기미(초록이 가장 낮은 값)를 깔고 있어서
+     진행 화면 전체에 보랏빛이 돌았다. 색은 인물 키컬러 여섯과 금색·불꽃색만 낸다.
+     회색에 아주 약한 온기(R+1, B-1)만 남겨 금색·불꽃색과 물리게 했다. */
   :root{
-    --bg:#0b0a0d;--bg2:#111015;--panel:#17151d;--panel2:#1f1c27;--line:#2f2a3a;
-    --ink:#ece7f0;--sub:#a49db8;--muted:#6f697f;
+    --bg:#0a0a09;--bg2:#111110;--panel:#171716;--panel2:#201f1e;--line:#312f2c;
+    --ink:#ecebe8;--sub:#a5a29d;--muted:#726f6a;
     --ember:#c8442f;--ember-b:#e7654c;--gold:#c9a24a;--gold-b:#e0bd6a;--cold:#7fb4d6;
     --good:#7ee0a8;--bad:#ff8f8f;--warn:#ffd479;--shadow:0 18px 50px rgba(0,0,0,.6);
   }
@@ -38,10 +42,16 @@
   .btn.gold{background:linear-gradient(90deg,#8a7038,var(--gold));border-color:var(--gold);color:#1a1509;font-weight:700}
   .btn.ember{background:linear-gradient(90deg,#7a1410,var(--ember));border-color:var(--ember-b);color:#fff;font-weight:700}
   .btn.gold:hover,.btn.ember:hover{filter:brightness(1.1)}
-  /* 랜딩과 같은 P 마크 */
-  .pmark{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;
-    border:1.5px solid var(--gold);color:var(--gold);font-family:Georgia,serif;
-    font-weight:700;font-size:12px;line-height:1}
+  /* 랜딩 머리의 P 엠블럼과 같은 마크 — 붉은 테 원 안에 PIMM 의 기울어진 P.
+     세리프 글자 'P' 를 원에 넣어두었던 것이 랜딩과 달라 보이던 원인이다.
+     랜딩(landing.html .emblem)은 같은 그림을 PNG 로 얹지만, 여기서는 헤더에 들어가는
+     작은 마크라 같은 윤곽을 path 로 옮겨 담았다. 헤더 크기에서는 짙은 #c8392b 가
+     테와 뭉개져 한 톤 밝은 --ember-b 로 칠한다. */
+  .pmark{display:inline-grid;place-items:center;width:23px;height:23px;border-radius:50%;
+    flex:0 0 auto;border:1.5px solid var(--ember);box-shadow:0 0 0 2px rgba(200,57,43,.12);
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 343'%3E%3Cpath fill='%23e7654c' d='M41 3 L226 3 L238 6 L247 11 L257 22 L262 35 L261 55 L249 90 L245 108 L242 113 L238 131 L234 139 L230 157 L227 162 L213 213 L211 215 L206 233 L201 241 L188 253 L177 256 L97 258 L90 275 L87 290 L76 322 L66 333 L49 340 L30 339 L20 334 L11 326 L3 309 L3 291 L19 236 L23 228 L27 210 L31 202 L35 184 L38 179 L42 161 L46 153 L58 109 L63 103 L137 104 L141 113 L126 158 L125 170 L129 175 L139 175 L146 161 L147 153 L165 97 L165 90 L159 84 L43 84 L28 80 L21 76 L13 68 L8 59 L6 51 L7 31 L10 23 L20 11 L26 7 Z'/%3E%3C/svg%3E") center/auto 13px no-repeat,
+      radial-gradient(circle at 40% 35%,#2a1113,#12080a);
+    font-size:0;color:transparent}
   .btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
   /* 위계 — 한 화면에 primary는 하나. quiet는 물러나는 보조 동작. */
   .btn.primary{background:linear-gradient(90deg,#8a7038,var(--gold));border-color:var(--gold);
@@ -70,21 +80,21 @@
   .rc.mine{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset,0 12px 34px -14px rgba(201,162,74,.5)}
   /* 인물 자리 — 사진이 있으면 사진, 없으면 이모지로 폴백(그 사이에도 안 깨진다) */
   .rc .por{position:relative;aspect-ratio:3/4;display:grid;place-items:center;overflow:hidden;
-    background:linear-gradient(158deg,color-mix(in srgb,var(--rc,#555) 30%,#17141d),#0f0d13)}
+    background:linear-gradient(158deg,color-mix(in srgb,var(--rc,#555) 30%,#171615),#0f0e0d)}
   .rc .por .emo{font-size:64px;opacity:.92;filter:drop-shadow(0 8px 20px rgba(0,0,0,.65))}
   .rc .por img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
   .rc .scrim{position:absolute;left:0;right:0;bottom:0;padding:26px 10px 9px;
-    background:linear-gradient(0deg,rgba(7,5,9,.95),rgba(7,5,9,.6) 52%,transparent)}
+    background:linear-gradient(0deg,rgba(7,6,5,.95),rgba(7,6,5,.6) 52%,transparent)}
   .rc .nm{font-weight:800;font-size:15px;line-height:1.22;color:var(--rc,var(--ink));word-break:keep-all}
-  .rc .jb{font-size:10.5px;color:#b3aabf;margin-top:2px}
+  .rc .jb{font-size:10.5px;color:#b0afae;margin-top:2px}
   .rc .badge{position:absolute;top:7px;right:7px;z-index:2;font-size:9.5px;font-weight:700;letter-spacing:.04em;
-    padding:3px 8px;border-radius:999px;background:rgba(6,4,8,.72);border:1px solid var(--line);color:var(--sub);backdrop-filter:blur(4px)}
+    padding:3px 8px;border-radius:999px;background:rgba(6,5,4,.72);border:1px solid var(--line);color:var(--sub);backdrop-filter:blur(4px)}
   .rc .badge.me{color:var(--gold-b);border-color:#6b5730}
   .rc .badge.hu{color:var(--gold-b);border-color:#6b5730}
   .rc .badge.ai{color:#8fb3c9;border-color:#2c465a}
   /* -webkit-line-clamp는 브라우저에 따라 display가 blockify돼 안 먹는다.
      2줄 높이를 직접 잡고 넘치는 부분은 페이드로 흘려보낸다 — 글자가 중간에 잘려 보이지 않게. */
-  .rc .tg{font-size:11.5px;line-height:1.5;color:#bdb5cb;padding:8px 10px 10px;
+  .rc .tg{font-size:11.5px;line-height:1.5;color:#bbbab9;padding:8px 10px 10px;
     height:calc(3em + 18px);overflow:hidden;
     -webkit-mask-image:linear-gradient(180deg,#000 62%,transparent 97%);
     mask-image:linear-gradient(180deg,#000 62%,transparent 97%)}
@@ -112,7 +122,7 @@
 
   /* 플레이 · 페이즈 드리븐 */
   #s-play{display:none;flex-direction:column;height:100vh;max-width:920px;width:100%;margin:0 auto;border-inline:1px solid var(--line)}#s-play.on{display:flex}
-  .chead{display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(17,15,21,.97),rgba(17,15,21,.85));flex-wrap:wrap}
+  .chead{display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(17,16,15,.97),rgba(17,16,15,.85));flex-wrap:wrap}
   .chead .rt{font-weight:700;display:flex;align-items:center;gap:6px;font-size:14px}.chead .rt .mk{color:var(--ember)}
   .chead .ph{font-size:12px;color:var(--gold)}.chead .me{font-size:12px;color:var(--sub)}.chead .spacer{margin-left:auto}
   .pbanner{padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);font-size:13px;color:#dfe4f4;line-height:1.6}
@@ -134,7 +144,7 @@
      32vh를 그대로 두면 폰에서 지도가 60px밖에 못 받는다. */
   #s-play.invest .chat{flex:0 0 18vh}
   #s-play.open .chat{flex:0 0 22vh}
-  .chat{flex:0 0 32vh;overflow-y:auto;padding:12px 14px;border-top:1px solid var(--line);background:radial-gradient(130% 90% at 50% 0%,#14101a,var(--bg) 70%);display:flex;flex-direction:column;gap:10px}
+  .chat{flex:0 0 32vh;overflow-y:auto;padding:12px 14px;border-top:1px solid var(--line);background:radial-gradient(130% 90% at 50% 0%,#131211,var(--bg) 70%);display:flex;flex-direction:column;gap:10px}
   #s-play.talk .chat{flex:1 1 auto}
   .sys{align-self:center;text-align:center;color:var(--muted);font-size:12px;border:1px dashed var(--line);border-radius:20px;padding:4px 14px;max-width:92%}
   .sys.bc{color:var(--cold);border-color:#2c465a;background:#0e1620}
@@ -173,24 +183,24 @@
   .aichip:hover{border-color:var(--sc)}.aichip .d{width:8px;height:8px;border-radius:50%;background:var(--sc)}
 
   /* 오프닝/토론 패널 */
-  .intro{white-space:pre-line;font-size:15px;line-height:1.95;color:#ded8ea;border-left:2px solid var(--ember);padding-left:14px}
+  .intro{white-space:pre-line;font-size:15px;line-height:1.95;color:#dddcdb;border-left:2px solid var(--ember);padding-left:14px}
   .panel-note{color:var(--sub);font-size:13.5px;line-height:1.8}
 
   /* 카드맵 */
   .clue-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
   .clue-h h3{margin:0;font-size:15px;color:var(--gold-b)}
-  .gcard{aspect-ratio:3/4;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(160deg,#1a1722,#141119);transition:.15s}
+  .gcard{aspect-ratio:3/4;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(160deg,#1a1918,#141312);transition:.15s}
   .gcard:hover{transform:translateY(-2px);border-color:var(--gold)}
   .gcard .rb{font-size:9.5px;color:var(--muted)}
   .gcard .t{font-size:12px;font-weight:700;margin-top:auto;line-height:1.3}
-  .gcard.face{align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#181521,#181521 6px,#15121d 6px,#15121d 12px)}
-  .gcard.face .q{font-size:26px;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif;color:#3c354c}
+  .gcard.face{align-items:center;justify-content:center;background:repeating-linear-gradient(135deg,#181716,#181716 6px,#151413 6px,#151413 12px)}
+  .gcard.face .q{font-size:26px;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif;color:#3b3a39}
   /* 뒤집힌 카드는 '어디를 뒤지는지'로 고른다 — 라벨 번호 대신 자리 이름 */
   .gcard.face{padding:20px 6px 22px}
-  .gcard.face .sp{font-size:11.5px;font-weight:700;line-height:1.35;color:#9b93ad;text-align:center;
+  .gcard.face .sp{font-size:11.5px;font-weight:700;line-height:1.35;color:#999897;text-align:center;
     word-break:keep-all;text-wrap:balance}
   .gcard.face:hover .sp{color:var(--gold-b)}
-  .gcard.locked .sp{color:#5d5670}
+  .gcard.locked .sp{color:#5c5b5a}
   .gcard.face.taken .q{font-size:16px;margin-bottom:3px}
   .gcard.face.taken .sp{font-size:10.5px;font-weight:600}
   .gcard .spot{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.3;word-break:keep-all}
@@ -198,12 +208,12 @@
   .gcard.locked{cursor:default;opacity:.5}
   /* 손패 상한 정리 */
   .trimgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:10px;margin-top:4px}
-  .trimcard{text-align:left;background:linear-gradient(160deg,#221c14,#171219);border:1px solid #5a4a2c;border-radius:12px;padding:12px;color:inherit;transition:.15s}
+  .trimcard{text-align:left;background:linear-gradient(160deg,#221c14,#151413);border:1px solid #5a4a2c;border-radius:12px;padding:12px;color:inherit;transition:.15s}
   .trimcard:hover{border-color:var(--gold)}
   .trimcard.on{border-color:var(--ember);box-shadow:0 0 0 1px var(--ember) inset,0 0 18px -6px var(--ember)}
   .trimcard .tt{font-weight:800;color:var(--gold-b);font-size:14.5px;margin-bottom:6px}
   .trimcard .tm{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
-  .trimcard .tb{font-size:12.5px;color:#ded8ea;line-height:1.6}
+  .trimcard .tb{font-size:12.5px;color:#dddcdb;line-height:1.6}
   .trimact{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
   .trimact .btn{margin-left:auto}
   .keeprow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
@@ -217,10 +227,10 @@
   .handwarn{background:#3a1f10;border:1px solid #7a4520;color:#ffd9b0;border-radius:11px;padding:10px 13px;margin-bottom:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .handwarn b{color:#ffc078}
   .handwarn .btn{margin-left:auto}
-  .gcard.face.taken{border-color:var(--tc,#555);background:linear-gradient(160deg,#16131c,#100e14);opacity:.75;cursor:not-allowed}
+  .gcard.face.taken{border-color:var(--tc,#555);background:linear-gradient(160deg,#161514,#100f0e);opacity:.75;cursor:not-allowed}
   .gcard.face.taken .q{font-size:20px;filter:grayscale(.2)}
   .gcard.face.taken .rb{color:var(--tc,var(--muted));font-size:9.5px}
-  .gcard.hand{border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#171219)}.gcard.hand .t{color:var(--gold-b)}
+  .gcard.hand{border-color:#5a4a2c;background:linear-gradient(160deg,#221c14,#151413)}.gcard.hand .t{color:var(--gold-b)}
   .gcard.pub{border-color:var(--cold);background:linear-gradient(160deg,#111a22,#0e1620)}
   .gcard .tag{position:absolute;top:6px;right:6px;font-size:8.5px;padding:1px 5px;border-radius:6px;background:rgba(0,0,0,.45)}
   .gcard.hand .tag{color:var(--gold-b)}.gcard.pub .tag{color:var(--cold)}
@@ -231,15 +241,15 @@
   .q-block textarea:focus{outline:none;border-color:var(--gold)}
   .grade{display:flex;gap:7px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;flex-wrap:wrap}.grade .v{flex-basis:100%;font-size:12px;color:var(--muted)}
   .verdict{font-size:23px;font-weight:800;margin-bottom:10px}.verdict.good{color:var(--good)}.verdict.warn{color:var(--warn)}.verdict.bad{color:var(--bad)}
-  .rev-sol{font-size:14px;line-height:1.85;color:#e4dff0;white-space:pre-wrap}
+  .rev-sol{font-size:14px;line-height:1.85;color:#e3e2e1;white-space:pre-wrap}
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 17px;margin-bottom:14px}
   .card h2{margin:0 0 10px;font-size:15px;color:var(--gold-b)}
-  .modal{position:fixed;inset:0;background:rgba(6,4,8,.82);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:60;padding:16px}.modal.on{display:flex}
+  .modal{position:fixed;inset:0;background:rgba(6,5,4,.82);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:60;padding:16px}.modal.on{display:flex}
   .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:540px;width:100%;padding:22px;box-shadow:var(--shadow);max-height:92vh;overflow-y:auto}
   .modal h2{margin:0 0 4px;font-size:20px}.modal .mlead{color:var(--sub);font-size:13px;margin-bottom:14px}
   .sec{border-top:1px dashed var(--line);padding-top:11px;margin-top:11px}.sec:first-of-type{border-top:0;margin-top:0;padding-top:0}
-  .sec .h{font-weight:700;color:var(--gold-b);font-size:13.5px;margin-bottom:4px}.sec .b{font-size:14px;color:#ded8ea;line-height:1.72}
+  .sec .h{font-weight:700;color:var(--gold-b);font-size:13.5px;margin-bottom:4px}.sec .b{font-size:14px;color:#dddcdb;line-height:1.72}
   .frag{background:#0e1620;border:1px solid #2c465a;border-radius:10px;padding:9px 12px;margin:8px 0;color:#cfe0ee;font-size:13.5px}.frag .w{font-size:11px;color:var(--cold);margin-bottom:3px}
   .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif}
   /* ── 스와이프 카드 캐러셀 (롤카드·손패 넘겨보기) ── */
@@ -258,15 +268,15 @@
   .sw-dot.on{background:var(--gold);width:22px;border-radius:4px}
   .sw-count{text-align:center;font-size:11.5px;color:var(--muted);margin-top:5px;letter-spacing:.02em}
   /* 큰 카드(롤/손패) */
-  .bigcard{border-radius:16px;padding:18px 18px 20px;background:linear-gradient(165deg,#1d1a25,#141119);border:1px solid var(--line);min-height:220px}
-  .bigcard.role{border-color:color-mix(in srgb,var(--rc,#8a7a4a) 45%,var(--line));background:linear-gradient(165deg,#211c28,#15121b)}
+  .bigcard{border-radius:16px;padding:18px 18px 20px;background:linear-gradient(165deg,#1d1c1b,#141312);border:1px solid var(--line);min-height:220px}
+  .bigcard.role{border-color:color-mix(in srgb,var(--rc,#8a7a4a) 45%,var(--line));background:linear-gradient(165deg,#201f1e,#151413)}
   .bigcard.role::before{content:"";display:block;height:3px;width:46px;border-radius:3px;background:var(--rc,var(--gold));margin-bottom:14px}
-  .bigcard.clue{border-color:#5a4a2c;background:linear-gradient(165deg,#241d13,#17121a)}
+  .bigcard.clue{border-color:#5a4a2c;background:linear-gradient(165deg,#241d13,#151413)}
   .bc-eyebrow{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
   .bc-title{font-weight:800;font-size:20px;line-height:1.28;color:#f2ecdf}
   .bc-title.role{color:var(--rc,#f2ecdf)}
   .bc-sub{font-size:13px;color:var(--sub);margin-top:4px}
-  .bc-body{font-size:15.5px;line-height:1.8;color:#e2dcef;margin-top:14px;white-space:pre-wrap}
+  .bc-body{font-size:15.5px;line-height:1.8;color:#e1e0df;margin-top:14px;white-space:pre-wrap}
   /* 해석 노트 — 카드가 무슨 뜻인지 한 줄로 짚어준다(결론은 말하지 않는다) */
   .cnote{margin-top:12px;padding:9px 11px;border-left:2px solid #5a4a2c;background:rgba(200,160,80,.07);
     border-radius:0 8px 8px 0;color:#cbbf9f;font-size:13px;line-height:1.7}
@@ -287,7 +297,7 @@
   .tl-r.last::before{background:var(--rc,var(--gold));box-shadow:0 0 0 3px color-mix(in srgb,var(--rc,var(--gold)) 22%,transparent)}
   .tl-w{font-size:12px;letter-spacing:.06em;color:var(--rc,var(--gold-b));font-weight:700;
     margin-bottom:3px;word-break:keep-all}
-  .tl-t{font-size:15px;line-height:1.75;color:#ded8ea;word-break:keep-all;text-wrap:pretty}
+  .tl-t{font-size:15px;line-height:1.75;color:#dddcdb;word-break:keep-all;text-wrap:pretty}
   #sheetModal .tl-w{font-size:13px}
   #sheetModal .tl-t{font-size:16.5px;line-height:1.8;max-width:52ch}
 
@@ -374,20 +384,20 @@
   .gm-legend b{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:4px}
   .cell{width:44px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--sub);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.12s;position:relative}
   .cell:hover:not(.locked){border-color:var(--gold);color:#fff}
-  .cell.on{background:linear-gradient(150deg,#211b28,#2b2333);border-color:var(--cc,var(--gold));color:#fff;box-shadow:0 0 13px -3px var(--cc,var(--gold))}
-  .cell.on::after{content:"✓";position:absolute;top:-5px;right:-4px;font-size:10px;background:var(--cc,var(--gold));color:#120f16;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center;font-weight:800}
+  .cell.on{background:linear-gradient(150deg,#1f1e1d,#282726);border-color:var(--cc,var(--gold));color:#fff;box-shadow:0 0 13px -3px var(--cc,var(--gold))}
+  .cell.on::after{content:"✓";position:absolute;top:-5px;right:-4px;font-size:10px;background:var(--cc,var(--gold));color:#121110;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center;font-weight:800}
   @keyframes markPop{0%{transform:scale(1)}28%{transform:scale(1.28);box-shadow:0 0 20px 3px var(--cc,var(--gold))}60%{transform:scale(.96)}100%{transform:scale(1)}}
   .cell.justmark{animation:markPop .75s cubic-bezier(.2,.8,.2,1)}
   .cell.dim{opacity:.4}
   /* GM 시네마틱 낭독 패널 */
   .gm-cine{max-width:760px;margin:0 auto;padding:34px 22px 30px;text-align:center}
   .gm-cine .ck{font-size:12px;letter-spacing:.42em;color:var(--ember-b);margin-bottom:30px;text-transform:uppercase}
-  .gm-cine .ln{font-size:clamp(16px,2.4vw,22px);line-height:2.05;color:#e9e1f2;opacity:0;animation:cineLine 1s ease forwards;text-shadow:0 6px 30px rgba(0,0,0,.7)}
+  .gm-cine .ln{font-size:clamp(16px,2.4vw,22px);line-height:2.05;color:#e6e5e4;opacity:0;animation:cineLine 1s ease forwards;text-shadow:0 6px 30px rgba(0,0,0,.7)}
   .gm-cine .vic{margin-top:26px;font-size:clamp(15px,2.2vw,19px);color:var(--ember-b);font-style:italic;opacity:0;animation:cineLine 1s ease forwards}
   .gm-cine .go{margin-top:34px;color:var(--sub);font-size:13.5px;opacity:0;animation:cineLine 1s ease forwards;border-top:1px solid var(--line);padding-top:20px}
   @keyframes cineLine{from{opacity:0;transform:translateY(12px);filter:blur(6px)}to{opacity:1;transform:none;filter:blur(0)}}
   /* 오프닝 사건개요 — 문단별 시네마틱 등장 */
-  .cine-intro .cine-p{opacity:0;margin:0 0 15px;line-height:1.95;font-size:14.5px;color:#d3ccde;animation:cineLine 1s ease forwards}
+  .cine-intro .cine-p{opacity:0;margin:0 0 15px;line-height:1.95;font-size:14.5px;color:#d1d0cf;animation:cineLine 1s ease forwards}
   .cine-intro .cine-p:last-child{margin-bottom:0}
   @media (prefers-reduced-motion: reduce){ .cine-intro .cine-p{animation-duration:.01ms!important} }
   @media (prefers-reduced-motion: reduce){ .gm-cine .ln,.gm-cine .vic,.gm-cine .go{animation-duration:.01ms!important} }
@@ -423,7 +433,7 @@
   #vn{position:fixed;inset:0;z-index:90;display:none;background:#000;
     place-items:center;overflow:hidden}
   #vn.on{display:grid}
-  #vn .vn-stage{position:relative;overflow:hidden;background:#050407;
+  #vn .vn-stage{position:relative;overflow:hidden;background:#060504;
     width:min(100vw,calc(100vh * 16 / 9));height:min(100vh,calc(100vw * 9 / 16));
     container-type:inline-size}
   #vn .vn-bg{position:absolute;inset:0;background-size:cover;background-position:center;
@@ -433,11 +443,11 @@
   /* 이미지가 없을 때의 폴백 — 컷 분위기를 색으로만 낸다 */
   #vn .vn-bg.calm{background-image:radial-gradient(120% 90% at 50% 35%,#1b2733,#0a0f16 60%,#05070a)}
   #vn .vn-bg.bg{background-image:radial-gradient(120% 90% at 50% 40%,#2a0f10,#12060a 60%,#05070a)}
-  #vn .vn-bg.body{background-image:radial-gradient(110% 80% at 50% 60%,#24080b,#0d0508 60%,#040305)}
-  #vn .vn-bg.scene{background-image:radial-gradient(120% 90% at 45% 40%,#231017,#0f0810 62%,#05070a)}
+  #vn .vn-bg.body{background-image:radial-gradient(110% 80% at 50% 60%,#24080b,#0d0508 60%,#050403)}
+  #vn .vn-bg.scene{background-image:radial-gradient(120% 90% at 45% 40%,#231017,#0c0b0a 62%,#05070a)}
   #vn .vn-vig{position:absolute;inset:0;pointer-events:none;
     box-shadow:inset 0 0 14cqw 5cqw rgba(0,0,0,.85);
-    background:linear-gradient(0deg,rgba(4,3,6,.95) 0%,rgba(4,3,6,.6) 26%,transparent 52%)}
+    background:linear-gradient(0deg,rgba(5,4,3,.95) 0%,rgba(5,4,3,.6) 26%,transparent 52%)}
 
   /* 인물 컷 — 인물 이미지는 배경이 딸린 완성 일러스트라 누끼 스프라이트처럼 쓸 수 없다.
      그래서 극화 만화의 인물 컷처럼 테두리를 준 패널로 세우고, 아랫단은 텍스트박스 뒤로 물린다.
@@ -445,7 +455,7 @@
   #vn .vn-sprite{position:absolute;right:5cqw;bottom:20cqw;height:52%;width:auto;
     object-fit:cover;border-radius:.5cqw;
     border:.12cqw solid color-mix(in srgb,var(--spk,#c9c2b4) 55%,transparent);
-    box-shadow:0 1cqw 4.5cqw rgba(0,0,0,.75), 0 0 0 .5cqw rgba(4,3,6,.55);
+    box-shadow:0 1cqw 4.5cqw rgba(0,0,0,.75), 0 0 0 .5cqw rgba(5,4,3,.55);
     opacity:0;transform:translate(1.6cqw,1.2cqw) scale(.985);
     transition:opacity .42s ease, transform .42s cubic-bezier(.2,.7,.3,1)}
   #vn .vn-sprite.show{opacity:1;transform:none}
@@ -458,7 +468,7 @@
      같은 레이어가 7초짜리 확대를 동시에 돌고 있어서 브라우저가 매 프레임 배경 전체를
      필터링해 다시 그렸다. 어둡게 하는 일은 겹쳐놓은 검은 판의 불투명도로 옮긴다 —
      opacity 는 합성 단계에서 끝나 다시 그리지 않는다. */
-  #vn .vn-dim{position:absolute;inset:0;pointer-events:none;background:#05040a;
+  #vn .vn-dim{position:absolute;inset:0;pointer-events:none;background:#060504;
     opacity:0;transition:opacity .5s ease}
   #vn.speak .vn-dim{opacity:.52}
 
@@ -467,11 +477,11 @@
     display:flex;flex-direction:column;align-items:flex-start}
   #vn .vn-name{display:none;align-self:flex-start;margin:0 0 -.35cqw 1.2cqw;
     padding:.75cqw 2.2cqw;border-radius:.6cqw .6cqw 0 0;
-    font-size:1.85cqw;letter-spacing:.06em;font-weight:700;color:#0a0810;
+    font-size:1.85cqw;letter-spacing:.06em;font-weight:700;color:#0b0a09;
     background:var(--spk,#c9c2b4);box-shadow:0 -.2cqw 1.2cqw rgba(0,0,0,.5)}
   #vn.speak .vn-name{display:block}
   #vn .vn-panel{width:100%;min-height:15cqw;padding:2.6cqw 3cqw;
-    background:linear-gradient(180deg,rgba(9,8,13,.9),rgba(6,5,9,.96));
+    background:linear-gradient(180deg,rgba(10,9,8,.9),rgba(7,6,5,.96));
     border:1px solid rgba(255,255,255,.13);border-radius:.9cqw;
     box-shadow:0 .6cqw 4cqw rgba(0,0,0,.6)}
   #vn.speak .vn-panel{border-left:.35cqw solid var(--spk,#c9c2b4)}
@@ -496,7 +506,7 @@
   #vn .vn-dot.on{background:var(--ember-b);width:2cqw;border-radius:.31cqw}
   #vn .vn-hint{font-size:1.4cqw;color:rgba(255,255,255,.5);letter-spacing:.04em;white-space:nowrap}
   #vn .vn-tools{position:absolute;top:2.2cqw;right:2.2cqw;z-index:4;display:flex;gap:1cqw}
-  #vn .vn-tool{background:rgba(6,4,8,.62);border:1px solid rgba(255,255,255,.18);
+  #vn .vn-tool{background:rgba(6,5,4,.62);border:1px solid rgba(255,255,255,.18);
     color:rgba(255,255,255,.72);border-radius:999px;padding:.8cqw 1.9cqw;
     font-size:1.5cqw;font-family:inherit;cursor:pointer;line-height:1.3}
   #vn .vn-tool:hover{color:#fff;border-color:var(--ember-b)}
@@ -595,7 +605,7 @@
   /* ── 침수 대응 퍼즐 ─────────────────────────────────────────
      조사 화면 맨 위를 차지한다. 이걸 넘기고 조사부터 하면 안 되니까 눈에 걸리게. */
   .crisis{border:1px solid var(--ember);border-radius:13px;padding:15px 16px;margin-bottom:12px;
-    background:linear-gradient(165deg,rgba(40,12,10,.92),rgba(16,10,14,.96));
+    background:linear-gradient(165deg,rgba(40,12,10,.92),rgba(13,12,11,.96));
     box-shadow:0 0 0 1px rgba(200,68,47,.16), 0 10px 34px -18px rgba(200,68,47,.7)}
   .crisis .cr-kick{font-size:11px;letter-spacing:.26em;color:var(--ember-b);font-weight:700;margin-bottom:5px}
   .crisis h3{margin:0 0 8px;font-size:17px;color:#fff}
@@ -640,12 +650,12 @@
   .cr-opt:hover{border-color:var(--ember-b)}
   .cr-opt .mk{flex:0 0 auto;width:17px;height:17px;border-radius:50%;border:1.5px solid var(--muted)}
   .cr-opt.on{border-color:var(--ember-b);background:rgba(200,68,47,.14);color:#fff}
-  .cr-opt.on .mk{border-color:var(--ember-b);background:var(--ember-b);box-shadow:inset 0 0 0 3px rgba(16,10,14,.9)}
+  .cr-opt.on .mk{border-color:var(--ember-b);background:var(--ember-b);box-shadow:inset 0 0 0 3px rgba(13,12,11,.9)}
   .cr-foot{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
   .cr-foot .tally{font-size:12.5px;color:var(--muted);flex:1;font-variant-numeric:tabular-nums}
   .crisis.done{border-color:var(--line)}
   .crisis.done.ok{border-color:#4e8a6a;background:linear-gradient(165deg,rgba(14,32,24,.92),rgba(12,14,18,.96))}
-  .cr-out{font-size:13.5px;line-height:1.85;color:#e6e0ee;word-break:keep-all;text-wrap:pretty}
+  .cr-out{font-size:13.5px;line-height:1.85;color:#e4e3e2;word-break:keep-all;text-wrap:pretty}
   .cr-after{margin-top:10px;padding:9px 12px;border:1px dashed var(--gold);border-radius:9px;
     background:rgba(201,162,74,.09);color:var(--gold-b);font-size:12.5px;line-height:1.6;word-break:keep-all}
   /* 지도 위 수위 — 잡으면 그 자리에서 멈춘다 */
@@ -667,7 +677,7 @@
     border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 7px;
     color:var(--sub);cursor:pointer;font-size:13.5px;transition:.15s}
   .swt:hover{border-color:var(--gold)}
-  .swt .swk{width:34px;height:19px;border-radius:999px;background:#2a2635;
+  .swt .swk{width:34px;height:19px;border-radius:999px;background:#2a2928;
     border:1px solid var(--line);position:relative;flex:0 0 auto;transition:.18s}
   .swt .swk::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;
     border-radius:50%;background:var(--muted);transition:.18s}
@@ -724,13 +734,13 @@
 
   /* 페이즈 전환 시네마틱 오버레이 */
   #phaseFx{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;pointer-events:none;
-    background:radial-gradient(120% 90% at 50% 45%,rgba(10,8,12,.86),rgba(4,3,6,.97));opacity:0}
+    background:radial-gradient(120% 90% at 50% 45%,rgba(10,9,8,.86),rgba(5,4,3,.97));opacity:0}
   #phaseFx.on{display:flex}
   #phaseFx .fx-in{max-width:82vw;text-align:center;transform:translateY(0)}
   #phaseFx .fx-kick{font-size:12px;letter-spacing:.5em;color:var(--ember-b);margin-bottom:18px;text-transform:uppercase}
   #phaseFx .fx-name{font-family:"Nanum Myeongjo","AppleMyungjo",serif;font-weight:700;color:#efe7db;
     font-size:clamp(34px,8vw,72px);letter-spacing:.14em;line-height:1.1;text-shadow:0 8px 44px rgba(0,0,0,.85)}
-  #phaseFx .fx-line{margin-top:22px;color:#cbc3d8;font-size:clamp(14px,2.3vw,18px);font-style:italic;line-height:1.8;min-height:1.2em}
+  #phaseFx .fx-line{margin-top:22px;color:#c9c8c7;font-size:clamp(14px,2.3vw,18px);font-style:italic;line-height:1.8;min-height:1.2em}
   @keyframes fxFade{0%{opacity:0}12%{opacity:1}82%{opacity:1}100%{opacity:0}}
   @keyframes fxRise{0%{opacity:0;transform:translateY(26px);filter:blur(7px);letter-spacing:.34em}100%{opacity:1;transform:none;filter:blur(0)}}
   #phaseFx.play{animation:fxFade var(--fxdur,2.8s) ease forwards}
@@ -748,11 +758,11 @@
   #phaseFx.pa::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
     background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.03) 3px 4px)}
   /* 종막 — 붉은 긴장 */
-  #phaseFx.k-final{background:radial-gradient(120% 90% at 50% 45%,rgba(40,8,8,.9),rgba(3,2,4,.98))}
+  #phaseFx.k-final{background:radial-gradient(120% 90% at 50% 45%,rgba(40,8,8,.9),rgba(4,3,2,.98))}
   #phaseFx.k-final .fx-kick,#phaseFx.k-final .fx-name{color:#f0c9c2}
   #phaseFx.k-final .fx-name{text-shadow:0 0 40px rgba(200,68,47,.5)}
   /* 진상 공개 — 여명 */
-  #phaseFx.k-reveal{background:linear-gradient(0deg,rgba(60,52,30,.5),rgba(6,5,9,.96) 60%)}
+  #phaseFx.k-reveal{background:linear-gradient(0deg,rgba(60,52,30,.5),rgba(7,6,5,.96) 60%)}
   #phaseFx.k-reveal .fx-kick{color:var(--gold-b)}
   #phaseFx.k-reveal .fx-name{color:#f3ecd6;text-shadow:0 0 50px rgba(201,162,74,.55)}
 
@@ -1690,7 +1700,7 @@ function renderPanel(ph){
     const pubc=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
     const hcards=(myRoleValid()?myHand:[]).map(c=>({...c,_pub:false})).concat(pubc.map(c=>({...c,_pub:true})));
     p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span>${pubc.length?`<span class="pill" style="color:var(--cold)">전체공개 ${pubc.length}</span>`:""}</div><div class="panel-note">아래 대화창에서 서로를 취조하세요. <b>내 손패</b>는 알릴지 감출지 자유고, <b>전체공개</b> 카드는 이미 모두가 보고 있습니다.</div>
-    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"#5a4a2c"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,#221c14,#171219)"};cursor:pointer" onclick="showMyHand()"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span><div class="lead" style="margin:4px 0 0;font-size:12.5px">${esc(c.text)}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"#5a4a2c"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,#221c14,#151413)"};cursor:pointer" onclick="showMyHand()"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span><div class="lead" style="margin:4px 0 0;font-size:12.5px">${esc(c.text)}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
     +interrogPanelHTML(); }
   else if(k==="final"){ renderFinal(p); }
   else if(k==="reveal"){ renderReveal(p); }
