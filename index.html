@@ -171,6 +171,13 @@
   .cchip:active{background:rgba(120,190,220,.22)}
   /* 아직 공개되지 않은 카드 — 무엇이 언급됐는지만 알리고 내용은 잠근다 */
   .cchip.lock{background:rgba(255,255,255,.04);border-color:var(--line);color:var(--sub)}
+  /* 조사가 다 끝난 턴바 — 차례 안내가 있던 자리에 다음 페이즈가 들어선다 */
+  .turnbar.done{border-color:rgba(90,190,140,.35)}
+  .tb-act.col{flex-direction:column;align-items:stretch;gap:7px}
+  .tb-act.col .btn{width:100%}
+  .tb-act .btn[disabled]{opacity:.45;cursor:not-allowed}
+  .tb-why{font-size:12.5px;line-height:1.6;color:var(--sub);text-align:center}
+  .tb-why b{color:var(--gold-b)}
   .sys.ref{color:#cfe4ee}
   .sys .cchips{justify-content:center}
   .chattab{display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;
@@ -2601,12 +2608,49 @@ async function submitInterrog(){
   await poll(); igRender();   // 폴이 끝나야 남은 횟수가 줄어든 값으로 바뀐다
 }
 /* ── 조사 턴 (하이브리드: 순번 강제 + 넘기기·AI 자동조사) ── */
+/* 이번 라운드에 아직 조사할 사람이 남았는가 · 손패가 넘치는 사람이 있는가.
+   STATE.checked 는 배역별 현재 손패의 카드 id다(내용은 안 온다) — 남의 손패 장수는
+   여기서만 알 수 있고, 한 명이라도 넘치면 그 카드는 아직 갈 곳이 안 정해진 것이다. */
+function investLeft(){
+  const ap=(STATE.phase||{}).ap||0; if(ap<=0) return [];
+  return (STATE.turnOrder||[]).filter(id=>(((STATE.usedAP||{})[id])||0)<ap);
+}
+function overLimitRoles(){
+  const lim=handLimit();
+  return (STATE.turnOrder||[]).filter(id=>(((STATE.checked||{})[id])||[]).length>lim);
+}
+
 function turnBar(){
   const turn=STATE.turn, order=STATE.turnOrder||[];
   if(!turn||!order.length) return "";
   const ap=(STATE.phase||{}).ap||0; const now=roleById(turn)||{}; const mine=turn===myRoleId;
   const chips=order.map(id=>{ const c=roleById(id)||{}; const used=(STATE.usedAP||{})[id]||0; const done=ap>0&&used>=ap;
     return `<span class="tb-chip ${id===turn?'on':''} ${done?'done':''}" style="--tc:${c.color||'#888'}"><span class="d"></span>${esc(c.name||id)}</span>`; }).join("");
+
+  // 전원이 조사를 마쳤으면 차례 안내 대신 다음 페이즈로 넘어가는 자리를 이 칸에 띄운다.
+  // 손패가 넘치는 사람이 있으면 넘길 수 없다 — 넘기는 순간 그 카드는 정리할 기회를 잃는다.
+  if(ap>0 && !investLeft().length){
+    const stuck=overLimitRoles();
+    const canAdv=STATE.isHost||gmOn||!STATE.hasHost;
+    let body;
+    if(stuck.length){
+      const mineStuck=stuck.indexOf(myRoleId)>=0;
+      const who=stuck.map(id=>esc((roleById(id)||{}).name||id)).join(", ");
+      body=`<button class="btn" disabled>다음 페이즈 ›</button>
+        <div class="tb-why">${mineStuck
+          ? `손패가 <b>${myHand.length}장</b>이에요. <b>${handLimit()}장</b>까지만 들 수 있습니다.`
+          : `<b>${who}</b>님이 손패를 정리하는 중입니다.`}</div>`;
+    }else if(canAdv){
+      body=`<button class="btn gold" onclick="advance()">다음 페이즈 ›</button>
+        <div class="tb-why">모두 조사를 마쳤습니다.</div>`;
+    }else{
+      body=`<div class="tb-why">모두 조사를 마쳤습니다 — 진행석에서 다음 페이즈로 넘겨줍니다.</div>`;
+    }
+    return `<div class="turnbar done"><div class="tb-h"><span class="tb-now" style="color:var(--good)">✅ 이번 조사 끝</span>
+      <span class="tb-tag">${order.length}명 완료</span></div><div class="tb-order">${chips}</div>
+      <div class="tb-act col">${body}</div></div>`;
+  }
+
   let act;
   if(mine&&myRoleValid()){ const left=Math.max(0,ap-((STATE.usedAP||{})[myRoleId]||0));
     act=`<div class="tb-act"><button class="btn gold" onclick="turnNext()">${left>0?`조사 그만하고 다음 차례 (${left}장 남음)`:'다음 차례로 ›'}</button></div>`;
