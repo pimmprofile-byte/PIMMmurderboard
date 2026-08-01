@@ -1,13 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" role="img"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 310" role="img"
      preserveAspectRatio="xMidYMid meet"
      font-family="-apple-system,BlinkMacSystemFont,'Noto Sans KR','Apple SD Gothic Neo',sans-serif">
   <title>심해 조사정 구획 배치도</title>
   <desc>함교 선실·격벽통로 통신실 의무실 화물실 기관실 여섯 구역</desc>
 
   <defs>
-    <!-- 선체 안쪽만 물이 차오르게 자르는 틀 -->
+    <!-- 선체 안쪽만 물이 차오르게 자르는 틀. 아래 .hull 과 d 가 같아야 한다 —
+         하나를 고치면 다른 하나도 반드시 같이 고친다.
+         선체 세로 범위는 y 62~274 (212). index.html 의 paintFlood() 가 이 값을 쓴다. -->
     <clipPath id="hullClip">
-      <path d="M150 66 H570 a118 118 0 0 1 0 268 H150 a118 118 0 0 1 0-268 Z"/>
+      <path d="M18 168 C18 114 54 62 116 62 H548 C638 62 684 102 708 168
+               C684 234 638 274 548 274 H116 C54 274 18 222 18 168 Z"/>
     </clipPath>
     <linearGradient id="floodGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0"   stop-color="#cfeaff" stop-opacity=".85"/>
@@ -31,81 +34,85 @@
     ]]></style>
   </defs>
 
-  <rect width="720" height="400" fill="#0b1016"/>
+  <rect width="720" height="310" fill="#0b1016"/>
 
-  <!-- 선체 — 뱃머리 돔과 선미 방향타까지만. 격자·해칭·범례·소항목은 걷어냈다. -->
+  <!-- 선체 — 뱃머리는 둥근 돔, 선미는 길게 좁아져 추진축 한 점으로 모인다.
+       구획은 전부 이 안쪽에 앉는다: 위칸 y74~158, 아래칸 y178~262, 가로 80~610.
+       네 귀퉁이 모두 선체 곡선 안쪽으로 10px 넘게 들어와 있다. -->
   <g class="trim">
-    <path d="M150 128 q-42 72 0 144"/>
-    <path d="M570 128 q42 72 0 144"/>
-    <path d="M668 176 h26 M668 224 h26"/>
+    <path d="M44 144 a20 24 0 0 0 0 48"/>
+    <path d="M628 118 q30 50 0 100"/>
+    <path d="M684 152 h32 M684 184 h32"/>
   </g>
-  <path class="hull" d="M150 66 H570 a118 118 0 0 1 0 268 H150 a118 118 0 0 1 0-268 Z"/>
+  <path class="hull" d="M18 168 C18 114 54 62 116 62 H548 C638 62 684 102 708 168
+                        C684 234 638 274 548 274 H116 C54 274 18 222 18 168 Z"/>
 
   <!-- 세일 구획 · 탈출 포드 — 아는 사람 지도에만 뜬다(기본은 CSS에서 감춘다) -->
   <g id="pod">
-    <path d="M300 66 v-24 h120 v24" fill="#171308" stroke="#c9a24a" stroke-width="1.6"/>
-    <circle cx="332" cy="54" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
-    <circle cx="360" cy="54" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
-    <circle cx="388" cy="54" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
-    <text x="432" y="58" fill="#c9a24a" font-size="12" font-weight="700">탈출 포드 · 정원 3</text>
+    <path d="M300 62 v-24 h120 v24" fill="#171308" stroke="#c9a24a" stroke-width="1.6"/>
+    <circle cx="332" cy="50" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
+    <circle cx="360" cy="50" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
+    <circle cx="388" cy="50" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
+    <text x="432" y="54" fill="#c9a24a" font-size="12" font-weight="700">탈출 포드 · 정원 3</text>
   </g>
 
   <!-- 침수 연출용. 기본 높이 0 -->
-  <g clip-path="url(#hullClip)"><rect id="floodwater" x="0" y="334" width="720" height="0" fill="url(#floodGrad)"/></g>
+  <g clip-path="url(#hullClip)"><rect id="floodwater" x="0" y="274" width="720" height="0" fill="url(#floodGrad)"/></g>
 
   <g id="zones">
     <g id="zone-A" data-loc="A">
-      <rect class="zone-fill" x="152" y="88" width="176" height="98" rx="6"/>
-      <text class="z-name" x="168" y="126">함교</text>
-      <text class="z-cnt" id="cnt-A" x="312" y="174" text-anchor="end">0/0</text>
+      <rect class="zone-fill" x="80" y="74" width="176" height="84" rx="6"/>
+      <text class="z-name" x="96" y="110">함교</text>
+      <text class="z-cnt" id="cnt-A" x="240" y="146" text-anchor="end">0/0</text>
     </g>
     <g id="zone-F" data-loc="F">
-      <rect class="zone-fill" x="340" y="88" width="164" height="98" rx="6"/>
-      <text class="z-name" x="356" y="126" font-size="16">선실·격벽통로</text>
-      <text class="z-cnt" id="cnt-F" x="488" y="174" text-anchor="end">0/0</text>
+      <rect class="zone-fill" x="268" y="74" width="168" height="84" rx="6"/>
+      <text class="z-name" x="284" y="110" font-size="16">선실·격벽통로</text>
+      <text class="z-cnt" id="cnt-F" x="420" y="146" text-anchor="end">0/0</text>
     </g>
     <g id="zone-E" data-loc="E">
-      <rect class="zone-fill" x="516" y="88" width="146" height="98" rx="6"/>
-      <text class="z-name" x="532" y="126">통신실</text>
-      <text class="z-cnt" id="cnt-E" x="646" y="174" text-anchor="end">0/0</text>
+      <rect class="zone-fill" x="448" y="74" width="162" height="84" rx="6"/>
+      <text class="z-name" x="464" y="110">통신실</text>
+      <text class="z-cnt" id="cnt-E" x="594" y="146" text-anchor="end">0/0</text>
     </g>
 
     <g id="zone-D" data-loc="D">
-      <rect class="zone-fill" x="152" y="206" width="176" height="98" rx="6"/>
-      <text class="z-name" x="168" y="244">의무실</text>
-      <text class="z-cnt" id="cnt-D" x="312" y="292" text-anchor="end">0/0</text>
+      <rect class="zone-fill" x="80" y="178" width="176" height="84" rx="6"/>
+      <text class="z-name" x="96" y="214">의무실</text>
+      <text class="z-cnt" id="cnt-D" x="240" y="250" text-anchor="end">0/0</text>
     </g>
     <g id="zone-C" data-loc="C">
-      <rect class="zone-fill" x="340" y="206" width="164" height="98" rx="6"/>
-      <text class="z-name" x="356" y="244">화물실</text>
-      <text class="z-cnt" id="cnt-C" x="488" y="292" text-anchor="end">0/0</text>
+      <rect class="zone-fill" x="268" y="178" width="168" height="84" rx="6"/>
+      <text class="z-name" x="284" y="214">화물실</text>
+      <text class="z-cnt" id="cnt-C" x="420" y="250" text-anchor="end">0/0</text>
     </g>
-    <!-- 기관실만 네모가 아니다. 격벽이 한 번 꺾여 ㄴ자를 이룬다 — 그 꺾인 목이 퍼즐의 답을 쥐고 있다. -->
+    <!-- 기관실만 네모가 아니다. 격벽이 한 번 꺾여 ㄴ자를 이룬다 — 세로 기둥은 왼쪽,
+         발은 아래에서 선미 쪽으로 뻗는다. 그 꺾인 목(540,222)이 퍼즐의 답을 쥐고 있다. -->
     <g id="zone-B" data-loc="B">
-      <path class="zone-fill" d="M522 206 H564 a6 6 0 0 1 6 6 V266 H656 a6 6 0 0 1 6 6 V298
-                                 a6 6 0 0 1-6 6 H522 a6 6 0 0 1-6-6 V212 a6 6 0 0 1 6-6 Z"/>
-      <text class="z-name" x="521" y="236" font-size="14">기관실</text>
-      <text class="z-cnt" id="cnt-B" x="652" y="293" text-anchor="end" font-size="13">0/0</text>
+      <path class="zone-fill" d="M454 178 H534 a6 6 0 0 1 6 6 V222 H604 a6 6 0 0 1 6 6 V256
+                                 a6 6 0 0 1-6 6 H454 a6 6 0 0 1-6-6 V184 a6 6 0 0 1 6-6 Z"/>
+      <text class="z-name" x="458" y="208" font-size="14">기관실</text>
+      <text class="z-cnt" id="cnt-B" x="602" y="252" text-anchor="end" font-size="13">0/0</text>
     </g>
   </g>
   <!-- 문. 칸과 칸이 맞닿은 자리에만 있고, 대각선으로는 건너갈 데가 없다 —
        이게 곧 침수 대응 퍼즐의 판이다. -->
   <g id="doors">
-    <rect class="door" id="d-AF" x="325" y="126" width="18" height="22" rx="3"/>
-    <rect class="door" id="d-FE" x="501" y="126" width="18" height="22" rx="3"/>
-    <rect class="door" id="d-DC" x="325" y="244" width="18" height="22" rx="3"/>
-    <rect class="door" id="d-CB" x="501" y="244" width="18" height="22" rx="3"/>
-    <rect class="door" id="d-AD" x="222" y="183" width="36" height="26" rx="3"/>
-    <rect class="door" id="d-FC" x="404" y="183" width="36" height="26" rx="3"/>
-    <rect class="door" id="d-EB" x="524" y="183" width="34" height="26" rx="3"/>
+    <rect class="door" id="d-AF" x="253" y="105" width="18" height="22" rx="3"/>
+    <rect class="door" id="d-FE" x="433" y="105" width="18" height="22" rx="3"/>
+    <rect class="door" id="d-DC" x="253" y="209" width="18" height="22" rx="3"/>
+    <rect class="door" id="d-CB" x="433" y="209" width="18" height="22" rx="3"/>
+    <rect class="door" id="d-AD" x="150" y="155" width="36" height="26" rx="3"/>
+    <rect class="door" id="d-FC" x="334" y="155" width="36" height="26" rx="3"/>
+    <rect class="door" id="d-EB" x="476" y="155" width="36" height="26" rx="3"/>
   </g>
   <!-- 어느 문을 닫았는지 겹쳐 그리는 층. 기본은 감춘다. -->
   <g id="doorsShut"></g>
 
-  <!-- 물이 드는 자리. 퍼즐이 켤 때만 보인다. -->
+  <!-- 물이 드는 자리 — 기관실 ㄴ자가 꺾이는 안쪽 모서리. 퍼즐이 켤 때만 보인다. -->
   <g id="leak">
-    <circle cx="570" cy="266" r="16" fill="none" stroke="#5aa6cd" stroke-width="2.4"/>
-    <circle cx="570" cy="266" r="24" fill="none" stroke="#5aa6cd" stroke-width="1.2" opacity=".5"/>
-    <path d="M570 258 q6 8 6 12.5 a6 6 0 0 1-12 0 q0-4.5 6-12.5 Z" fill="#5aa6cd"/>
+    <circle cx="540" cy="222" r="15" fill="none" stroke="#5aa6cd" stroke-width="2.4"/>
+    <circle cx="540" cy="222" r="23" fill="none" stroke="#5aa6cd" stroke-width="1.2" opacity=".5"/>
+    <path d="M540 215 q6 7.5 6 12 a6 6 0 0 1-12 0 q0-4.5 6-12 Z" fill="#5aa6cd"/>
   </g>
 </svg>

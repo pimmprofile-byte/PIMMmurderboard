@@ -1795,7 +1795,8 @@ async function paintCrisisBoard(){
   if(leak){ const g=svg.querySelector(`[data-loc="${leak}"]`); if(g) g.classList.add("z-leak"); }
   svg.querySelectorAll(".z-cnt").forEach(t=>t.remove());
   // 퍼즐에서는 선체 안쪽만 크게 본다 — 칸 모양을 눈으로 비교해야 하는 문제라 작으면 안 된다.
-  svg.setAttribute("viewBox","144 78 548 244");
+  // 여섯 칸이 앉은 자리(x 80~610, y 74~262)에 여백을 조금 붙인 크기다.
+  svg.setAttribute("viewBox","54 52 582 232");
 }
 function crisisHTML(){
   const cr=(STATE&&STATE.crisis)||null; if(!cr) return "";
@@ -1844,9 +1845,10 @@ function floodHTML(){
 function paintFlood(svg){
   const f=Math.max(0,Math.min(100,(STATE&&STATE.flood)||0));
   const w=svg&&svg.querySelector("#floodwater"); if(!w) return;
-  // 선체 안쪽(y 66~334)만 채운다. 아래에서 위로.
-  const top=334-268*(f/100);
-  w.setAttribute("y",top.toFixed(1)); w.setAttribute("height",(334-top).toFixed(1));
+  // 선체 안쪽(y 62~274)만 채운다. 아래에서 위로.
+  // 이 두 수는 assets/submarine_map.svg 의 선체 세로 범위와 같아야 한다.
+  const top=274-212*(f/100);
+  w.setAttribute("y",top.toFixed(1)); w.setAttribute("height",(274-top).toFixed(1));
 }
 
 /* 조사 화면 — 지도가 바깥에 그대로 떠 있다. 구역을 누르면 그 안으로 들어간다.
