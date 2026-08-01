@@ -12,7 +12,9 @@ services:
         sync: false
       - key: AGENT_KEY           # 코드 세션(GM)이 원격 조종할 때 쓰는 비밀 키(임의 문자열). 나에게만 공유
         sync: false
-      - key: REUNION_MODEL
+      - key: REUNION_MODEL       # 종막 채점·AI 답안용(판당 몇 번). 아끼려면 claude-sonnet-5
         value: claude-opus-4-8
+      - key: PIMM_MODEL_FAST     # 배역 대사용(판당 60~100번). 비용과 체감속도는 여기서 갈린다
+        value: claude-haiku-4-5-20251001
       - key: PYTHON_VERSION
         value: "3.11.9"
