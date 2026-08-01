@@ -1016,7 +1016,7 @@
       <button class="btn quiet sm" id="gmKeyBtn" onclick="askGMKey()" style="display:none">GM 키 바꾸기</button>
       <span class="spacer"></span>
       <button class="btn quiet sm" onclick="go('play')">관전으로 보기</button>
-      <button class="btn quiet sm" onclick="resetRoom()">방 초기화</button>
+      <button class="btn quiet sm" onclick="resetRoom()">🧹 방 새로 열기</button>
     </div>
     <div class="setnote">진행석은 배역과 겹쳐도 됩니다 — 배역을 맡은 채로 켜두면 진행 화면과 플레이 화면을 오갈 수 있습니다.<br>
       진행석은 페이즈를 넘기고 <b>누가 어떤 카드를 조사했는지 마킹</b>만 합니다. 카드 내용은 보이지 않아 스포일러가 없습니다.</div>
@@ -1975,17 +1975,39 @@ async function claimRandom(){ const r=await post("/api/claim-random",{clientId})
 async function setMy(id){ myRoleId=id; localStorage.setItem("pmb.role",id); await poll(); }
 async function releaseRole(){ if(myRoleId){ await post("/api/release",{roleId:myRoleId,clientId}); myRoleId=null; localStorage.removeItem("pmb.role"); await poll(); } }
 async function setAI(id){ const r=await post("/api/setai",{roleId:id,clientId}); if(r&&r.error)banner(r.error); await poll(); }
+/* 이 기기에 남는 것 — 배역, 종막 답안, 어디까지 읽었나, 진행석 토글, 대화창 접힘.
+   방을 새로 열어도 이게 남아 있으면 지난 판이 그대로 이어져 보인다. gmKey만 남긴다(다시 치기 번거로우니). */
+function wipeLocal(keepKey){
+  const keep=keepKey?localStorage.getItem("pmb.gmkey"):null;
+  Object.keys(localStorage).filter(k=>k.indexOf("pmb.")===0).forEach(k=>localStorage.removeItem(k));
+  if(keep!=null) localStorage.setItem("pmb.gmkey",keep);
+  myRoleId=null; sheetSeenSeq=null; myHand=[]; handSeen=null; lobbyBuilt="";
+  chatDrawn={}; renderPanel._sig=null; lastRev=-1;
+}
 async function resetRoom(){
-  if(!confirm("방을 초기화할까요?\n\n배역과 조사 기록이 모두 지워지고 배역 선택으로 돌아갑니다.")) return;
+  if(!confirm("방을 새로 엽니다.\n\n배역·조사 기록·종막 답안이 모두 지워지고 배역 선택으로 돌아갑니다.\n이 기기에 남은 기록도 함께 지웁니다.")) return;
   // clientId를 실어야 호스트로 인정된다. 안 보내면 403인데 예전엔 조용히 삼켰다.
   const r=await post("/api/reset",{clientId,key:gmKey});
-  if(r&&r.error){ banner(r.error==="host"?"호스트만 방을 초기화할 수 있습니다":"초기화 실패: "+r.error); return; }
+  if(r&&r.error){
+    banner(r.error==="host"
+      ? "다른 기기가 호스트예요. 그 기기에서 초기화하거나, 주소 끝에 ?new=1 을 붙여 여세요."
+      : "초기화 실패: "+r.error);
+    return;
+  }
   await post("/api/host/claim",{clientId});   // 초기화가 호스트를 풀었으니 곧바로 되잡는다
-  myRoleId=null; localStorage.removeItem("pmb.role");
-  Object.keys(localStorage).filter(k=>k.indexOf("pmb.final.")===0).forEach(k=>localStorage.removeItem(k));
-  lobbyBuilt=""; handSeen=null; myHand=[];    // 뼈대를 다시 세워야 새 방이 그대로 그려진다
+  wipeLocal(true);
   banner(""); await poll(); go("lobby");
 }
+/* 막혔을 때의 탈출구 — 주소 끝에 ?new=1 을 붙이면 이 기기 기록을 지우고 방까지 새로 연다.
+   호스트를 쥔 브라우저가 사라져 아무도 초기화하지 못하는 상황이 실제로 나온다. */
+(async function(){
+  if(!/[?&]new=1/.test(location.search)) return;
+  try{ await post("/api/reset",{clientId,key:localStorage.getItem("pmb.gmkey")||""}); }catch(e){}
+  try{ const keep=localStorage.getItem("pmb.gmkey");
+    Object.keys(localStorage).filter(k=>k.indexOf("pmb.")===0).forEach(k=>localStorage.removeItem(k));
+    if(keep!=null) localStorage.setItem("pmb.gmkey",keep); }catch(e){}
+  location.replace(location.pathname);
+})();
 
 /* 알리바이 대화록 — 오프닝이 끝난 직후, «그 시간에 어디 있었는지»를 한 바퀴 돌린 기록.
    여기 적힌 건 전부 주장이다. 조사 카드가 이 줄들을 하나씩 무너뜨린다. */

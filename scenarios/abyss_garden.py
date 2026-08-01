@@ -61,8 +61,8 @@ ALIBI_LOG = [
      "line": "저는 함교 안쪽 숙직실에 있었습니다. 계속 누워 있었어요. "
              "…2시쯤에 강윤서 씨 목소리를 들은 것 같고, 조금 뒤에 뭔가 부딪히는 소리도 났는데. 파도인 줄 알았습니다."},
     {"who": "kangyunseo", "t": "02:00 ~ 02:35",
-     "line": "통신실입니다. 2시 12분, 20분, 31분 — 정기 송신 세 번이 로그에 그대로 남아 있어요. "
-             "그 시간에 자리를 뜬 적 없습니다. 기록으로 증명되는 건 저뿐일 겁니다."},
+     "line": "통신실입니다. 2시에 선장님께 보고드리고 바로 내려와서, 계속 콘솔 앞에 있었어요. "
+             "…자리를 뜬 적 없습니다."},
     {"who": "handokyung", "t": "02:00 ~ 03:10",
      "line": "기관실. 계통이 아까부터 말썽이라 붙어 있었어. 혼자였고 증인은 없다. "
              "…물 새는 것도 거기서 처음 봤지."},
@@ -70,8 +70,8 @@ ALIBI_LOG = [
      "line": "화물실입니다. 재고 실사 중이었고 2시 40분에 마쳤습니다. 그 뒤로도 계속 거기 있었고요. "
              "기록은 제 손으로 적은 거니까, 그걸 증거라고 내밀 생각은 없습니다."},
     {"who": "oserin", "t": "02:00 ~ 02:40",
-     "line": "선실에서 자료를 정리하고 있었습니다. 혼자였어요. "
-             "…비명 듣고 올라온 게 전부입니다."},
+     "line": "의무실입니다. 자료를 정리하면서… 혼잣말을 좀 했습니다. 원래 그렇게 정리하는 편이라서요. "
+             "지나가시면서 들으신 분도 있을 겁니다. …비명 듣고 올라온 게 전부입니다."},
 ]
 ALIBI_NOTE = (
     "여섯 중 넷은 그 시간을 대신 말해줄 사람이 없다. "
@@ -1304,6 +1304,65 @@ def build_grade_prompt(c: dict, answers: list[str]) -> str:
 
 아래 JSON으로만 답하라(다른 말 금지):
 {{"culpritGuess": "handokyung", "correct": true, "surface": "surface", "cluesFound": 0, "score": 0, "verdict": "...", "tags": [{{"label":"범인 지목","ok":true}}, {{"label":"근거","ok":true}}, {{"label":"자기 비밀 공개","ok":false}}]}}"""
+
+
+# ── 탈출 포드 · AI 고정표 ──
+# 판을 읽는 AI가 아니므로 표를 판에 맞춰 움직이게 하면 근거 없는 표가 된다.
+# 대신 각자 성격이 그대로 드러나는 한 표씩 못박아 두고, 판을 흔드는 건 사람 몫으로 남긴다.
+#   기관장 → 막내. 유일하게 그를 따르는 아이이고, 표를 그리로 몰아 동률을 만들면 아무도 못 탄다.
+#   항해사 → 의무관. 함께 타야 한다면 좁은 안에서 제압할 수 있는 상대여야 한다.
+#   화물장 → 막내. 살인자와 같이 탈 수는 없고, 저 아이만은 아니라고 확신한다.
+#   의무관 → 기관장. 그와 함께 올라가는 것이 그녀의 3점짜리 목표다.
+#   통신사 → 막내. 자기 약을 나눠준 아이다.
+#   조타수 → 기관장. 이 배에서 유일하게 잘해준 사람이다.
+POD_VOTE_AI = {
+    "handokyung": "yutaeo",
+    "munjaei":    "oserin",
+    "jinharam":   "yutaeo",
+    "oserin":     "handokyung",
+    "kangyunseo": "yutaeo",
+    "yutaeo":     "handokyung",
+}
+POD_SEATS = 3
+
+
+def pod_result(votes: dict) -> dict:
+    """탈출 포드 개방 — 자기 자신은 못 찍는다.
+
+    최다득표가 세 자리 안이면 그들이 탄다. 넷 이상이 동률이면 자리를 나눌 수 없어 아무도 못 탄다.
+    한 명이면 혼자 나간다. 표를 흩뜨리는 것 자체가 무기가 되는 구조다.
+    """
+    tally: dict = {}
+    for voter, target in (votes or {}).items():
+        if not target or target == voter:
+            continue
+        tally[target] = tally.get(target, 0) + 1
+    if not tally:
+        return {"boarded": [], "tally": {}, "reason": "none", "top": 0}
+    top = max(tally.values())
+    leaders = sorted([k for k, v in tally.items() if v == top])
+    if len(leaders) > POD_SEATS:
+        return {"boarded": [], "tally": tally, "reason": "tie", "top": top}
+    return {"boarded": leaders, "tally": tally, "reason": "solo" if len(leaders) == 1 else "seats", "top": top}
+
+
+def arrest_needed(human_n: int, culprit_is_human: bool) -> int:
+    """범인 검거에 필요한 지목 수. AI 표는 세지 않는다 — 판단은 사람 몫이다.
+
+    범인이 사람 쪽에 있으면 범인을 포함한 인원의 과반(2인 1명, 3인 2명, 4인 2명).
+    범인이 AI 쪽이면 사람 전체의 과반이되 반은 무조건 넘겨야 한다(2인 2명, 4인 3명).
+    """
+    n = max(1, int(human_n))
+    return (n + 1) // 2 if culprit_is_human else (n // 2) + 1
+
+
+def arrest_result(accuse: dict, human_ids: list, culprit_is_human: bool) -> dict:
+    """accuse: roleId -> 지목한 roleId (사람만). 범인 본인의 표는 세지 않는다."""
+    humans = [r for r in (human_ids or [])]
+    need = arrest_needed(len(humans), culprit_is_human)
+    hits = [r for r in humans if r != CULPRIT_ID and (accuse or {}).get(r) == CULPRIT_ID]
+    return {"caught": len(hits) >= need, "hits": len(hits), "need": need,
+            "voters": len(humans), "by": hits}
 
 
 def compute_ending(grades: dict) -> dict | None:

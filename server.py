@@ -157,6 +157,8 @@ def fresh_room() -> dict:
         "grades": {},             # roleId -> grade dict (name 포함)
         "finalAnswers": {},       # roleId -> [answer str] (백엔드 미설정 시 진행자 수동채점용 보관)
         "gmSeats": {},            # clientId -> 마지막으로 진행석을 켜둔 시각. 방에 진행자가 있는지 판단용
+        "podVotes": {},           # roleId -> 태울 사람. 최종 토론에서 사람이 던진 표만 담는다
+        "accuse": {},             # roleId -> 지목한 사람. 종막의 범인 지목, 사람 표만
         "typing": None,
         "events": [],            # 진행 세션이 따라 읽는 사건 기록
         "podOpen": False,        # 특정 카드가 전체공개되면 지도에 탈출 포드가 드러난다
@@ -337,6 +339,8 @@ def public_state() -> dict:
             "checked": checked,
             "usedAP": used,
             "handLimit": _hand_limit(),
+            "pod": _pod_state(),
+            "arrest": (_arrest_state() if ROOM["seq"] >= 8 else None),
             # 남의 차례일 때 화면이 멈춘 것처럼 보이지 않게, 다음 차례까지 남은 시간을 내려보낸다.
             "turnWait": (round(max(0.0, AUTO_TURN["delay"] - (time.monotonic() - AUTO_TURN["since"])), 1)
                          if (AUTO_TURN["on"] and ROOM.get("turn")
@@ -421,6 +425,12 @@ class ClientOnly(BaseModel):
 class Investigate(BaseModel):
     cardId: str
     roleId: str
+    clientId: str
+
+
+class VoteReq(BaseModel):
+    roleId: str
+    targetRoleId: str
     clientId: str
 
 
@@ -671,6 +681,9 @@ def state(clientId: str = "", gm: int = 0):
         # 잡은 직후나 새로고침 뒤에 자기 배역을 '참여 중'(남이 맡음)으로 그리곤 했다.
         st["myRole"] = next((rid for rid, r in ROOM["roles"].items()
                              if clientId and r["clientId"] == clientId), None)
+        if st.get("pod") is not None and st["myRole"]:
+            st["pod"]["mine"] = ROOM["podVotes"].get(st["myRole"])
+            st["myAccuse"] = ROOM["accuse"].get(st["myRole"])
         st["isHost"] = bool(clientId) and ROOM.get("host") == clientId
         # 호스트를 아무도 안 잡은 방도 있다. 그때는 '호스트 전용' 연출을 아무도 못 보게 되므로
         # 클라이언트가 그 사정을 알 수 있게 해준다(다른 엔드포인트도 같은 규칙으로 통과시킨다).
@@ -1307,6 +1320,83 @@ def swap_card(b: SwapCard):
                               "text": f'🔄 {nm}{_subj(nm)} 「{tt}」{_obj(tt)} 도로 가져갔습니다.'})
         bump()
     return {"ok": True}
+
+
+# ── 탈출 포드 개방 · 범인 지목 ────────────────────────────────
+def _pod_state() -> dict:
+    """포드 투표 현황. 사람이 다 던지기 전에는 «누가 누구를 찍었나»를 감춘다 —
+    마지막에 던지는 사람이 전부 보고 결정하면 그건 투표가 아니라 계산이다."""
+    humans = _human_roles()
+    voted = [r for r in humans if ROOM["podVotes"].get(r)]
+    done = bool(humans) and len(voted) >= len(humans)
+    st = {"seats": getattr(SC, "POD_SEATS", 3), "voters": len(humans),
+          "voted": len(voted), "done": done, "mine": None}
+    if done:
+        merged = dict(getattr(SC, "POD_VOTE_AI", {}) or {})
+        for r in humans:                       # 사람 표가 AI 고정표를 덮는다
+            merged[r] = ROOM["podVotes"][r]
+        st["result"] = SC.pod_result(merged)
+        st["votes"] = merged
+    return st
+
+
+@app.post("/api/pod/vote")
+def pod_vote(b: VoteReq):
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "그 배역으로 투표할 수 없습니다"}, status_code=403)
+        if ROOM["seq"] != 7:
+            return JSONResponse({"error": "포드 투표는 최종 토론에서만 할 수 있습니다"}, status_code=409)
+        if b.targetRoleId == b.roleId:
+            return JSONResponse({"error": "자기 자신은 태울 수 없습니다"}, status_code=409)
+        if b.targetRoleId not in ROOM["roles"]:
+            return JSONResponse({"error": "없는 배역"}, status_code=404)
+        first = b.roleId not in ROOM["podVotes"]
+        ROOM["podVotes"][b.roleId] = b.targetRoleId
+        nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
+        if first:
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": f"🛟 {nm}{_subj(nm)} 포드 탑승자를 정했습니다. (누구인지는 전원이 정한 뒤에 열립니다)"})
+        st = _pod_state()
+        if st["done"]:
+            res = st["result"]
+            names = [(SC.get_character(x) or {}).get("name", x) for x in res["boarded"]]
+            if res["reason"] == "tie":
+                msg = "🛟 발사창이 열렸지만 표가 넷 이상으로 갈렸습니다 — 자리를 나누지 못해 아무도 타지 못합니다."
+            elif not names:
+                msg = "🛟 아무도 표를 받지 못했습니다. 포드는 빈 채로 남습니다."
+            elif len(names) == 1:
+                msg = f"🛟 발사창이 열립니다. {names[0]}, 혼자 탑니다."
+            else:
+                msg = f"🛟 발사창이 열립니다. 타는 사람 — {', '.join(names)}."
+            ROOM["table"].append({"kind": "system", "broadcast": True, "text": msg})
+        bump()
+    return {"ok": True, "pod": _pod_state()}
+
+
+@app.post("/api/accuse")
+def accuse(b: VoteReq):
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "그 배역으로 지목할 수 없습니다"}, status_code=403)
+        if SC.phase_by_seq(ROOM["seq"]).get("key") != "final":
+            return JSONResponse({"error": "범인 지목은 종막에서만 할 수 있습니다"}, status_code=409)
+        if b.targetRoleId not in ROOM["roles"]:
+            return JSONResponse({"error": "없는 배역"}, status_code=404)
+        ROOM["accuse"][b.roleId] = b.targetRoleId
+        bump()
+    return {"ok": True}
+
+
+def _arrest_state() -> dict:
+    humans = _human_roles()
+    culprit_human = (ROOM["roles"].get(SC.CULPRIT_ID) or {}).get("mode") == "human"
+    res = SC.arrest_result(ROOM["accuse"], humans, culprit_human)
+    res["culpritIsHuman"] = culprit_human
+    res["done"] = bool(humans) and all(r in ROOM["accuse"] for r in humans)
+    return res
 
 
 @app.post("/api/interrogate/vote")
