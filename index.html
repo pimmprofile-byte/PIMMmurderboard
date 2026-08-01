@@ -493,6 +493,16 @@
   .cnote{margin-top:12px;padding:9px 11px;border-left:2px solid #5a4a2c;background:rgba(200,160,80,.07);
     border-radius:0 8px 8px 0;color:#cbbf9f;font-size:13px;line-height:1.7}
   .cnote b{color:var(--gold-b);font-weight:700;font-size:11.5px;letter-spacing:.06em;display:block;margin-bottom:2px}
+  /* 같은 카드를 봐도 사람마다 다른 것이 보인다. 이 칸은 그 배역의 화면에만 있다. */
+  .mynote{margin-top:10px;padding:10px 12px;border-radius:10px;font-size:13.5px;line-height:1.75;
+    border:1px solid rgba(120,190,220,.28);background:linear-gradient(180deg,rgba(90,170,205,.13),rgba(90,170,205,.05))}
+  .mynote .lb{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.07em;font-weight:800;
+    color:#9fd4e8;margin-bottom:5px}
+  .mynote .lb::after{content:"나에게만 보입니다";margin-left:auto;font-weight:600;letter-spacing:0;
+    font-size:10.5px;color:#7fa8bb;opacity:.9}
+  .mynote .tx{color:#dce9ef}
+  .mynote.keep{border-color:rgba(214,176,96,.42);background:linear-gradient(180deg,rgba(214,176,96,.15),rgba(214,176,96,.05))}
+  .mynote.keep .lb{color:var(--gold-b)} .mynote.keep .lb::after{color:#a5906a} .mynote.keep .tx{color:#f0e6d2}
   .bc-avwrap{display:flex;align-items:center;gap:14px;margin-bottom:6px}
   .bc-av{font-size:34px;width:60px;height:60px;display:grid;place-items:center;background:var(--bg);border-radius:15px;flex:0 0 60px;border:1px solid var(--line);overflow:hidden}
   .bc-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
@@ -2525,6 +2535,14 @@ function showPairHint(id){
   openModal("cardModal");
 }
 function cnote(c){ return c&&c.hint?`<div class="cnote"><b>해석</b>${esc(c.hint)}</div>`:""; }
+/* 이 카드에서 나만 읽어낸 것. 서버가 내 배역 몫만 만들어 보내므로 남의 화면엔 애초에 없다.
+   keep = 「내가 찾던 게 이거였다」 · eye = 배운 게 있어 한 겹 더 본 것. */
+function mynote(id){
+  const ns=(STATE&&STATE.myNotes&&STATE.myNotes[id])||[]; if(!ns.length) return "";
+  return ns.map(n=>n.kind==="keep"
+    ? `<div class="mynote keep"><div class="lb">🎯 내가 찾던 것 · 끝까지 쥐면 +${n.points}</div><div class="tx">${esc(n.text)}</div></div>`
+    : `<div class="mynote"><div class="lb">👁 내 눈에만 걸리는 것</div><div class="tx">${esc(n.text)}</div></div>`).join("");
+}
 /* 목적격 조사 — 받침이 있으면 '을', 없으면 '를' */
 function objp(w){ if(!w) return "를"; const cd=w.charCodeAt(w.length-1);
   return (cd>=0xAC00&&cd<=0xD7A3&&(cd-0xAC00)%28)?"을":"를"; }
@@ -2538,7 +2556,7 @@ function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const 
         <h2>${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
         <span class="mh-sub">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""} · R${c.round}</span></div>
       <button class="mh-x" onclick="closeModal('cardModal')" aria-label="닫기">✕</button></div>
-    <div class="mbody"><div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>${cnote(c)}</div>
+    <div class="mbody"><div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>${mynote(c.id)}${cnote(c)}</div>
     <div class="mfoot"><span class="mf-note">${inHand?"알리려면 대화로 말하세요 — 저절로 새어 나가지 않습니다.":"이미 모두가 보고 있는 단서입니다."}</span>
       <button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
   const box=$("cardBox");
@@ -2968,8 +2986,8 @@ async function showMySheet(){
   slides.push({tab:"main", html:`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">나의 목표</div><div class="bc-title" style="font-size:18px">이번 밤, 내가 노리는 것</div>
     <div style="margin-top:12px">${(s.goals||[]).map(g=>`<div class="bc-goal"><span>${esc(g.t)}</span><span class="pt">+${g.p}</span></div>`).join("")}
     ${s.keepGoal?`<div class="bc-goal keep"><span>${esc(s.keepGoal.label)}</span><span class="pt">+${s.keepGoal.points}</span></div>
-      <div class="keepnote">이 내용이 담긴 카드는 <b>${(s.keepGoal.cards||[]).map(c=>esc(c.title)+(c.spot?` <span class="q">${esc(c.locName)} · ${esc(c.spot)}</span>`:"")).join(", ")}</b>.
-        끝까지 <b>내 손패에 있어야</b> 점수가 인정된다. 전체공개되거나 남이 눈치채면 무효다.</div>`:""}</div></div>`});
+      <div class="keepnote">어느 카드인지는 <b>찾아내야 한다</b>. 조사해서 열어보면 그 자리에서 나에게만 표시된다.
+        끝까지 <b>내 손패에 있어야</b> 점수가 인정되고, 전체공개되거나 남이 눈치채면 무효다.</div>`:""}</div></div>`});
   // 2-b) 내가 아는 옛일 — 연표. 줄글의 재료지만, 「02:15에 내가 뭘 했더라」는 표가 훨씬 빠르다.
   if((s.past||[]).length){
     const rows=s.past.map((r,i,a)=>`<div class="tl-r${i===a.length-1?" last":""}">
@@ -3032,7 +3050,7 @@ function showMyHand(){
       <div class="bc-eyebrow">${isPub?"전체공개 · 모두가 봅니다":"손패 · 비공개"}</div>
       <div class="bc-title" style="color:${isPub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</div>
       <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${pairOf(c.id)?`<button class="pill pair" onclick="event.stopPropagation();showPairHint('${c.id}')">🧩 조합 카드</button>`:''}</div>
-      <div class="bc-body">${esc(c.text)}</div>${cnote(c)}
+      <div class="bc-body">${esc(c.text)}</div>${mynote(c.id)}${cnote(c)}
       ${c.unlocks&&!isPub?`<div class="unlocknote">🔓 이 카드를 <b>전체공개</b>하면 무언가 밝혀질 수 있습니다.</div>`:""}</div>`; });
     h+=buildSwipe(slides); }
   const pubN=(STATE.revealed||[]).length;

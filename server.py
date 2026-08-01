@@ -308,6 +308,26 @@ def table_tail(n: int = TABLE_TAIL):
     return [dict(m, n=base + i) for i, m in enumerate(tail)]
 
 
+def _my_notes(role_id: str, card_ids) -> dict:
+    """그 배역에게만 붙는 카드 메모를 모아 준다. 남의 몫은 애초에 만들지 않는다.
+
+    공개 카드 목록은 모두가 같은 것을 받으므로 여기에 섞을 수 없다 — 별도로 내려보내고
+    클라이언트가 카드 위에 얹는다. 배역이 없으면(관전·진행석) 빈 손이다.
+    """
+    fn = getattr(SC, "private_notes", None)
+    if not role_id or not fn:
+        return {}
+    out = {}
+    for cid in card_ids:
+        try:
+            ns = fn(role_id, cid)
+        except Exception:              # noqa: BLE001 — 시나리오가 안 갖췄어도 판은 돌아야 한다
+            ns = None
+        if ns:
+            out[cid] = ns
+    return out
+
+
 def public_state() -> dict:
     with LOCK:
         seq = ROOM["seq"]
@@ -685,6 +705,10 @@ def state(clientId: str = "", gm: int = 0):
         if st.get("pod") is not None and st["myRole"]:
             st["pod"]["mine"] = ROOM["podVotes"].get(st["myRole"])
             st["myAccuse"] = ROOM["accuse"].get(st["myRole"])
+        # 내가 볼 수 있는 카드(전체공개 + 내 손패)에 대해서만, 나에게만 붙는 메모를 얹는다.
+        if st["myRole"]:
+            seen = list(ROOM["revealed"]) + list(ROOM["hands"].get(st["myRole"], []))
+            st["myNotes"] = _my_notes(st["myRole"], seen)
         st["isHost"] = bool(clientId) and ROOM.get("host") == clientId
         # 호스트를 아무도 안 잡은 방도 있다. 그때는 '호스트 전용' 연출을 아무도 못 보게 되므로
         # 클라이언트가 그 사정을 알 수 있게 해준다(다른 엔드포인트도 같은 규칙으로 통과시킨다).
@@ -1499,7 +1523,9 @@ def get_hand(role_id: str, clientId: str = ""):
         r = ROOM["roles"].get(role_id)
         if not r or r["clientId"] != clientId:  # 엄격: 내 손패만
             return JSONResponse({"error": "권한 없음"}, status_code=403)
-        return {"hand": [SC.public_card(c) for c in ROOM["hands"].get(role_id, [])]}
+        mine = ROOM["hands"].get(role_id, [])
+        return {"hand": [SC.public_card(c) for c in mine],
+                "notes": _my_notes(role_id, mine)}
 
 
 # ── 에이전트(코드 세션) 원격 조종: GM 읽기 + AI 배역 대리 행동 ──

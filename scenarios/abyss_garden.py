@@ -449,7 +449,7 @@ CHARACTERS = [
         # 장부는 아래 '끝까지 쥐기'가 5점으로 세고 있다. 여기서 또 세면 같은 걸 두 번 주는 셈이다.
         "goals": [{"t": "혼자 포드를 타고 나간다. 배도 장부도 여기 두고", "p": 3},
                   {"t": "선장을 죽인 자가 누구인지는 알아둔다. 같이 탈 수는 없으니까", "p": 2},
-                  {"t": "저 기관장이 귀신이 아니라 사람이라는 증거를 잡는다", "p": 2},
+                  {"t": "한무영 기관장의 정체를 확인한다", "p": 2},
                   {"t": "내가 남의 약을 훔쳐 먹었다는 걸 들키지 않는다", "p": 1}],
         "ai_note": "살인에는 무고하지만 이 배에서 가장 어두운 사람이다. 표면적으로는 과묵하고 협조적인 척하되, 화제가 9년 전 문서나 화물실 서류로 가면 초조해지고 돌린다. 범인 색출에는 «누군지는 알아야지»라며 오히려 협조하는 척하라 — 다만 동기 이야기로 넘어가면 곧바로 식혀라. 기관장의 정체는 절대 발설하지 마라. 그를 향한 의심이 커지면 감싸되 왜 감싸는지는 설명하지 마라. 그가 옆에 있을 때 가끔 말을 놓치거나 허공을 본다 — 죽은 형이 겹쳐 보이는 것이다. 포드 이야기가 나오면 아는 티를 내지 말되, 두 자리라는 말이 나오면 유난히 조용해져라. 몰리면 죄책감이 새어 나오되 자백은 하지 마라.",
         "knows": ["C6", "C7", "C8"],
@@ -861,18 +861,22 @@ CARDS = [
 # 종막까지 손패에 남아 있으면 달성. 남이 먼저 집어 공개해버리면 실패한다.
 KEEP_GOALS = {
     "munjaei":    {"cards": ["B6"], "points": 3,
-                   "label": "세일 구획으로 뻗은 계통도를 아무에게도 넘기지 않는다",
+                   "label": "이 배의 구조가 그려진 것을 찾아, 아무에게도 넘기지 않는다",
+                   "mine": "이거다. 세일 구획으로 뻗은 사출 계통. 내가 뜯어보러 온 것이 이 한 장이다 — 끝까지 내 손에 있어야 한다.",
                    "fail": "계통도가 공개됐다 — 이 배의 구조를 들고 나가려던 일이 헛것이 됐다"},
     "jinharam":   {"cards": ["C8"], "points": 5,
-                   "label": "내가 무너져가는 걸 적어둔 장부를 아무에게도 넘기지 않는다",
+                   "label": "내가 9년 동안 적어온 것을 찾아, 아무에게도 넘기지 않는다",
+                   "mine": "이거다. 뒤쪽에 내 손으로 적은 것들이 그대로 있다 — 이게 남의 손에 가면 나는 그때부터 미친놈이다.",
                    "fail": "장부가 공개됐다 — 귀신을 본다고 적어둔 손이 내 손이라는 걸 모두가 읽었다"},
     # 오세린이 노리는 건 이 종이 한 장이다. 그런데 그건 진하람의 창고에서 나온다 — 정면으로 부딪친다.
     "oserin":     {"cards": ["C4"], "points": 5,
-                   "label": "9년 전 매니페스트를 끝까지 손에 쥐고 이 배를 나간다",
+                   "label": "9년 전 그 부품이 어떻게 통과됐는지 적힌 종이를 쥐고 이 배를 나간다",
+                   "mine": "이거다. 9년을 쫓은 부품 번호와 검수란의 두 서명 — 이 종이가 물에 잠기면 결함은 그대로 남는다.",
                    "fail": "그 종이가 물에 잠겼다 — 결함은 지금도 그 발전소에 그대로 있다"},
     # 「친척이라는 것」과 「부모가 돈을 보냈다는 것」은 한 장에 같이 적혀 있다. 따로 감출 수가 없다.
     "kangyunseo": {"cards": ["E6"], "points": 3,
-                   "label": "선장이 친척이라는 것과 우리 부모와의 관계를, 둘 다 끝까지 감춘다",
+                   "label": "선장과 우리 집안 사이에 오간 것을 찾아, 끝까지 덮는다",
+                   "mine": "이거다. 41회차. 이게 돌면 친척이라는 것도 부모가 값을 치러 왔다는 것도 한꺼번에 나온다.",
                    "fail": "그 기록이 공개됐다 — 친척인 것도, 부모가 값을 치러 왔다는 것도 함께 드러났다"},
 }
 
@@ -1144,13 +1148,9 @@ def private_sheet(cid: str) -> dict | None:
             "knows": [{"id": x["id"], "title": x["title"], "locName": x["locName"],
                        "spot": x.get("spot", ""), "text": x["text"], "round": x.get("round", 1)}
                       for x in (get_card(k) for k in (c.get("knows") or [])) if x],
-            # 끝까지 쥐기 목표는 여태 진상 공개에서만 보였다 — 3점짜리를 모르고 플레이한 셈이다.
-            # 어느 카드를 쥐어야 하는지까지 알려줘야 «남보다 먼저 집는다»가 선택이 된다.
+            # 어느 카드인지는 적지 않는다. 열어보면 그 자리에서 본인에게만 뜬다(private_notes).
             "keepGoal": ({"points": KEEP_GOALS[cid]["points"], "label": KEEP_GOALS[cid]["label"],
-                          "fail": KEEP_GOALS[cid]["fail"],
-                          "cards": [{"id": x["id"], "title": x["title"], "locName": x["locName"],
-                                     "spot": x.get("spot", "")}
-                                    for x in (get_card(k) for k in KEEP_GOALS[cid]["cards"]) if x]}
+                          "fail": KEEP_GOALS[cid]["fail"]}
                          if cid in KEEP_GOALS else None),
             # 배치도는 전원이 갖되, 포드가 그려진 판본은 아는 사람만
             "hasMap": True, "showPod": cid in POD_KNOWERS}
@@ -1171,6 +1171,24 @@ def memory_up_to(cid: str, current_seq: int, crisis_solved=None) -> list[dict]:
             when = next(p["name"] for p in PHASES if p["seq"] == CRISIS["seq"])
             out.append({"when": when, "text": line})
     out.sort(key=lambda m: [p["name"] for p in PHASES].index(m["when"]))
+    return out
+
+
+def private_notes(role_id: str, card_id: str) -> list[dict]:
+    """그 배역이 이 카드를 봤을 때 그 사람에게만 붙는 것. 남의 화면에는 없다.
+
+    keep = 「내가 찾던 게 이거였다」. 목표에는 어느 카드인지 적지 않는다 —
+    열어봐야 알게 하는 편이 추리에 가깝다.
+    eye  = 배운 것이 있어서 남보다 한 겹 더 읽어낸 것.
+    """
+    out = []
+    kg = KEEP_GOALS.get(role_id)
+    if kg and card_id in kg.get("cards", []) and kg.get("mine"):
+        out.append({"kind": "keep", "text": kg["mine"], "points": kg.get("points", 0)})
+    c = get_card(card_id)
+    eye = ((c or {}).get("insight") or {}).get(role_id)
+    if eye:
+        out.append({"kind": "eye", "text": eye})
     return out
 
 
