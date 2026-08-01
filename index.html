@@ -177,7 +177,9 @@
   .dock .dk{position:relative;flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:3px;
     background:none;border:0;color:var(--sub);font-family:inherit;font-size:10.5px;font-weight:700;
     padding:6px 2px;border-radius:10px;cursor:pointer;min-width:0}
-  .dock .dk .i{font-size:19px;line-height:1}
+  .dock .dk .i{width:22px;height:22px;display:block;fill:none;stroke:currentColor;
+    stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .dock .dk:active .i,.dock .dk.on .i{stroke:var(--gold)}
   .dock .dk .t{white-space:nowrap}
   .dock .dk:active{background:rgba(255,255,255,.06);color:var(--fg)}
   .dock .dk .bdg{position:absolute;top:2px;right:calc(50% - 22px);min-width:15px;height:15px;line-height:15px;
@@ -1172,11 +1174,21 @@
     <button class="btn gold" id="sendBtn" onclick="humanSay()">전송</button>
   </div>
   <nav class="dock" id="dock">
-    <button class="dk" onclick="openLook()"><span class="i">🗺️</span><span class="t">조사화면</span></button>
-    <button class="dk" onclick="showMyHand()"><span class="i">🃏</span><span class="t">내 단서</span><span class="bdg" id="dkHand"></span></button>
-    <button class="dk" onclick="showMySheet()"><span class="i">🗂️</span><span class="t">내 정보</span><span class="dot" id="dkSheet"></span></button>
-    <button class="dk" onclick="showChatFull()"><span class="i">💬</span><span class="t">대화창</span></button>
-    <button class="dk" onclick="showWho()"><span class="i">👥</span><span class="t">인물정보</span></button>
+    <button class="dk" onclick="openLook()">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.4v13.2L9 17.2l6 2.4 6-2.4V4l-6 2.4L9 4Z"/><path d="M9 4v13.2M15 6.4v13.2"/></svg>
+      <span class="t">조사화면</span></button>
+    <button class="dk" onclick="showMyHand()">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="7.2" y="3.4" width="12" height="16" rx="2"/><path d="M4.9 6.6 3.2 16.2a2 2 0 0 0 1.6 2.3l2.4.5"/><path d="M10.6 8.4h5.2M10.6 12h5.2"/></svg>
+      <span class="t">내 단서</span><span class="bdg" id="dkHand"></span></button>
+    <button class="dk" onclick="showMySheet()">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.6h6l1.6 2.2H19a1.6 1.6 0 0 1 1.6 1.6v9.4A1.6 1.6 0 0 1 19 19.4H5a1.6 1.6 0 0 1-1.6-1.6V6.2A1.6 1.6 0 0 1 5 4.6Z"/><path d="M8.4 12.4h7.2M8.4 15.4h4.6"/></svg>
+      <span class="t">내 정보</span><span class="dot" id="dkSheet"></span></button>
+    <button class="dk" onclick="showChatFull()">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 12.4c0 3.7-3.6 6.7-8 6.7a9.6 9.6 0 0 1-2.6-.35L5 20.6l1.2-3.3A6.3 6.3 0 0 1 4.4 12.4c0-3.7 3.6-6.7 8-6.7s8 3 8 6.7Z"/></svg>
+      <span class="t">대화창</span></button>
+    <button class="dk" onclick="showWho()">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.4" cy="8.6" r="3.1"/><path d="M3.6 19.2c0-3 2.6-4.9 5.8-4.9s5.8 1.9 5.8 4.9"/><path d="M16 5.9a3 3 0 0 1 0 5.6M17.4 14.6c1.9.5 3.2 1.9 3.2 4"/></svg>
+      <span class="t">인물정보</span></button>
   </nav>
 </div>
 <div class="modal full" id="chatModal"><div class="box" id="chatFullBox"></div></div>
@@ -1571,26 +1583,48 @@ const VN_SFX={
 /* ── UI 효과음 ────────────────────────────────────────────────
    같은 합성기를 쓴다. 파일을 얹지 않으니 배포가 가볍고 라이선스가 얽히지 않는다.
    나중에 실제 음원을 쓰고 싶으면 /assets/sfx/{키}.ogg 를 올리면 그쪽이 먼저 울린다. */
+/* 키 이름은 교체할 음원 파일명과 같게 잡았다 — /assets/sfx/{키}.ogg 를 올리면
+   코드를 고치지 않고 그 파일이 대신 울린다. 지금은 전부 합성음이다. */
 const UI_SFX={
-  tap  (){ vnTone(1180,.045,"triangle",.05,880); },                       // 일반 누름
-  go   (){ vnTone(660,.06,"triangle",.07); setTimeout(()=>vnTone(990,.07,"triangle",.06),48); },  // 확정
-  back (){ vnTone(520,.07,"sine",.05,330); },                             // 닫기·취소
-  card (){ vnNoise(.10,3400,900,.10); vnTone(430,.09,"sine",.05); },      // 카드가 뒤집힌다
-  open (){ vnTone(300,.10,"sine",.06,520); vnNoise(.07,2200,700,.05); },  // 창이 열린다
-  bad  (){ vnTone(220,.16,"square",.07,150); },                           // 막힌 동작
-  good (){ vnTone(740,.07,"triangle",.06); setTimeout(()=>vnTone(1110,.13,"triangle",.05),60); },
+  equip   (){ vnTone(1180,.045,"triangle",.05,880); },                        // 일반 누름
+  decision(){ vnTone(660,.06,"triangle",.07); setTimeout(()=>vnTone(990,.07,"triangle",.06),48); },  // 확정
+  cancel  (){ vnTone(520,.07,"sine",.05,330); },                              // 닫기·취소
+  book    (){ vnNoise(.10,3400,900,.10); vnTone(430,.09,"sine",.05); },       // 카드가 뒤집힌다
+  cursor  (){ vnTone(300,.10,"sine",.06,520); vnNoise(.07,2200,700,.05); },   // 창이 열린다
+  buzzer  (){ vnTone(220,.16,"square",.07,150); },                            // 막힌 동작
+  bell    (){ vnTone(740,.07,"triangle",.06); setTimeout(()=>vnTone(1110,.13,"triangle",.05),60); },
+  // ── 사건용 ──────────────────────────────────────────────
+  siren   (){ let i=0; (function w(){ if(i++>=3||vnMuted) return;            // 비상·파공
+                vnTone(520,.55,"sawtooth",.08,880); setTimeout(()=>vnTone(880,.55,"sawtooth",.08,520),540);
+                setTimeout(w,1120); })(); },
+  reveal  (){ vnTone(196,.5,"sine",.10); setTimeout(()=>vnTone(294,.7,"sine",.08),150); },  // 진상이 드러난다
+  turn    (){ vnTone(880,.07,"sine",.05); setTimeout(()=>vnTone(1320,.09,"sine",.04),70); },// 내 차례
+  pod     (){ vnTone(120,.9,"sine",.14,300); vnNoise(.5,1800,400,.10); },     // 잠금이 풀린다
+  flood   (){ vnNoise(1.4,300,1400,.16); },                                   // 물이 든다
 };
+const SFX_ALIAS={tap:"equip", go:"decision", back:"cancel", card:"book", open:"cursor", bad:"buzzer", good:"bell"};
 const _sfxFile={};                     // 같은 소리를 매번 새로 만들지 않는다
+/* 음원이 실제로 있는지 확인한다. findAsset은 new Image()로 존재를 보는 물건이라
+   오디오에는 안 통한다 — HEAD 한 번으로 확인하고, 없으면 합성음 쪽에 맡긴다. */
+const AUDIO_EXT=["ogg","m4a","mp3","wav"];
+function findAudio(base, cb){
+  let i=0;
+  (function next(){
+    if(i>=AUDIO_EXT.length){ cb(null); return; }
+    const url=`${base}.${AUDIO_EXT[i++]}`;
+    fetch(url,{method:"HEAD"}).then(r=>r.ok?cb(url):next()).catch(next);
+  })();
+}
 function sfx(key){
   if(vnMuted) return;
-  const sid=(STATE&&STATE.scenarioId)||"";
-  if(_sfxFile[key]===undefined && sid){
-    _sfxFile[key]=null;
-    findAsset(`/assets/sfx/${key}`, url=>{ if(url){ const a=new Audio(url); a.volume=.5; _sfxFile[key]=a; } });
+  key=SFX_ALIAS[key]||key;
+  if(_sfxFile[key]===undefined){
+    _sfxFile[key]=null;                        // 찾는 동안에는 합성음으로 때운다
+    findAudio(`/assets/sfx/${key}`, url=>{ if(url){ const a=new Audio(url); a.volume=.55; _sfxFile[key]=a; } });
   }
   const a=_sfxFile[key];
   if(a){ try{ a.currentTime=0; a.play().catch(()=>{}); return; }catch(e){} }
-  const f=UI_SFX[key]||UI_SFX.tap; try{ f(); }catch(e){}
+  const f=UI_SFX[key]||UI_SFX.equip; try{ f(); }catch(e){}
 }
 /* 버튼은 수십 개고 앞으로도 는다. 하나하나 onclick에 심는 대신 문서 전체에서 한 번 듣고
    눌린 것이 무엇인지 보고 소리를 고른다 — 새로 생긴 버튼도 저절로 소리가 난다. */
@@ -1686,6 +1720,8 @@ function maybePlayCut(){
   if(!q.length) return;
   const c=q[0];
   cutMarkSeen(c.id);                                   // 열 때 표시한다 — 중간에 껐다 켜도 반복되지 않게
+  if(c.id==="pod") sfx("pod");
+  else if(c.id.indexOf("crisis")===0) sfx("siren");
   playCuts(c.cuts);
 }
 
