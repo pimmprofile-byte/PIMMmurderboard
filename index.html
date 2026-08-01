@@ -241,8 +241,6 @@
   .trimcard .tt{font-weight:800;color:var(--gold-b);font-size:14.5px;margin-bottom:6px}
   .trimcard .tm{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
   .trimcard .tb{font-size:12.5px;color:#dddcdb;line-height:1.6}
-  .trimact{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
-  .trimact .btn{margin-left:auto}
   .keeprow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
   .keeprow:last-child{border-bottom:0}
   .keeprow .nm{font-weight:800}
@@ -272,9 +270,45 @@
 
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 17px;margin-bottom:14px}
   .card h2{margin:0 0 10px;font-size:15px;color:var(--gold-b)}
-  .modal{position:fixed;inset:0;background:rgba(6,5,4,.82);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:60;padding:16px}.modal.on{display:flex}
-  .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:540px;width:100%;padding:22px;box-shadow:var(--shadow);max-height:92vh;overflow-y:auto}
-  .modal h2{margin:0 0 4px;font-size:20px}.modal .mlead{color:var(--sub);font-size:13px;margin-bottom:14px}
+  /* ── 팝업 공통 골격 ────────────────────────────────────────────
+     구역·손패·시트·심문·현황판이 저마다 다른 머리 모양으로 짜여 있어서, 팝업이 뜬 순간
+     지금 무슨 창인지가 안 읽혔다. 셋으로 못박는다 — 머리(눈썹라벨·제목·닫기), 본문(여기만
+     구른다), 바닥(액션). 성격은 --mt 한 줄로만 낸다: 머리 위에 얹히는 가는 띠와 눈썹라벨
+     색이 창마다 다른 계기등처럼 든다. 색은 팔레트 안에서만 고른다.
+     blur 는 쓰지 않는다 — backdrop-filter/filter 는 이 판에서 프레임 드랍의 원인이었다. */
+  .modal{position:fixed;inset:0;background:rgba(6,5,4,.86);display:none;align-items:center;justify-content:center;z-index:60;padding:16px}.modal.on{display:flex}
+  .modal .box{--mt:var(--gold);background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:540px;width:100%;
+    box-shadow:var(--shadow);max-height:92vh;max-height:92svh;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+  .modal h2{margin:0;font-size:20px}.modal .mlead{color:var(--sub);font-size:13px;margin-bottom:14px}
+  /* 머리 — 창이 굴러도 제목은 자리를 지킨다. 위 띠가 이 창의 성격이다. */
+  .mhead{flex:0 0 auto;position:relative;display:flex;align-items:flex-start;gap:12px;
+    padding:16px 18px 13px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,color-mix(in srgb,var(--mt) 8%,var(--panel2)),var(--panel))}
+  .mhead::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,var(--mt),transparent 78%)}
+  .mhead .mh-t{flex:1;min-width:0}
+  .mhead .mh-eb{font-size:10.5px;letter-spacing:.2em;color:var(--mt);font-weight:700;
+    margin-bottom:4px;display:block;word-break:keep-all}
+  .mhead h2{font-size:19px;line-height:1.3;word-break:keep-all}
+  .mhead .mh-sub{display:block;font-size:12.5px;color:var(--muted);margin-top:4px;word-break:keep-all}
+  .mhead .mh-x{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--panel2);
+    border:1px solid var(--line);color:var(--sub);font-size:15px;line-height:1;display:grid;
+    place-items:center;cursor:pointer;transition:.15s}
+  .mhead .mh-x:hover{border-color:var(--mt);color:var(--ink)}
+  /* 본문 — 창 안에서 구르는 곳은 여기 하나뿐이다 */
+  .mbody{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:16px 18px}
+  .mbody::-webkit-scrollbar{width:5px}
+  .mbody::-webkit-scrollbar-thumb{background:#4a4844;border-radius:3px}
+  .mbody::-webkit-scrollbar-track{background:transparent}
+  /* 바닥 — 액션은 늘 같은 자리에 앉는다. 본문이 길어도 버튼을 찾으러 내려가지 않게. */
+  .mfoot{flex:0 0 auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;
+    padding:12px 18px;border-top:1px solid var(--line);background:var(--bg2)}
+  .mfoot .mf-note{margin-right:auto;font-size:12px;color:var(--muted);word-break:keep-all;min-width:0}
+  @media(max-width:430px){
+    .mhead{padding:13px 14px 11px}.mbody{padding:14px}.mfoot{padding:11px 14px}
+    .mhead h2{font-size:17px}
+    .mfoot .mf-note{flex-basis:100%;margin:0 0 2px}
+  }
   .sec{border-top:1px dashed var(--line);padding-top:11px;margin-top:11px}.sec:first-of-type{border-top:0;margin-top:0;padding-top:0}
   .sec .h{font-weight:700;color:var(--gold-b);font-size:13.5px;margin-bottom:4px}.sec .b{font-size:14px;color:#dddcdb;line-height:1.72}
   .frag{background:#0e1620;border:1px solid #2c465a;border-radius:10px;padding:9px 12px;margin:8px 0;color:#cfe0ee;font-size:13.5px}.frag .w{font-size:11px;color:var(--cold);margin-bottom:3px}
@@ -331,7 +365,8 @@
   .bc-goal{display:flex;gap:10px;font-size:15px;padding:9px 0;border-bottom:1px solid var(--line)}.bc-goal:last-child{border-bottom:0}.bc-goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif}
   /* 내 정보(배역 시트)는 한 번에 읽을 분량이 많다 — 팝업을 넓히고 본문을 키운다.
      본문 줄길이는 measure로 잡아, 넓어져도 한 줄이 지나치게 길어지지 않게 한다. */
-  #sheetModal .box{max-width:760px;padding:26px 26px 22px;max-height:92vh;max-height:94svh}
+  #sheetModal .box{max-width:760px;max-height:92vh;max-height:94svh}
+  #sheetModal .mbody{padding:18px 22px 20px}
   #sheetModal h2{font-size:22px}
   #sheetModal .mlead{font-size:13.5px;margin-bottom:16px}
   /* 카드 하나가 화면보다 길어질 수 있다. 모달 전체를 굴리면 좌우 넘김 컨트롤이 위로 사라지므로
@@ -623,15 +658,16 @@
   .zp.lock{background:rgba(255,255,255,.1)}
 
   /* ── 배 안 둘러보기 팝업 (가로형) ───────────────────────────── */
-  #mapModal .box{max-width:min(97vw,1180px);width:97vw;padding:14px}
+  #mapModal .box{max-width:min(97vw,1180px);width:97vw}
   /* 토론 중에 여는 조사 화면 — 조사 페이즈에서 보던 그대로를 감싸기만 한다.
      구역 팝업(#mapModal)은 DOM 에서 이 뒤에 있어 이 위로 뜬다. */
-  #lookModal .box{max-width:min(97vw,1180px);width:97vw;padding:14px}
+  #lookModal .box{max-width:min(97vw,1180px);width:97vw}
   /* 카드 팝업은 무엇 위에서 열리든 맨 앞이다 — 구역 팝업 뒤로 숨지 않게. */
   #cardModal{z-index:70}
-  .mvhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px}
-  .mvhead h2{margin:0;font-size:18px}
-  .mvhead .mvsub{font-size:12.5px;color:var(--muted);flex:1}
+  /* 확대해 끌어보는 배치도 — 넘치는 만큼은 이 틀이 물고 있어야 한다.
+     여태 전용 규칙이 없어서 확대하면 그림이 팝업 밖으로 삐져나갔다. */
+  .mzoom{overflow:hidden;border:1px solid var(--line);border-radius:11px;background:#0b1016;touch-action:none}
+  .mzoom .mvp{transform-origin:0 0;will-change:transform}
   /* 배치도의 구역이 곧 버튼이다 — 위에 무엇도 얹지 않는다 */
   .mapbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 8px}
   .mapbar .mh{font-size:13.5px;font-weight:700}
@@ -732,10 +768,8 @@
 
   /* 구역 안 — 카드를 마주하는 자리.
      머리에 약식 지도를 붙여 "지금 배 어디에 서 있는지"를 글자 없이 색으로만 말한다. */
-  .zhead{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-bottom:12px}
-  .zhead .zh-t{flex:1;min-width:140px}
-  .zhead .zh-t h2{margin:0 0 2px;font-size:18px}
-  .zhead .zh-t .mvsub{font-size:12.5px;color:var(--muted)}
+  /* 약식 지도는 팝업 머리 안에 든다 — 제목과 같은 줄에서 위아래 가운데를 맞춘다 */
+  .mhead .minimap{align-self:center}
   .minimap{flex:0 0 auto;width:208px;border:1px solid var(--line);border-radius:9px;
     overflow:hidden;background:#0b1016}
   .minimap svg{width:100%;height:auto;display:block}
@@ -746,11 +780,9 @@
   .minimap .zone-fill{fill:#121d27;stroke:#2b4557;stroke-width:1.2}
   .minimap .z-here .zone-fill{fill:var(--gold);fill-opacity:.88;stroke:var(--gold-b);stroke-width:2.6}
   /* 좁은 화면에서는 폭을 줄여 제목 옆에 세운다 — 칸 여섯 개는 이 크기에서도 읽힌다 */
-  @media(max-width:560px){ .zhead{gap:10px;flex-wrap:nowrap} .minimap{width:128px}
-    .zhead .zh-t{min-width:0} .zhead .zh-t h2{font-size:16px;word-break:keep-all} }
+  @media(max-width:560px){ .minimap{width:112px} }
 
-  .zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:9px;
-    max-height:min(68vh,560px);overflow-y:auto}
+  .zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:9px}
   .zcard{display:flex;flex-direction:column;gap:7px;background:var(--panel2);
     border:1px solid var(--line);border-radius:11px;padding:13px}
   .zcard .zc-spot{font-size:13px;font-weight:700;color:var(--ink);word-break:keep-all}
@@ -1386,12 +1418,16 @@ function openZone(loc){
       <div class="zc-body">${st.k==="pub"||st.k==="hand"?`<b>${esc(c.title)}</b>`:`<span class="zc-q">아직 보지 않은 곳</span>`}</div>
       ${st.act?`<button class="btn ${st.k==="open"?"primary":"quiet"} sm" onclick="${st.act}">${st.label}</button>`
               :`<span class="zc-off">${esc(st.label)}</span>`}</div>`; }).join("");
-  $("mapBox").innerHTML=`<div class="zhead">
+  $("mapBox").innerHTML=`<div class="mhead">
       <div class="minimap ${(STATE&&STATE.podOpen)?"podon":""}" id="miniMap"></div>
-      <div class="zh-t"><h2>${z.icon||"📍"} ${esc(z.name||loc)}</h2>
-        <span class="mvsub">볼 곳 ${cards.length} · 확인 ${done}</span></div>
-      <button class="btn quiet sm" onclick="closeModal('mapModal')">닫기</button></div>
-    <div class="zgrid">${list||'<div class="panel-note">여기는 아직 볼 것이 없습니다.</div>'}</div>`;
+      <div class="mh-t"><span class="mh-eb">구역 안</span>
+        <h2>${z.icon||"📍"} ${esc(z.name||loc)}</h2>
+        <span class="mh-sub">볼 곳 ${cards.length} · 확인 ${done}</span></div>
+      <button class="mh-x" onclick="closeModal('mapModal')" aria-label="닫기">✕</button></div>
+    <div class="mbody"><div class="zgrid">${list||'<div class="panel-note">여기는 아직 볼 것이 없습니다.</div>'}</div></div>
+    <div class="mfoot"><span class="mf-note">카드 내용은 조사한 사람만 봅니다</span>
+      <button class="btn" onclick="closeModal('mapModal')">닫기</button></div>`;
+  $("mapBox").style.setProperty("--mt","var(--cold)");
   paintMini(loc);
   openModal("mapModal");
 }
@@ -1409,10 +1445,13 @@ async function paintMini(loc){
    사실상 열람이다. 조사 페이즈에는 같은 화면이 이미 아래 패널에 떠 있어 버튼을 감춘다
    (#mapArt·#dash 아이디가 겹치는 것도 그래서 생기지 않는다). */
 function openLook(){
-  $("lookBox").innerHTML=`<div class="mvhead"><h2>🗺️ 조사 화면</h2>
-      <span class="mvsub">카드를 여는 건 조사 페이즈에만 됩니다</span>
-      <button class="btn quiet sm" onclick="closeLook()">‹ 돌아가기</button></div>
-    <div id="lookMap"></div>`;
+  $("lookBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">열람</span><h2>🗺️ 조사 화면</h2>
+        <span class="mh-sub">카드를 여는 건 조사 페이즈에만 됩니다</span></div>
+      <button class="mh-x" onclick="closeLook()" aria-label="닫기">✕</button></div>
+    <div class="mbody"><div id="lookMap"></div></div>
+    <div class="mfoot"><button class="btn" onclick="closeLook()">‹ 돌아가기</button></div>`;
+  $("lookBox").style.setProperty("--mt","var(--cold)");
   renderMap($("lookMap"));
   openModal("lookModal");
 }
@@ -1424,14 +1463,17 @@ async function openMapDetail(){
   const svg=await loadMapSVG();
   if(!svg){ banner("배치도를 불러오지 못했습니다"); return; }
   mz={s:1,x:0,y:0};
-  $("mapBox").innerHTML=`<div class="mvhead"><h2>🗺️ 이원록함 배치도</h2>
-      <span class="mvsub">끌어서 옮기고 확대합니다</span>
-      <button class="btn quiet sm" onclick="closeModal('mapModal')">닫기</button></div>
-    <div class="mzoom" id="mzoom"><div class="mvp" id="mvp">${mapHTML(svg,(STATE&&STATE.podOpen)?"":"nopod")}</div></div>
-    <div class="mzbar"><button class="btn sm" onclick="mzZoom(-1)">－</button>
+  $("mapBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">배치도</span><h2>🗺️ 이원록함 배치도</h2>
+        <span class="mh-sub">끌어서 옮기고 확대합니다</span></div>
+      <button class="mh-x" onclick="closeModal('mapModal')" aria-label="닫기">✕</button></div>
+    <div class="mbody"><div class="mzoom" id="mzoom"><div class="mvp" id="mvp">${mapHTML(svg,(STATE&&STATE.podOpen)?"":"nopod")}</div></div></div>
+    <div class="mfoot"><span class="mf-note" id="mzPct">100%</span>
+      <button class="btn sm" onclick="mzZoom(-1)">－</button>
       <button class="btn sm" onclick="mzZoom(1)">＋</button>
       <button class="btn sm" onclick="mzReset()">처음으로</button>
-      <span class="hint" id="mzPct">100%</span></div>`;
+      <button class="btn" onclick="closeModal('mapModal')">닫기</button></div>`;
+  $("mapBox").style.setProperty("--mt","var(--cold)");
   openModal("mapModal"); wireZoom();
 }
 function mzApply(){ const v=$("mvp"); if(!v) return;
@@ -2030,17 +2072,23 @@ function openInterrog(targetRoleId,cardId){
   const c=roleById(targetRoleId)||{}; const cd=cardCat(cardId)||{};
   const ig=STATE.interrogate||{};
   const evid=[...myHand,...(STATE.revealed||[])];
-  $("interrogBox").innerHTML=`<h2 style="font-size:18px">${c.avatar||""} ${esc(c.name||"")} 심문 — ${esc(cd.spot||cd.locName||"")}</h2>
-    <div class="mlead">심문 1회를 씁니다(남은 ${ig.remaining||0}회). 증거는 선택이에요 — 아무 카드나 대는 게 능사는 아닙니다. 뭘 댈지가 곧 추리예요.</div>
-    <div class="ig-evlist">
-      <button class="ig-ev on" data-id="" onclick="igPickEv('')">증거 없이 묻기</button>
-      ${evid.map(e=>`<button class="ig-ev" data-id="${e.id}" onclick="igPickEv('${e.id}')">${esc(e.title)}</button>`).join("")}
-    </div>
-    <div style="margin-top:14px;text-align:right;display:flex;gap:8px;justify-content:flex-end">
+  $("interrogBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">심층심문 · 남은 ${ig.remaining||0}회</span>
+        <h2><span style="color:${c.color||"var(--ink)"}">${c.avatar||""} ${esc(c.name||"")}</span> 심문</h2>
+        <span class="mh-sub">${esc(cd.spot||cd.locName||"")}</span></div>
+      <button class="mh-x" onclick="closeModal('interrogModal')" aria-label="닫기">✕</button></div>
+    <div class="mbody">
+      <div class="mlead">심문 1회를 씁니다. 증거는 선택이에요 — 아무 카드나 대는 게 능사는 아닙니다. 뭘 댈지가 곧 추리예요.</div>
+      <div class="ig-evlist">
+        <button class="ig-ev on" data-id="" onclick="igPickEv('')">증거 없이 묻기</button>
+        ${evid.map(e=>`<button class="ig-ev" data-id="${e.id}" onclick="igPickEv('${e.id}')">${esc(e.title)}</button>`).join("")}
+      </div>
+      <div id="igResult" style="margin-top:12px"></div></div>
+    <div class="mfoot">
       <button class="btn" onclick="closeModal('interrogModal')">취소</button>
       <button class="btn ember" onclick="submitInterrog()">추궁</button>
-    </div>
-    <div id="igResult" style="margin-top:12px"></div>`;
+    </div>`;
+  $("interrogBox").style.setProperty("--mt","var(--ember)");
   openModal("interrogModal");
 }
 function igPickEv(id){ igPick.evidence=id; document.querySelectorAll("#interrogBox .ig-ev").forEach(b=>b.classList.toggle("on",b.dataset.id===id)); }
@@ -2084,12 +2132,16 @@ function objp(w){ if(!w) return "를"; const cd=w.charCodeAt(w.length-1);
 async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); closeModal("mapModal"); await poll(); openCard(id); }
 function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const hand=myHand.find(c=>c.id===id); const c=pub||hand; if(!c)return;
   const inHand=!!hand&&!pub;
-  $("cardBox").innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;margin-bottom:8px">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""} · R${c.round}${pub?' · 공개':' · 손패(비공개)'}</div>
-    <h2 style="font-size:18px">${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
-    <div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>
-    ${cnote(c)}
-    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end"><span class="lead" style="margin:0 auto 0 0;font-size:12px">이 단서는 <b>당신 손패(비공개)</b>입니다. 알리려면 대화로 말하세요.</span><button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
+  $("cardBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">${pub?"전체공개 단서":"손패 · 비공개"}</span>
+        <h2>${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
+        <span class="mh-sub">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""} · R${c.round}</span></div>
+      <button class="mh-x" onclick="closeModal('cardModal')" aria-label="닫기">✕</button></div>
+    <div class="mbody"><div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>${cnote(c)}</div>
+    <div class="mfoot"><span class="mf-note">${inHand?"알리려면 대화로 말하세요 — 저절로 새어 나가지 않습니다.":"이미 모두가 보고 있는 단서입니다."}</span>
+      <button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
   const box=$("cardBox");
+  box.style.setProperty("--mt",pub?"var(--cold)":"var(--gold)");
   box.classList.remove("reveal","shock","bait","clue");
   void box.offsetWidth;
   box.classList.add("reveal", c.id==="A5"?"shock":(c.bait?"bait":"clue"));
@@ -2111,7 +2163,10 @@ function showHandTrim(){
   const need=overLimit(); if(need<=0) return;
   trimPick=null;
   const cards=myHand.slice();
-  $("trimBox").innerHTML=`<h2 style="font-size:18px">손패 정리</h2>
+  $("trimBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">손패 상한</span><h2>손패 정리</h2>
+        <span class="mh-sub">${need}장을 내려놓아야 합니다</span></div></div>
+    <div class="mbody">
     <div class="mlead">손패에는 <b>${handLimit()}장</b>까지만 둘 수 있어요. <b>${need}장</b>을 골라 전체공개로 내려놓아야 합니다.<br>
       내려놓은 카드는 <b>모두가 보게</b> 되고, 남긴 카드는 계속 나만 봅니다.</div>
     <div class="trimgrid">${cards.map(c=>`
@@ -2120,11 +2175,12 @@ function showHandTrim(){
         <div class="tm"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span></div>
         <div class="tb">${esc(c.text)}</div>
         ${c.hint?`<div class="cnote" style="margin-top:8px;font-size:12px"><b>해석</b>${esc(c.hint)}</div>`:""}
-      </button>`).join("")}</div>
-    <div class="trimact">
-      <span class="lead" id="trimHint" style="margin:0;font-size:12.5px">공개할 카드를 하나 고르세요</span>
+      </button>`).join("")}</div></div>
+    <div class="mfoot">
+      <span class="mf-note" id="trimHint">공개할 카드를 하나 고르세요</span>
       <button class="btn ember" id="trimGo" disabled onclick="trimConfirm()">전체공개</button>
     </div>`;
+  $("trimBox").style.setProperty("--mt","var(--ember)");
   openModal("trimModal");
 }
 function trimSelect(id){
@@ -2336,10 +2392,15 @@ async function showMySheet(){
   // 6) 나의 목표
   slides.push(`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">나의 목표</div><div class="bc-title" style="font-size:18px">이번 밤, 내가 노리는 것</div>
     <div style="margin-top:12px">${(s.goals||[]).map(g=>`<div class="bc-goal"><span>${esc(g.t)}</span><span class="pt">+${g.p}</span></div>`).join("")}</div></div>`);
-  $("sheetBox").innerHTML=`<h2 style="color:${s.color};font-size:18px">${s.avatar} ${esc(s.name)} <span style="font-size:12.5px;color:var(--muted)">· 내 정보</span></h2>
-    <div class="mlead">실물 카드처럼 <b>옆으로 넘겨</b> 확인하세요.</div>
-    ${buildSwipe(slides)}
-    <div style="margin-top:14px;text-align:right"><button class="btn" onclick="closeModal('sheetModal')">확인</button></div>`;
+  $("sheetBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">내 정보</span>
+        <h2 style="color:${s.color}">${s.avatar} ${esc(s.name)}</h2>
+        <span class="mh-sub">실물 카드처럼 옆으로 넘겨 확인하세요</span></div>
+      <button class="mh-x" onclick="closeModal('sheetModal')" aria-label="닫기">✕</button></div>
+    <div class="mbody">${buildSwipe(slides)}</div>
+    <div class="mfoot"><button class="btn" onclick="closeModal('sheetModal')">확인</button></div>`;
+  // 눈썹라벨과 머리 띠가 배역 키컬러로 든다 — 여섯 사람의 시트가 저마다 다른 창으로 읽히게.
+  $("sheetBox").style.setProperty("--mt",s.color||"var(--gold)");
   openModal("sheetModal"); wireSwipe($("sheetBox"));
 }
 /* 내 단서(손패) — 어느 페이즈에서든 다시 확인. 조사한 카드는 사라지지 않는다. 큼지막하게 스와이프. */
@@ -2349,7 +2410,11 @@ function showMyHand(){
   // 전체공개된 카드는 모두의 것이다 — 내 손패 뒤에 이어 붙여 한자리에서 다 보이게 한다.
   const pub=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
   const cards=myHand.concat(pub);
-  let h=`<h2 style="font-size:18px">🃏 내 단서 <span style="font-size:13px;color:var(--muted)">· 손패 ${myHand.length}장 (비공개)${pub.length?` + 전체공개 ${pub.length}장`:""}</span></h2>
+  let h=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">내가 쥔 것</span><h2>🃏 내 단서</h2>
+        <span class="mh-sub">손패 ${myHand.length}장 (비공개)${pub.length?` · 전체공개 ${pub.length}장`:""}</span></div>
+      <button class="mh-x" onclick="closeModal('handModal')" aria-label="닫기">✕</button></div>
+    <div class="mbody">
     <div class="mlead">내가 조사한 단서와, 테이블에 <b>전체공개된 카드</b>를 함께 봅니다. 손패는 알릴지 감출지 자유예요.</div>`;
   if(!cards.length){ h+=`<div class="panel-note">아직 조사한 단서가 없어요. 조사 페이즈에 카드를 열면 여기에 계속 쌓입니다.</div>`; }
   else{ const slides=cards.map(c=>{
@@ -2361,8 +2426,9 @@ function showMyHand(){
       <div class="bc-body">${esc(c.text)}</div>${cnote(c)}
       ${c.unlocks&&!isPub?`<div class="unlocknote">🔓 이 카드를 <b>전체공개</b>하면 무언가 밝혀질 수 있습니다.</div>`:""}</div>`; });
     h+=buildSwipe(slides); }
-  h+=`<div style="margin-top:14px;text-align:right"><button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
+  h+=`</div><div class="mfoot"><button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
   $("handBox").innerHTML=h;
+  $("handBox").style.setProperty("--mt","var(--gold)");
   openModal("handModal"); wireSwipe($("handBox"));
 }
 
