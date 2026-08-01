@@ -340,8 +340,10 @@
   .trimcard .tt{font-weight:800;color:var(--gold-b);font-size:14.5px;margin-bottom:6px}
   .trimcard .tm{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
   .trimcard .tb{font-size:12.5px;color:#dddcdb;line-height:1.6}
-  /* 끝까지 쥐기 — 다른 목표와 성격이 달라서(카드 한 장에 매여 있다) 결을 구분한다. */
-  .bc-goal.keep{border-style:dashed}
+  /* 끝까지 쥐기 — 다른 목표와 성격이 달라서(카드 한 장에 매여 있다) 결을 구분한다.
+     border-style만 주면 네 변에 다 걸린다. 위·좌·우는 굵기도 색도 지정된 적이 없어서
+     기본값(3px · 글자색)으로 그려졌고, 그게 목표 줄을 감싼 흰 상자로 보였다. */
+  .bc-goal.keep{border-bottom-style:dashed}
   .keepnote{margin-top:9px;padding:10px 12px;border:1px dashed var(--line);border-radius:9px;
     font-size:12.5px;line-height:1.7;color:var(--sub)}
   .keepnote b{color:var(--gold-b)}
@@ -2992,7 +2994,10 @@ function wireSwipe(box){
   const sw=box.querySelector(".swipe"); if(!sw)return;
   const track=sw.querySelector(".sw-track"); const slides=[...sw.querySelectorAll(".sw-slide")];
   const dots=[...sw.querySelectorAll(".sw-dot")]; const prev=sw.querySelector(".sw-nav.prev"); const next=sw.querySelector(".sw-nav.next");
-  const cur=()=>Math.round(track.scrollLeft/track.clientWidth);
+  // 모달이 아직 안 열린 상태로 여기 오면 clientWidth가 0이라 0/0 = NaN이 되고,
+  // 「NaN / 5」가 그대로 화면에 찍혔다. 폭이 잡히기 전에는 첫 장으로 본다.
+  const cur=()=>{ const w=track.clientWidth; if(!w) return 0;
+    return Math.max(0, Math.min(slides.length-1, Math.round(track.scrollLeft/w))); };
   const upd=()=>{ const i=cur(); dots.forEach((d,j)=>d.classList.toggle("on",j===i)); const c=sw.querySelector(".sw-cur"); if(c)c.textContent=i+1; if(prev)prev.disabled=i<=0; if(next)next.disabled=i>=slides.length-1; };
   const goTo=i=>{ i=Math.max(0,Math.min(slides.length-1,i)); track.scrollTo({left:i*track.clientWidth,behavior:"smooth"}); };
   track.addEventListener("scroll",()=>{ clearTimeout(track._t); track._t=setTimeout(upd,60); },{passive:true});
@@ -3009,6 +3014,7 @@ function wireSwipe(box){
     if(document.fonts&&document.fonts.ready) document.fonts.ready.then(mark).catch(()=>{});
   });
   upd();
+  requestAnimationFrame(upd);          // 폭이 잡힌 뒤 한 번 더 — 첫 숫자가 비어 보이지 않게
 }
 
 /* 내 정보(배역 시트) — 실물카드처럼 스와이프로 넘겨보기(큰 글씨) */
