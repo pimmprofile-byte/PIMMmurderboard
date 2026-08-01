@@ -298,6 +298,14 @@
   .q-block{margin-bottom:13px}.q-block .q{font-size:14px;color:var(--gold-b);margin-bottom:6px;font-weight:600}
   .q-block textarea{width:100%;min-height:62px;resize:vertical;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:9px 11px;font-size:13.5px;font-family:inherit;line-height:1.55}
   .q-block textarea:focus{outline:none;border-color:var(--gold)}
+  /* 클로드에 붙여넣을 한 덩어리. 줄바꿈이 곧 형식이라 pre 로 두되, 좁은 화면에서
+     가로로 새지 않게 어절 단위로 접는다. */
+  .handoff{margin:0;max-height:280px;overflow-y:auto;white-space:pre-wrap;word-break:keep-all;
+    overflow-wrap:anywhere;background:var(--bg);border:1px solid var(--line);border-radius:11px;
+    padding:12px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+    line-height:1.75;color:var(--sub)}
+  .handoff::-webkit-scrollbar{width:5px}
+  .handoff::-webkit-scrollbar-thumb{background:#4a4844;border-radius:3px}
   .grade{display:flex;gap:7px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;flex-wrap:wrap}.grade .v{flex-basis:100%;font-size:12px;color:var(--muted)}
   .verdict{font-size:23px;font-weight:800;margin-bottom:10px}.verdict.good{color:var(--good)}.verdict.warn{color:var(--warn)}.verdict.bad{color:var(--bad)}
   .rev-sol{font-size:14px;line-height:1.85;color:#e3e2e1;white-space:pre-wrap}
@@ -462,6 +470,13 @@
   .gm-guide .g{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--gold-b);border:1px solid var(--gold);border-radius:6px;padding:1px 7px;margin-right:8px}
   .gm-guide .il{margin-top:8px;color:#e8dfb0;font-style:italic;font-size:13px}
   .gm-note{color:var(--muted);font-size:12px;margin:2px 0 14px}
+  /* 진행석으로 모인 종막 답안 — 낭독하며 훑는 자리라 왼쪽에 배역색을 세워 구분한다 */
+  .gm-ans{margin-top:22px;text-align:left;display:flex;flex-direction:column;gap:12px}
+  .gm-a{border:1px solid var(--line);border-left:3px solid var(--ac);border-radius:11px;
+    padding:13px 15px;background:var(--panel)}
+  .gm-a .ah{font-weight:800;font-size:14.5px;color:var(--ac);margin-bottom:8px}
+  .gm-a .aq{font-size:12px;color:var(--gold-b);margin-top:9px}
+  .gm-a .ab{font-size:13.5px;line-height:1.75;color:#dddcdb;white-space:pre-wrap;word-break:keep-all}
   .gm-pick{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
   .gm-pick .pl{font-size:11.5px;color:var(--muted);letter-spacing:.06em;margin-right:2px}
   .gm-pick .pk{display:inline-flex;align-items:center;gap:6px;background:var(--panel);
@@ -1721,8 +1736,14 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
     `<button class="btn gold" onclick="replayVN()">🎬 오프닝 비주얼노벨 재생</button>
      <div style="margin-top:8px">큰 화면에 띄워 다 같이 보세요. 끝나면 각자 <b>내 정보</b>로 자기소개를 나눈 뒤,
      <b>다음 페이즈 ›</b>로 <b>조사 R1</b>을 여세요.</div>`);
-  if(k==="final") return gmCinematic("종막 · 질문지", (SCEN.finalQuestions||[]).map((q,i)=>`${i+1}. ${q}`).join("\n"), "",
-    "각자 자기 기기에서 서술로 답합니다. 답이 모이면 이 세션(Claude)이 진상 기준으로 채점하고, 엔딩을 낭독합니다.");
+  if(k==="final"){
+    // 답이 어디로 가는지가 곧 진행석이 있다는 뜻이다 — 여기로 모아 펼쳐 보여준다.
+    // 답안 자체는 GM 키가 있어야 읽히므로(서버가 그렇게 잠가 뒀다) 따로 불러온다.
+    setTimeout(loadGMFinalAnswers,0);
+    return gmCinematic("종막 · 질문지", (SCEN.finalQuestions||[]).map((q,i)=>`${i+1}. ${q}`).join("\n"), "",
+      `각자 자기 기기에서 서술로 답합니다. 답은 이 진행석으로 모입니다.
+       <div class="gm-ans" id="gmAnswers"><div class="gm-note">답안을 불러오는 중…</div></div>`);
+  }
   if(k==="reveal") return gmCinematic("진상 공개", (STATE.ending?STATE.ending.desc:"채점이 끝나면 엔딩이 열립니다."), (STATE.ending?("— "+STATE.ending.name):""),
     "이 세션이 진상과 엔딩을 전해주면, 낭독으로 밤을 닫으세요.");
   // invest / talk → 공용 카드 한 벌. 같은 카드가 인물 수만큼 반복되던 매트릭스를 걷어냈다 —
@@ -1782,6 +1803,23 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
       <div class="gcells">${cc}</div></div>`;
   });
   return h;
+}
+/* 진행석의 답안 모음 — /api/gm 은 GM 키로 잠겨 있고, 그 키는 진행석만 갖고 있다.
+   서버는 그대로 두고 이미 있는 창구를 읽기만 한다. */
+async function loadGMFinalAnswers(){
+  const box=$("gmAnswers"); if(!box) return;
+  let d; try{ d=await (await fetch("/api/gm?key="+encodeURIComponent(gmKey))).json(); }catch(e){ d={error:"network"}; }
+  if(!$("gmAnswers")) return;
+  if(d.error){ box.innerHTML=`<div class="gm-note">답안을 열지 못했습니다 (${esc(d.error)}). <b>GM 키 바꾸기</b>로 키를 맞춰주세요.</div>`; return; }
+  const fa=d.finalAnswers||{}; const qs=SCEN.finalQuestions||[];
+  const ids=(SCEN.characters||[]).filter(c=>(fa[c.id]||[]).length).map(c=>c.id);
+  if(!ids.length){ box.innerHTML=`<div class="gm-note">아직 들어온 답안이 없습니다. 각자 제출하면 여기에 쌓입니다.</div>`; return; }
+  box.innerHTML=ids.map(id=>{ const c=roleById(id)||{}; const a=fa[id]||[];
+    return `<div class="gm-a" style="--ac:${c.color||"var(--gold)"}">
+      <div class="ah">${c.avatar||"❔"} ${esc(c.name||id)}</div>
+      ${qs.map((q,i)=>`<div class="aq">${i+1}. ${esc(q)}</div><div class="ab">${esc((a[i]||"").trim()||"(무응답)")}</div>`).join("")}
+    </div>`; }).join("")
+    +`<div class="gm-note" style="margin-top:10px">${ids.length}명 제출 / 사람 배역 ${Object.keys(STATE.roles||{}).filter(r=>(STATE.roles[r]||{}).mode==="human").length}명</div>`;
 }
 function gmCinematic(kick, body, tail, note){
   const lines=String(body||"").split("\n").filter(x=>x.trim());
@@ -2366,18 +2404,90 @@ async function trimConfirm(){
   if(overLimit()>0) showHandTrim(); else { closeModal("trimModal"); banner("공개했습니다."); }
 }
 
-/* 종막 질문지 */
+/* 종막 질문지 — 답안이 어디로 가는지가 세 갈래다.
+   ① AI 백엔드가 붙어 있으면 그 자리에서 채점된다.
+   ② 없어도 진행석이 있으면 거기로 모인다.
+   ③ 둘 다 없으면 낼 곳이 없다. 여태 그럴 때도 「제출완료」라고만 떠서, 아무도 받지
+      않은 답을 낸 것으로 보였다. 이제는 클로드에 그대로 붙여넣을 한 덩어리 글을 만들어
+      준다 — 그걸 들고 클로드 세션에 물어보면 그 자리가 진행석이 된다. */
+function finalRoute(){ return backendOn()?"ai":(gmOn?"gm":"claude"); }
 function renderFinal(p){
   const g=myRoleId?STATE.grades[myRoleId]:null; const mine=myRoleValid();
-  let h=`<div class="card"><h2>종막 · 질문지</h2><div class="mlead">배역으로서 서술로 답하면 진행자(AI)가 진상 기준으로 채점합니다.</div>`;
-  if(mine&&!g&&finalSubmitted(myRoleId)){ const a=finalAnswersOf(myRoleId)||[]; h+=`<div class="panel-note">제출 완료 — 진행자(GM)가 채점 후 엔딩을 진행합니다.</div>`+SCEN.finalQuestions.map((q,i)=>`<div class="q-block"><div class="q">${i+1}. ${esc(q)}</div><div class="b" style="white-space:pre-wrap;opacity:.85">${esc(a[i]||"(무응답)")}</div></div>`).join(""); }
+  const route=finalRoute();
+  const lead={ai:"배역으로서 서술로 답하면 진행자(AI)가 진상 기준으로 채점합니다.",
+               gm:"배역으로서 서술로 답하면 진행석(GM)이 모아 진상 기준으로 채점합니다.",
+               claude:"이 방에는 채점할 진행자가 없습니다. 답을 적으면 <b>클로드에 붙여넣을 한 덩어리 글</b>로 정리해 드려요."}[route];
+  let h=`<div class="card"><h2>종막 · 질문지</h2><div class="mlead">${lead}</div>`;
+  if(mine&&!g&&finalSubmitted(myRoleId)){
+    const a=finalAnswersOf(myRoleId)||[];
+    const note={ai:"제출 완료 — 채점 중입니다.",
+                gm:"제출 완료 — 진행석(GM)이 채점 후 엔딩을 진행합니다.",
+                claude:"답안을 적어뒀습니다. <b>다만 이 방에는 받을 진행자가 없어요</b> — 아래 글을 통째로 복사해 클로드에 물어보세요."}[route];
+    h+=`<div class="panel-note">${note}</div>`
+      +SCEN.finalQuestions.map((q,i)=>`<div class="q-block"><div class="q">${i+1}. ${esc(q)}</div><div class="b" style="white-space:pre-wrap;opacity:.85">${esc(a[i]||"(무응답)")}</div></div>`).join("");
+  }
   else if(mine&&!g){ h+=SCEN.finalQuestions.map((q,i)=>`<div class="q-block"><div class="q">${i+1}. ${esc(q)}</div><textarea id="qa${i}"></textarea></div>`).join("")+`<div style="text-align:right"><button class="btn ember" onclick="submitFinal()">제출</button></div>`; }
   else if(mine&&g){ h+=gradeRow(myRoleId,g); }
   else h+=`<div class="panel-note">관전 중 — 사람 배역만 답합니다.</div>`;
   h+=`</div>`;
+  if(route==="claude"&&finalAnswerRoles().length) h+=claudeHandoffHTML();
   const others=Object.keys(STATE.grades||{}).filter(id=>id!==myRoleId);
   if(others.length){ h+=`<div class="card"><h2>다른 배역 채점</h2>${others.map(id=>gradeRow(id,STATE.grades[id])).join("")}</div>`; }
   p.innerHTML=h;
+}
+/* 이 기기에 답이 적힌 배역들. 한 기기에서 여럿이 돌려 쓰면 전부 모인다 —
+   다른 기기에 있는 답까지 모으려면 서버가 열어줘야 한다(지금은 GM 키가 있어야 읽힌다). */
+function finalAnswerRoles(){
+  return (SCEN.characters||[]).filter(c=>finalSubmitted(c.id));
+}
+/* 클로드에 그대로 붙여넣는 한 덩어리. 앞머리에 무엇을 해달라는지부터 적는다 —
+   붙여넣는 사람이 따로 설명을 보태지 않아도 되게. */
+function claudeHandoffText(){
+  const qs=SCEN.finalQuestions||[];
+  const L=[];
+  L.push("[채점 요청] 아래는 온라인 머더미스터리 종막 질문지의 답안입니다.");
+  L.push("당신이 진행자(GM)입니다. 사건의 진상에 비추어 인물마다 ① 짚어낸 것 ② 빗나간 것");
+  L.push("③ 점수 ④ 한 줄 평을 매기고, 마지막에 이 판의 엔딩을 한 문단으로 들려주세요.");
+  L.push("");
+  L.push("── 사건");
+  L.push(SCEN.title||"");
+  if(SCEN.subtitle) L.push(SCEN.subtitle);
+  if(SCEN.victim) L.push("피해자 — "+SCEN.victim);
+  L.push("");
+  L.push("── 질문");
+  qs.forEach((q,i)=>L.push(`${i+1}. ${q}`));
+  L.push("");
+  L.push("── 답안");
+  finalAnswerRoles().forEach(c=>{
+    const a=finalAnswersOf(c.id)||[];
+    L.push("");
+    L.push(`[${c.name}${c.job?" · "+c.job:""}]`);
+    qs.forEach((q,i)=>{ L.push(`${i+1}. ${q}`); L.push(`   → ${(a[i]||"").trim()||"(무응답)"}`); });
+  });
+  return L.join("\n");
+}
+function claudeHandoffHTML(){
+  const who=finalAnswerRoles().map(c=>`<span class="pill" style="color:${c.color}">${c.avatar} ${esc(c.name)}</span>`).join("");
+  return `<div class="card"><h2>📋 클로드에 물어보기</h2>
+    <div class="mlead">진행석이 없으니 이 글을 통째로 복사해 클로드 세션에 붙여넣으세요. 거기가 진행석이 됩니다.</div>
+    <div class="panel-note" style="margin-bottom:9px">담긴 답안 ${who}</div>
+    <pre class="handoff" id="handoffText">${esc(claudeHandoffText())}</pre>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;align-items:center">
+      <span class="mf-note" id="handoffMsg" style="margin-right:auto;font-size:12px;color:var(--muted)"></span>
+      <button class="btn gold" onclick="copyHandoff()">복사하기</button></div></div>`;
+}
+async function copyHandoff(){
+  const t=claudeHandoffText(); let ok=false;
+  try{ await navigator.clipboard.writeText(t); ok=true; }
+  catch(e){
+    // 클립보드 권한이 없거나 https 가 아니면 위가 막힌다 — 글을 통째로 선택해 두고
+    // 직접 복사하게 넘긴다. 복사가 이 화면의 유일한 출구라 실패한 채로 두면 안 된다.
+    const el=$("handoffText");
+    if(el){ const r=document.createRange(); r.selectNodeContents(el);
+      const s=getSelection(); s.removeAllRanges(); s.addRange(r);
+      try{ ok=document.execCommand("copy"); }catch(e2){} }
+  }
+  const m=$("handoffMsg"); if(m) m.textContent=ok?"복사했습니다 — 클로드에 붙여넣으세요":"복사가 막혀 있어요. 글이 선택돼 있으니 직접 복사해 주세요.";
 }
 function gradeRow(id,g){ const c=roleById(id)||{color:"#999",avatar:"❔",name:id};
   let pills;
@@ -2387,7 +2497,12 @@ function gradeRow(id,g){ const c=roleById(id)||{color:"#999",avatar:"❔",name:i
     pills=`<span class="pill ${g.selfAccused?'':'bad'}">${g.selfAccused?'자기지목 ✓':'자기지목 ✗'}</span><span class="pill">죄 ${g.sinsAcknowledged}</span>${g.osewonIdentified?'<span class="pill">오세원 간파 ✓</span>':''}`;
   }
   return `<div class="grade"><span style="color:${c.color};font-weight:700">${c.avatar} ${esc(c.name)}</span>${pills}<span class="pill">${g.score}점</span>${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
-async function submitFinal(){ if(gradeBusy)return; const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():"")); if(answers.every(a=>!a)){alert("한 문항 이상 답해주세요.");return;} gradeBusy=true; banner("제출 중…"); const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers}); gradeBusy=false; if(r&&r.error){banner("제출 오류: "+r.error); return;} localStorage.setItem("pmb.final."+myRoleId,JSON.stringify(answers)); banner(r&&r.pending?"제출 완료 — 진행자(GM)가 채점합니다":""); await poll(); }
+async function submitFinal(){ if(gradeBusy)return; const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():"")); if(answers.every(a=>!a)){alert("한 문항 이상 답해주세요.");return;} gradeBusy=true; banner("제출 중…"); const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers}); gradeBusy=false; if(r&&r.error){banner("제출 오류: "+r.error); return;} localStorage.setItem("pmb.final."+myRoleId,JSON.stringify(answers));
+  // 낼 곳이 없는데 '제출 완료'라고 하지 않는다 — 어디로 갔는지를 그대로 말한다
+  banner(!(r&&r.pending)?"":(gmOn?"제출 완료 — 진행석(GM)이 채점합니다":"답안을 적어뒀습니다 — 아래 글을 클로드에 붙여넣으세요"));
+  // 제출 여부는 로컬에만 남아 패널 서명에 안 잡힌다 — 손으로 한 번 무효화해야 화면이 바뀐다
+  renderPanel._sig=null;
+  await poll(); }
 
 /* 엔딩 */
 function keepGoalsHTML(){
