@@ -159,6 +159,9 @@ def fresh_room() -> dict:
         "typing": None,
         "events": [],            # 진행 세션이 따라 읽는 사건 기록
         "podOpen": False,        # 특정 카드가 전체공개되면 지도에 탈출 포드가 드러난다
+        # 침수 대응 퍼즐 — 열림/답안/판정. flood는 0~100, 배치도의 물 높이를 그린다.
+        "crisis": {"open": False, "solved": None, "answers": {}},
+        "flood": 0,
         "turn": None,             # 조사 페이즈 현재 차례 roleId (하이브리드 턴)
         "interrogate": {"seq": None, "used": 0, "votes": [], "bonus": False},  # 토론 페이즈 심층심문 예산
         "started": False,         # 호스트가 '이대로 진행'을 확정하면 True — 이후 배역 변경 불가
@@ -201,6 +204,88 @@ def _auto_reveal_obligatory():
     return  # '전체공개' 개념 미사용(우선) — 공개의무 카드도 GM이 대화로 내레이션한다
 
 
+# ── 침수 대응 퍼즐 ────────────────────────────────────────────────
+# 조사 R2에 들어서면 열린다. 배역 과반이 세 문항을 모두 맞히면 물이 멈추고,
+# 갈리면 마지막 조사를 물속에서 하게 된다(조사 가능 장수가 준다).
+def _crisis_conf():
+    return getattr(SC, "CRISIS", None)
+
+
+def _crisis_public() -> dict | None:
+    conf = _crisis_conf()
+    if not conf:
+        return None
+    cr = ROOM.get("crisis") or {}
+    if not cr.get("open") and cr.get("solved") is None:
+        return None
+    pub = SC.crisis_public()
+    assigned = [rid for rid, r in ROOM["roles"].items() if r["mode"] in ("human", "ai")]
+    pub.update({"open": bool(cr.get("open")), "solved": cr.get("solved"),
+                "answered": sorted(cr.get("answers", {}).keys()),
+                "total": len(assigned) or len(ROOM["roles"]),
+                "need": (len(assigned) or len(ROOM["roles"])) // 2 + 1,
+                "outcome": (conf["success"] if cr.get("solved") else conf["fail"]) if cr.get("solved") is not None else "",
+                "after": conf.get("after", "") if cr.get("solved") else ""})
+    return pub
+
+
+def _crisis_open():
+    """조사 R2 진입 — 사람이 없는 배역은 그 자리에서 자기 답을 낸다."""
+    conf = _crisis_conf()
+    if not conf:
+        return
+    cr = ROOM["crisis"]
+    if cr.get("open") or cr.get("solved") is not None:
+        return
+    cr["open"] = True
+    cr["answers"] = {}
+    for rid, r in ROOM["roles"].items():
+        if r["mode"] == "ai":
+            cr["answers"][rid] = SC.crisis_ai_answer(rid)
+    ROOM["table"].append({"kind": "system", "broadcast": True,
+                          "text": f'🌊 {conf["title"]} — 각자 화면에서 판단을 고르세요.'})
+    _ev("crisis", state="open")
+    _crisis_try_resolve()
+
+
+def _crisis_try_resolve():
+    """전원이 답했을 때만 판정한다. GM은 /api/crisis/close 로 앞당길 수 있다."""
+    cr = ROOM["crisis"]
+    if not cr.get("open"):
+        return
+    assigned = [rid for rid, r in ROOM["roles"].items() if r["mode"] in ("human", "ai")]
+    if assigned and len(cr["answers"]) < len(assigned):
+        return
+    _crisis_resolve()
+
+
+def _crisis_resolve():
+    conf = _crisis_conf()
+    cr = ROOM["crisis"]
+    if not conf or not cr.get("open"):
+        return
+    key = SC.crisis_answer_key()
+    assigned = [rid for rid, r in ROOM["roles"].items() if r["mode"] in ("human", "ai")] or list(ROOM["roles"])
+    right = sum(1 for rid in assigned if cr["answers"].get(rid) == key)
+    ok = right * 2 > len(assigned)
+    cr["open"] = False
+    cr["solved"] = ok
+    ROOM["table"].append({"kind": "system", "broadcast": True,
+                          "text": ("🌊 " + conf["success"]) if ok else ("🌊 " + conf["fail"])})
+    if ok and conf.get("after"):
+        ROOM["table"].append({"kind": "system", "broadcast": True, "text": "🔧 " + conf["after"]})
+    _ev("crisis", state="solved" if ok else "failed", right=right, of=len(assigned))
+
+
+def _flood_for(seq: int) -> int:
+    """물 높이(0~100). 잡았으면 그 자리에서 멈춘다."""
+    cr = ROOM.get("crisis") or {}
+    lvl = {1: 0, 2: 6, 3: 18, 4: 32, 5: 46, 6: 60, 7: 74, 8: 84, 9: 90}.get(seq, 0)
+    if cr.get("solved") is True:
+        return min(lvl, 32)          # 재조정에 성공한 시점에서 굳는다
+    return lvl
+
+
 TABLE_TAIL = 140          # 클라이언트로 내보내는 대화 줄 수. 전체 기록은 서버에만 남는다.
 
 
@@ -226,7 +311,8 @@ def public_state() -> dict:
         if ph.get("key") != "reveal":
             ending = None
         cur = current_round(seq)
-        ap = int(ph.get("ap", 0) or 0)
+        # 화면에 뜨는 장수도 실제로 허용되는 장수여야 한다 — 물을 못 잡았으면 한 장 준다.
+        ap = _ap_for(seq)
         # 내용 없는 마킹 현황(누가 어떤 카드를 조사했는지 id만) + 이번 턴 남은 조사 수
         checked = {rid: list(cs) for rid, cs in ROOM["hands"].items() if cs}
         used = {rid: sum(1 for r in cm.values() if r == cur) for rid, cm in ROOM["checkedRound"].items()}
@@ -234,6 +320,8 @@ def public_state() -> dict:
             "rev": ROOM["rev"], "seq": seq, "round": cur, "scenarioId": SC.ID,
             "roomId": ROOM.get("roomId", ""),
             "podOpen": bool(ROOM.get("podOpen")),
+            "flood": int(ROOM.get("flood", 0)),
+            "crisis": _crisis_public(),
             "chat": {"on": CHAT["on"], "gap": CHAT["gap"]},
             "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"]},
             "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
@@ -359,6 +447,13 @@ class SelectScenario(BaseModel):
     scenarioId: str
     key: str = ""
     clientId: str = ""
+
+
+class CrisisAnswer(BaseModel):
+    roleId: str = ""
+    clientId: str = ""
+    answers: list[int] = []
+    key: str = ""
 
 
 class HostReq(BaseModel):
@@ -578,7 +673,13 @@ def _is_host(client_id: str) -> bool:
 
 
 def _ap_for(seq: int) -> int:
-    return int(SC.phase_by_seq(seq).get("ap", 0) or 0)
+    ap = int(SC.phase_by_seq(seq).get("ap", 0) or 0)
+    # 물을 못 잡았으면 마지막 조사는 허리까지 잠긴 채로 한다 — 한 곳밖에 못 본다.
+    cr = ROOM.get("crisis") or {}
+    conf = _crisis_conf()
+    if ap > 1 and conf and cr.get("solved") is False and seq > conf["seq"]:
+        return ap - 1
+    return ap
 
 
 def _round_checks(role_id: str, rnd: int) -> int:
@@ -1299,6 +1400,39 @@ def agent_narrate(b: AgentSay):  # roleId 무시, text=GM 내레이션(전체 �
     return {"ok": True}
 
 
+@app.post("/api/crisis")
+def crisis_answer(b: CrisisAnswer):
+    """배역 하나의 판단을 접수한다. 남의 배역으로는 낼 수 없다."""
+    with LOCK:
+        cr = ROOM.get("crisis") or {}
+        if not cr.get("open"):
+            return JSONResponse({"error": "지금은 답할 때가 아닙니다"}, status_code=409)
+        r = ROOM["roles"].get(b.roleId)
+        if not r:
+            return JSONResponse({"error": "없는 배역"}, status_code=404)
+        if r["clientId"] and r["clientId"] != b.clientId and not _agent_ok(b.key):
+            return JSONResponse({"error": "본인 배역만 답할 수 있습니다"}, status_code=403)
+        n = len(SC.CRISIS["questions"])
+        if len(b.answers) != n or any(not isinstance(x, int) for x in b.answers):
+            return JSONResponse({"error": "세 문항을 모두 고르세요"}, status_code=400)
+        cr["answers"][b.roleId] = list(b.answers)
+        _crisis_try_resolve()
+        bump()
+    return {"ok": True}
+
+
+@app.post("/api/crisis/close")
+def crisis_close(b: HostReq):
+    """기다리다 말고 지금 판정한다 — 답 안 낸 배역은 틀린 것으로 친다."""
+    if ROOM.get("host") is not None and not (_is_host(b.clientId) or _agent_ok(b.key)):
+        return JSONResponse({"error": "host"}, status_code=403)
+    with LOCK:
+        _crisis_resolve()
+        ROOM["flood"] = _flood_for(ROOM["seq"])
+        bump()
+    return {"ok": True, "solved": (ROOM.get("crisis") or {}).get("solved")}
+
+
 @app.post("/api/advance")
 def advance(b: HostReq):
     # 호스트가 지정돼 있으면 호스트나 GM 진행석만, 없으면 누구나(현행 앱 호환)
@@ -1325,6 +1459,10 @@ def _advance():
                 ap=int(ph.get("ap", 0) or 0), gm=ph.get("gm", ""), interlude=il or "")
             _reset_turn_for_seq(seq)   # 조사 페이즈면 순번 초기화
             _auto_reveal_obligatory()
+            conf = _crisis_conf()
+            if conf and seq == conf["seq"]:
+                _crisis_open()
+            ROOM["flood"] = _flood_for(seq)
             bump()
         return {"seq": ROOM["seq"]}
 
