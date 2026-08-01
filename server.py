@@ -250,6 +250,7 @@ def _crisis_open():
             cr["answers"][rid] = SC.crisis_ai_answer(rid)
     ROOM["table"].append({"kind": "system", "broadcast": True,
                           "text": f'🌊 {conf["title"]} — 각자 화면에서 판단을 고르세요.'})
+    _fire_cut("crisis:open")
     _ev("crisis", state="open")
     _crisis_try_resolve()
 
@@ -283,6 +284,7 @@ def _crisis_resolve():
                           "text": ("🌊 " + conf["success"]) if ok else ("🌊 " + conf["fail"])})
     if ok and conf.get("after"):
         ROOM["table"].append({"kind": "system", "broadcast": True, "text": "🔧 " + conf["after"]})
+    _fire_cut("crisis:success" if ok else "crisis:fail")
     _ev("crisis", state="solved" if ok else "failed", right=right, of=len(assigned))
 
 
@@ -1331,7 +1333,6 @@ def _publish(card_id: str, by: str = "") -> None:
             _ev("reveal", roleId=by, speaker=who.get("name", ""), cardId=card_id,
                 title=c["title"], loc=c["loc"], locName=c["locName"], spot=c.get("spot", ""),
                 text=c.get("text", ""), hint=c.get("hint", ""))
-            _fire_cut(f"card:{card_id}")
         bump()
 
 
@@ -1887,8 +1888,6 @@ def _advance():
             if conf and seq == conf["seq"]:
                 _crisis_open()
             ROOM["flood"] = _flood_for(seq)
-            if int(ph.get("ap", 0) or 0) > 0:
-                _fire_cut(f"round:{current_round(seq)}")
             bump()
         return {"seq": ROOM["seq"]}
 
