@@ -171,6 +171,37 @@
   .cchip:active{background:rgba(120,190,220,.22)}
   /* 아직 공개되지 않은 카드 — 무엇이 언급됐는지만 알리고 내용은 잠근다 */
   .cchip.lock{background:rgba(255,255,255,.04);border-color:var(--line);color:var(--sub)}
+  /* 하단 독 — 판 중에 제일 자주 여는 다섯 곳. 머리띠까지 손을 올릴 일을 없앤다. */
+  .dock{display:flex;gap:2px;border-top:1px solid var(--line);background:linear-gradient(180deg,rgba(17,16,15,.9),rgba(12,11,10,.98));
+    padding:5px 4px calc(5px + env(safe-area-inset-bottom))}
+  .dock .dk{position:relative;flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:3px;
+    background:none;border:0;color:var(--sub);font-family:inherit;font-size:10.5px;font-weight:700;
+    padding:6px 2px;border-radius:10px;cursor:pointer;min-width:0}
+  .dock .dk .i{font-size:19px;line-height:1}
+  .dock .dk .t{white-space:nowrap}
+  .dock .dk:active{background:rgba(255,255,255,.06);color:var(--fg)}
+  .dock .dk .bdg{position:absolute;top:2px;right:calc(50% - 22px);min-width:15px;height:15px;line-height:15px;
+    border-radius:8px;background:var(--gold);color:#1a1508;font-size:9.5px;font-weight:800;padding:0 4px;display:none}
+  .dock .dk .bdg.on{display:block}
+  .dock .dk .dot{position:absolute;top:5px;right:calc(50% - 18px);width:7px;height:7px;border-radius:50%;
+    background:var(--ember);display:none}
+  .dock .dk .dot.on{display:block}
+  /* 전체화면 대화 */
+  .modal.full .box{max-width:920px;width:100%;height:100dvh;max-height:100dvh;border-radius:0;display:flex;flex-direction:column}
+  .modal.full .chat{flex:1 1 auto;min-height:0}
+  /* 인물정보 */
+  .whorow{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .whorow:last-child{border-bottom:0}
+  .whorow .wi{flex:1 1 auto;min-width:0}
+  .whorow .wn{font-weight:800;font-size:15px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .whorow .wn .sub{font-weight:600;font-size:11.5px;color:var(--sub)}
+  .whorow .wt{font-size:12.5px;line-height:1.6;color:#c9c8c7;margin-top:3px}
+  .whorow .wcards{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+  .whorow .wc{display:inline-flex;align-items:center;gap:4px;border-radius:7px;padding:4px 8px;
+    font-size:11.5px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--sub)}
+  .whorow .wc.mine{border-color:rgba(214,176,96,.4);background:rgba(214,176,96,.1);color:var(--gold-b);cursor:pointer}
+  .whorow .wc.pub{border-color:rgba(120,190,220,.34);background:rgba(120,190,220,.1);color:#bfe0ee;cursor:pointer}
+  .whorow .wnone{font-size:11.5px;color:var(--muted);margin-top:7px}
   /* 조사가 다 끝난 턴바 — 차례 안내가 있던 자리에 다음 페이즈가 들어선다 */
   .turnbar.done{border-color:rgba(90,190,140,.35)}
   .tb-act.col{flex-direction:column;align-items:stretch;gap:7px}
@@ -1140,7 +1171,16 @@
     <textarea id="input" rows="1" placeholder="배역을 골라야 말할 수 있어요"></textarea>
     <button class="btn gold" id="sendBtn" onclick="humanSay()">전송</button>
   </div>
+  <nav class="dock" id="dock">
+    <button class="dk" onclick="openLook()"><span class="i">🗺️</span><span class="t">조사화면</span></button>
+    <button class="dk" onclick="showMyHand()"><span class="i">🃏</span><span class="t">내 단서</span><span class="bdg" id="dkHand"></span></button>
+    <button class="dk" onclick="showMySheet()"><span class="i">🗂️</span><span class="t">내 정보</span><span class="dot" id="dkSheet"></span></button>
+    <button class="dk" onclick="showChatFull()"><span class="i">💬</span><span class="t">대화창</span></button>
+    <button class="dk" onclick="showWho()"><span class="i">👥</span><span class="t">인물정보</span></button>
+  </nav>
 </div>
+<div class="modal full" id="chatModal"><div class="box" id="chatFullBox"></div></div>
+<div class="modal" id="whoModal"><div class="box" id="whoBox"></div></div>
 
 <div id="s-gm" class="screen">
   <div class="chead">
@@ -1343,6 +1383,9 @@ function applyState(){
     renderPanel(ph);
     // 채팅
     if(STATE.rev!==lastRev){ renderChat(); lastRev=STATE.rev; }
+    if($("chatModal").classList.contains("on")) renderChat("chatFull");
+    const hb=$("dkHand"); hb.textContent=myHand.length; hb.classList.toggle("on",myHand.length>0);
+    $("dkSheet").classList.toggle("on",sheetSeenSeq!=null&&STATE.seq>sheetSeenSeq);
     applyChatFold();
     // 다음 페이즈·조사 화면·진행석은 ☰ 서랍이 페이즈를 보고 스스로 넣고 뺀다.
     if(ph.key==="invest"&&$("lookModal").classList.contains("on")) closeLook();
@@ -2830,6 +2873,74 @@ async function shareConfirm(){
   if(r&&r.error){ banner(r.error); $("shareGo").disabled=false; return; }
   closeModal("swapModal"); closeModal("handModal");
   await poll();
+}
+
+/* 대화창 — 독에서 열면 화면을 다 쓴다. 토론이 길어지면 인라인 창으로는 흐름이 안 보인다. */
+function showChatFull(){
+  $("chatFullBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">지금까지 오간 말</span><h2>💬 대화</h2>
+        <span class="mh-sub" id="chatFullSub"></span></div>
+      <button class="mh-x" onclick="closeModal('chatModal')" aria-label="닫기">✕</button></div>
+    <div class="chat" id="chatFull"></div>
+    <div class="composer">
+      <span class="who" id="chatFullWho"></span>
+      <textarea id="chatFullInput" rows="1" placeholder="배역을 골라야 말할 수 있어요"></textarea>
+      <button class="btn gold" onclick="humanSayFrom('chatFullInput')">전송</button>
+    </div>`;
+  chatDrawn["chatFull"]=undefined;
+  const ok=myRoleValid(), c=ok?roleById(myRoleId):null;
+  $("chatFullWho").textContent=c?`나: ${c.name}`:"관전";
+  const ta=$("chatFullInput"); ta.disabled=!ok;
+  if(ok) ta.placeholder="배역이 되어 말하세요…  (Enter 전송)";
+  ta.addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); humanSayFrom("chatFullInput"); }});
+  openModal("chatModal");
+  renderChat("chatFull");
+  const box=$("chatFull"); box.scrollTop=box.scrollHeight;
+}
+async function humanSayFrom(id){
+  if(!myRoleValid()) return;
+  const inp=$(id), t=inp.value.trim(); if(!t) return;
+  inp.value=""; inp.style.height="auto";
+  const r=await post("/api/human-say",{roleId:myRoleId,clientId,text:t});
+  if(r&&r.error)banner(r.error);
+  await poll();
+}
+
+/* 인물정보 — 누가 무엇을 쥐고 있는지까지는 테이블이 다 안다(조사 마킹이 이미 공개다).
+   다만 그 카드가 무엇인지는 못 본다. 여기서도 자리만 보이고 제목은 잠근다. */
+function showWho(){
+  const lim=handLimit();
+  const rows=(SCEN.characters||[]).map(c=>{
+    const ids=((STATE.checked||{})[c.id])||[];
+    const mode=((STATE.roles||{})[c.id]||{}).mode;
+    const seat=c.id===myRoleId?'<span class="pill" style="color:var(--gold-b)">나</span>'
+      :(mode==="ai"?'<span class="pill">AI</span>':(mode==="human"?'<span class="pill" style="color:var(--good)">사람</span>':""));
+    const cards=ids.map(id=>{
+      const k=cardCat(id);
+      const where=k?`${esc(k.locName||k.loc)}${k.spot?" · "+esc(k.spot):""}`:"어딘가";
+      if(c.id===myRoleId||canSeeCard(id)){
+        const t=((STATE.revealed||[]).concat(myHand||[])).find(x=>x.id===id);
+        return `<button class="wc ${canSeeCard(id)&&c.id!==myRoleId?"pub":"mine"}" onclick="openCard('${id}')">📄 ${esc(t?t.title:where)}</button>`;
+      }
+      return `<span class="wc">🔒 ${where}</span>`;
+    }).join("");
+    return `<div class="whorow">${avaHTML(c,"sm")}
+      <div class="wi">
+        <div class="wn" style="color:${c.color}">${esc(c.name)}<span class="sub">${esc(c.age)}·${esc(c.job)}</span>${seat}</div>
+        <div class="wt">${esc(c.tagline||"")}</div>
+        ${ids.length?`<div class="wcards">${cards}</div>`:`<div class="wnone">지금 쥐고 있는 카드가 없습니다.</div>`}
+      </div></div>`;
+  }).join("");
+  $("whoBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">이 배에 탄 사람들</span><h2>👥 인물정보</h2>
+        <span class="mh-sub">손패는 ${lim}장까지 — 자리만 보이고 내용은 잠깁니다</span></div>
+      <button class="mh-x" onclick="closeModal('whoModal')" aria-label="닫기">✕</button></div>
+    <div class="mbody">
+      <div class="mlead">누가 어디를 뒤졌는지는 테이블이 다 압니다. <b>무엇을 찾았는지는 본인만</b> 알아요 — 🔒는 자리만 아는 카드입니다.</div>
+      ${rows}</div>
+    <div class="mfoot"><button class="btn" onclick="closeModal('whoModal')">확인</button></div>`;
+  $("whoBox").style.setProperty("--mt","var(--cold)");
+  openModal("whoModal");
 }
 
 function showSwap(){
