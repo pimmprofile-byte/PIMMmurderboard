@@ -536,6 +536,78 @@ def admin_cards(key: str = "", scenarioId: str = ""):
             "keepGoals": getattr(m, "KEEP_GOALS", {})}
 
 
+@app.get("/api/admin/roles")
+def admin_roles(key: str = "", scenarioId: str = ""):
+    """검수용 — 한 시나리오의 배역을 롤카드 통째로 준다.
+
+    카드 훑어보기(/api/admin/cards)와 짝이다. 카드만 봐서는 그 카드가 누구의
+    무기이고 누구의 약점인지가 안 보인다. 여기서 목표·비밀·심문 대사까지 같이 펼쳐야
+    배분이 맞는지 판단이 선다. 범인이 누구인지도 그대로 나온다 —
+    그래서 카드 쪽과 똑같이 AGENT_KEY로 잠근다.
+    """
+    if not _agent_ok(key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    sid = scenarioId or SC.ID
+    if sid not in scenarios.ids():
+        return JSONResponse({"error": "없는 시나리오"}, status_code=404)
+    m = scenarios.get(sid)
+    culprit = getattr(m, "CULPRIT_ID", "")
+    hidden = getattr(m, "HIDDEN_ID", "")
+    keep = getattr(m, "KEEP_GOALS", {}) or {}
+    memory = getattr(m, "MEMORY", {}) or {}
+    interro = getattr(m, "INTERROGATE", {}) or {}
+    plain = getattr(m, "INTERROGATE_PLAIN", {}) or {}
+    frag_key = getattr(m, "TALK_FRAGMENT_KEY", {}) or {}
+    phases = {p["seq"]: p["name"] for p in getattr(m, "PHASES", [])}
+    titles = {c.get("id"): c.get("title", "") for c in getattr(m, "CARDS", [])}
+    spots = {c.get("id"): (f'{c.get("locName","")} · {c.get("spot","")}'
+                           if c.get("spot") else c.get("locName", ""))
+             for c in getattr(m, "CARDS", [])}
+
+    def card_ref(cid: str) -> dict:
+        return {"id": cid, "title": titles.get(cid, ""), "where": spots.get(cid, "")}
+
+    roles = []
+    for ch in getattr(m, "CHARACTERS", []):
+        cid = ch["id"]
+        kg = keep.get(cid)
+        # 기억의 파편은 t1/t2/t3로 들어 있고 어느 페이즈에 뜨는지는 따로 적혀 있다.
+        # 검수할 때 «몇 번째 토론에서 나오는 말인가»가 붙어 있어야 순서를 볼 수 있다.
+        frags = []
+        for seq in sorted(frag_key):
+            k = frag_key[seq]
+            txt = (memory.get(cid) or {}).get(k)
+            if txt:
+                frags.append({"seq": seq, "key": k, "phase": phases.get(seq, ""), "text": txt})
+        ig = []
+        for card_id, e in (interro.get(cid) or {}).items():
+            ig.append({"card": card_ref(card_id), "truth": e.get("truth", ""),
+                       "evasive": e.get("evasive", ""),
+                       "rebuttal": card_ref(e["rebuttal"]) if e.get("rebuttal") else None})
+        roles.append({
+            "id": cid, "name": ch.get("name", ""), "age": ch.get("age", ""),
+            "job": ch.get("job", ""), "avatar": ch.get("avatar", ""), "color": ch.get("color", ""),
+            "tagline": ch.get("tagline", ""), "look": ch.get("look", ""),
+            "persona": ch.get("persona", ""),
+            "isCulprit": cid == culprit, "isHidden": cid == hidden or bool(ch.get("hidden")),
+            "past": ch.get("past", []) or [],
+            "sheet": ch.get("sheet", []) or [],
+            "sins": ch.get("sins", []) or [],
+            "goals": ch.get("goals", []) or [],
+            "keepGoal": ({"label": kg.get("label", ""), "points": kg.get("points", 0),
+                          "fail": kg.get("fail", ""),
+                          "cards": [card_ref(x) for x in kg.get("cards", [])]} if kg else None),
+            "cards": [card_ref(x) for x in (ch.get("cards") or [])],
+            "fragments": frags,
+            "aiNote": ch.get("ai_note", ""),
+            "interrogate": ig,
+            "interrogatePlain": plain.get(cid, ""),
+        })
+    return {"scenarioId": sid, "title": getattr(m, "TITLE", sid),
+            "fragLabel": getattr(m, "FRAGMENT_LABEL", "") or "기억의 파편",
+            "roles": roles}
+
+
 @app.get("/api/scenarios")
 def scenarios_list():
     return {"scenarios": scenarios.meta_list(), "active": SC.ID}

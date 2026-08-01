@@ -224,6 +224,39 @@
   .adpair{font-size:.8rem;line-height:1.7;color:var(--bone-dim);padding:8px 0;border-top:1px solid var(--line2)}
   .adpair b{color:var(--brass)}
 
+  /* 배역 훑어보기 — 한 사람이 한 칸. 카드 훑어보기와 달리 세로로 길어서
+     한 줄에 하나(넓은 화면은 둘)만 놓고, 안에서 소제목으로 갈라 읽는다. */
+  .adroles{display:grid;gap:14px;grid-template-columns:1fr}
+  @media (min-width:900px){ .adroles{grid-template-columns:1fr 1fr} }
+  .adr{background:#0c0910;border:1px solid var(--line2);border-left:3px solid var(--rk,var(--line2));
+    border-radius:11px;padding:14px 15px}
+  .adr .rh{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .adr .rav{flex:0 0 34px;height:34px;border-radius:50%;border:1px solid var(--line2);
+    display:grid;place-items:center;font-size:1.05rem;background:#0a0710}
+  .adr .rnm{font-family:var(--serif);font-weight:800;font-size:1.1rem;color:var(--rk,var(--bone))}
+  .adr .rjb{font-size:.72rem;color:var(--faint)}
+  .adr .rflag{font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;margin-left:auto;
+    border:1px solid color-mix(in srgb,var(--blood) 50%,var(--line2));color:var(--blood-bri);
+    border-radius:5px;padding:2px 7px;white-space:nowrap}
+  .adr .rflag.q{color:var(--brass);border-color:color-mix(in srgb,var(--brass) 40%,var(--line2))}
+  .adr .rtag{font-size:.78rem;line-height:1.65;color:var(--bone-dim);word-break:keep-all;margin-bottom:4px}
+  .adr h5{font-family:var(--mono);font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--faint);margin:14px 0 6px;padding-top:10px;border-top:1px solid var(--line2)}
+  .adr h5:first-of-type{border-top:none;padding-top:0}
+  .adr p{font-size:.8rem;line-height:1.75;color:var(--bone-dim);margin:0 0 6px;word-break:keep-all}
+  .adr .rli{font-size:.8rem;line-height:1.7;color:var(--bone-dim);padding:5px 0;
+    border-top:1px dotted var(--line2);word-break:keep-all;display:flex;gap:9px}
+  .adr .rli:first-of-type{border-top:none}
+  .adr .rli .w{flex:0 0 auto;font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;
+    color:var(--brass);padding-top:3px;min-width:52px}
+  .adr .rli .p{margin-left:auto;font-family:var(--mono);font-size:.6rem;color:var(--brass);
+    padding-top:3px;white-space:nowrap}
+  .adr .rq{font-size:.78rem;line-height:1.7;color:var(--bone-dim);word-break:keep-all}
+  .adr .rq .t{color:var(--bone)}
+  .adr .rq .e{color:var(--faint)}
+  .adr .rnote{font-size:.76rem;line-height:1.7;color:var(--faint);word-break:keep-all;
+    border-left:2px solid var(--line2);padding-left:10px}
+
   .adrow{border-top:1px solid var(--line2);padding:15px 0}
   .adrow:first-of-type{border-top:none;padding-top:4px}
   .adrow .rt{font-family:var(--serif);font-weight:800;font-size:1.08rem}
@@ -549,21 +582,92 @@ function admCard(c){
     ${c.hint?`<div class="chint">${ADM_ESC(c.hint)}</div>`:""}
     ${tags?`<div class="ctags">${tags}</div>`:""}</div>`;
 }
-function admSetKey(){
+function admSetKey(toRoles){
   const i=$("admk"); if(!i) return;
   admKey=i.value.trim(); try{ localStorage.setItem("pmb.gmkey",admKey); }catch(e){}
-  admLoad();
+  if(toRoles) admRolesLoad(); else admLoad();
 }
 function showCardBrowser(){
   const tabs=ORDER.map(id=>{ const sc=SCEN.find(s=>s.id===id); if(!sc) return "";
     return `<button class="adtab${id===admScen?" on":""}" onclick="admScen='${id}';showCardBrowser()">${ADM_ESC(sc.title)}</button>`; }).join("");
   $("adcard").className="adcard wide";
   $("adcard").innerHTML=`<h3>조사카드 훑어보기</h3><div class="adsub">QA READOUT · 본문·힌트까지 전부</div>
-    <div class="adtabs">${tabs}<button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
+    <div class="adtabs">${tabs}<button class="adtab" onclick="showRoleBrowser()">👤 배역</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
     <div id="admcards"></div>
     <button class="adclose" onclick="closeAdmin()">닫기</button>`;
   $("admask").classList.add("on");
   admLoad();
+}
+
+/* ── 배역 훑어보기 ─────────────────────────────────────────────
+   카드만 봐서는 그 카드가 누구의 무기이고 누구의 약점인지가 안 보인다.
+   목표·비밀·심문 대사까지 같이 펼쳐야 배분이 맞는지 판단이 선다.
+   범인이 그대로 나오므로 카드 쪽과 같은 AGENT_KEY로 잠겨 있다. */
+async function admRolesLoad(sid){
+  if(sid) admScen=sid;
+  const box=$("admroles"); if(box) box.innerHTML='<div class="adsub">불러오는 중…</div>';
+  let d;
+  try{ d=await (await fetch(`/api/admin/roles?scenarioId=${encodeURIComponent(admScen)}&key=${encodeURIComponent(admKey)}`)).json(); }
+  catch(e){ d={error:"network"}; }
+  const b=$("admroles"); if(!b) return;
+  if(d.error){
+    b.innerHTML=`<div class="aderr">배역을 열 수 없습니다 (${ADM_ESC(d.error)}).</div>
+      <div class="adform"><input id="admk" type="password" placeholder="GM 키 (AGENT_KEY)" autocomplete="off">
+      <button onclick="admSetKey(1)">확인</button></div>
+      <div class="adsub" style="margin-top:10px">배포본은 서버에 넣어둔 AGENT_KEY가 필요합니다. 로컬은 빈 값으로 열립니다.</div>`;
+    const i=$("admk"); if(i){ i.value=admKey; i.onkeydown=ev=>{ if(ev.key==="Enter") admSetKey(1); }; i.focus(); }
+    return;
+  }
+  const rs=(d.roles||[]);
+  b.innerHTML=`<div class="adsub">${ADM_ESC(d.title)} · 배역 ${rs.length}명</div>
+    <div class="adroles">${rs.map(r=>admRole(r,d)).join("")}</div>`;
+}
+function admRole(r,d){
+  const cardRef=c=>`${ADM_ESC(c.id)}${c.title?" 「"+ADM_ESC(c.title)+"」":""}`;
+  const sec=(h,body)=>body?`<h5>${h}</h5>${body}`:"";
+  const past=(r.past||[]).map(x=>`<div class="rli"><span class="w">${ADM_ESC(x.w||"")}</span><span>${ADM_ESC(x.t||"")}</span></div>`).join("");
+  const sheet=(r.sheet||[]).map(x=>`<p><b style="color:var(--bone)">${ADM_ESC(x.h||"")}</b><br>${ADM_ESC(x.b||"")}</p>`).join("");
+  const sins=(r.sins||[]).map(x=>`<div class="rli"><span>· ${ADM_ESC(x)}</span></div>`).join("");
+  // 점수 총합을 같이 보여준다 — 목표가 몇 점짜리로 흩어져 있는지가 검수의 핵심이라서.
+  const gp=(r.goals||[]).reduce((a,g)=>a+(g.p||0),0)+((r.keepGoal&&r.keepGoal.points)||0);
+  const goals=(r.goals||[]).map(g=>`<div class="rli"><span>${ADM_ESC(g.t||"")}</span><span class="p">${g.p||0}점</span></div>`).join("");
+  const keep=r.keepGoal?`<div class="rli"><span>${ADM_ESC(r.keepGoal.label||"")} <span class="e">— ${(r.keepGoal.cards||[]).map(cardRef).join(", ")}</span></span><span class="p">${r.keepGoal.points||0}점</span></div>
+    ${r.keepGoal.fail?`<div class="rnote" style="margin-top:6px">실패하면 — ${ADM_ESC(r.keepGoal.fail)}</div>`:""}`:"";
+  const cards=(r.cards||[]).map(c=>`<div class="rli"><span>${cardRef(c)}${c.where?` <span class="e">· ${ADM_ESC(c.where)}</span>`:""}</span></div>`).join("");
+  const frags=(r.fragments||[]).map(f=>`<div class="rli"><span class="w">${ADM_ESC(f.phase||("P"+f.seq))}</span><span>${ADM_ESC(f.text)}</span></div>`).join("");
+  const ig=(r.interrogate||[]).map(x=>`<div class="rli"><span class="w">${ADM_ESC(x.card.id)}</span><span class="rq">
+      <span class="t">실토 — ${ADM_ESC(x.truth)}</span><br><span class="e">넘긴다 — ${ADM_ESC(x.evasive)}</span>
+      ${x.rebuttal?`<br><span class="e">반박카드 ${cardRef(x.rebuttal)} 가 나오면 넘길 수 없다</span>`:""}
+    </span></div>`).join("");
+  const flag=r.isCulprit?`<span class="rflag">진범</span>`:(r.isHidden?`<span class="rflag q">스포일러 배역</span>`:"");
+  return `<div class="adr" style="--rk:${ADM_ESC(r.color||"")}">
+    <div class="rh"><div class="rav">${ADM_ESC(r.avatar||"")}</div>
+      <div><div class="rnm">${ADM_ESC(r.name||"")}</div>
+        <div class="rjb">${ADM_ESC(r.age?r.age+" · ":"")}${ADM_ESC(r.job||"")}</div></div>${flag}</div>
+    ${r.tagline?`<div class="rtag">${ADM_ESC(r.tagline)}</div>`:""}
+    ${sec("겉모습", r.look?`<p>${ADM_ESC(r.look)}</p>`:"")}
+    ${sec("말투·성격", r.persona?`<p>${ADM_ESC(r.persona)}</p>`:"")}
+    ${sec("내가 아는 옛일", past)}
+    ${sec("롤카드 본문", sheet)}
+    ${sec("죄목", sins)}
+    ${sec(`목표 · 합계 ${gp}점`, goals+keep)}
+    ${sec("시작 소지 카드", cards)}
+    ${sec(ADM_ESC((d&&d.fragLabel)||"지금 할 말"), frags)}
+    ${sec("AI 연기지침", r.aiNote?`<div class="rnote">${ADM_ESC(r.aiNote)}</div>`:"")}
+    ${sec("심층심문 응답", ig)}
+    ${sec("그 밖의 카드를 들이밀면", r.interrogatePlain?`<div class="rq"><span class="t">${ADM_ESC(r.interrogatePlain)}</span></div>`:"")}
+  </div>`;
+}
+function showRoleBrowser(){
+  const tabs=ORDER.map(id=>{ const sc=SCEN.find(s=>s.id===id); if(!sc) return "";
+    return `<button class="adtab${id===admScen?" on":""}" onclick="admScen='${id}';showRoleBrowser()">${ADM_ESC(sc.title)}</button>`; }).join("");
+  $("adcard").className="adcard wide";
+  $("adcard").innerHTML=`<h3>배역 훑어보기</h3><div class="adsub">QA READOUT · 목표·비밀·심문 대사까지 전부</div>
+    <div class="adtabs">${tabs}<button class="adtab" onclick="showCardBrowser()">🃏 조사카드</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
+    <div id="admroles"></div>
+    <button class="adclose" onclick="closeAdmin()">닫기</button>`;
+  $("admask").classList.add("on");
+  admRolesLoad();
 }
 
 function showAdminPanel(){
@@ -581,6 +685,7 @@ function showAdminPanel(){
   $("adcard").innerHTML=`<h3>열람 모드 · 사건 정본</h3><div class="adsub">QA READOUT · 모든 내용 열람</div>
     ${rows}
     <button class="adtab" style="margin-top:16px;width:100%;padding:11px" onclick="showCardBrowser()">🃏 조사카드 전부 훑어보기 →</button>
+    <button class="adtab" style="margin-top:7px;width:100%;padding:11px" onclick="showRoleBrowser()">👤 배역 전부 훑어보기 →</button>
     <button class="adclose" onclick="closeAdmin()">닫기</button>`;
   $("admask").classList.add("on");
 }
