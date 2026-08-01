@@ -1060,6 +1060,26 @@ def _publish(card_id: str, by: str = "") -> None:
         bump()
 
 
+def _ai_take_turn(rid: str) -> list:
+    """AI 배역의 조사 차례를 한 번에 처리한다 — 이번 라운드에 남은 만큼 뽑고 다음 차례로 넘긴다.
+
+    진행석 버튼(/api/ai-investigate)과 배경 스레드(_auto_turn_tick)가 같은 이 함수를 쓴다.
+    잠긴 구역·선행 단서·남이 이미 가져간 카드 판정은 전부 _try_investigate 안에 있으므로
+    여기서 따로 손대지 않는다. LOCK을 쥔 채로 부를 것(LLM 호출 없이 즉시 끝난다).
+    """
+    remaining = _ap_for(ROOM["seq"]) - _round_checks(rid, current_round(ROOM["seq"]))
+    picks = _ai_pick(rid, remaining)
+    if picks:
+        # 무엇을 봤는지는 그 배역의 손패다 — 테이블에는 '움직였다'는 사실만 남긴다.
+        nm = (SC.get_character(rid) or {}).get("name", rid)
+        ROOM["table"].append({"kind": "system", "broadcast": True,
+                              "text": f"🔎 {nm}{_subj(nm)} 어딘가를 살펴봤습니다. (조사 {len(picks)}장)"})
+    if ROOM.get("turn") == rid:
+        _advance_turn()
+    bump()
+    return picks
+
+
 @app.post("/api/investigate")
 def investigate(b: Investigate):
     with LOCK:
@@ -1268,10 +1288,7 @@ def ai_investigate_auto(b: TurnReq):
             return JSONResponse({"error": "권한 없음"}, status_code=403)
         if _ap_for(ROOM["seq"]) <= 0:
             return JSONResponse({"error": "조사 페이즈가 아닙니다"}, status_code=409)
-        remaining = _ap_for(ROOM["seq"]) - _round_checks(rid, current_round(ROOM["seq"]))
-        picks = _ai_pick(rid, remaining)
-        if ROOM.get("turn") == rid:
-            _advance_turn()
+        picks = _ai_take_turn(rid)
         cat = {c["id"]: c for c in SC.CARDS}
     return {"ok": True, "roleId": rid,
             "picked": [{"id": i, "title": cat[i]["title"], "loc": cat[i]["loc"], "locName": cat[i]["locName"]} for i in picks]}
@@ -1708,9 +1725,78 @@ def _chatter_loop():
             pass
 
 
+# ── AI 배역 조사 차례 자동 진행 ────────────────────────────────────────────────
+# 사람이 없는 배역의 차례가 오면 아무도 카드를 뽑지 않아 순번이 그 자리에 선다.
+# 진행석에서 버튼을 눌러야 넘어가면 호스트가 화면을 닫는 순간 판이 멈추므로,
+# 서버가 스스로 처리한다. 다만 차례가 넘어오자마자 해치우면 사람들이 무슨 일이
+# 지나갔는지 못 읽는다 — 차례가 AI에게 온 뒤 잠깐 뜸을 들이고 나서 뽑는다.
+# 사람 차례는 절대 대신 넘기지 않는다. 서버는 그 자리에서 기다린다.
+AUTO_TURN = {
+    "on": os.getenv("AUTO_TURN", "1") != "0",
+    "delay": float(os.getenv("AUTO_TURN_DELAY", "10")),  # AI에게 차례가 온 뒤 기다리는 초
+    "key": None,        # 지금 재고 있는 차례 (seq, roleId)
+    "seq": None,        # idle 카운터를 리셋할 기준 페이즈
+    "since": 0.0,       # 그 차례가 시작된 시각(monotonic)
+    "idle": 0,          # 아무것도 못 뽑고 넘긴 횟수 — 한 바퀴 헛돌면 멈춘다
+}
+
+
+def _auto_turn_tick():
+    if not AUTO_TURN["on"]:
+        return
+    now = time.monotonic()
+    with LOCK:                       # 판단에 필요한 것만 짧게 읽고 바로 놓는다
+        seq = ROOM["seq"]
+        ph = SC.phase_by_seq(seq)
+        turn = ROOM.get("turn")
+        started = bool(ROOM.get("started"))
+        mode = (ROOM["roles"].get(turn) or {}).get("mode") if turn else None
+        remaining = (_ap_for(seq) - _round_checks(turn, current_round(seq))) if turn else 0
+        lap = len(_turn_order())
+    if AUTO_TURN["seq"] != seq:      # 페이즈가 바뀌면 헛돌기 카운터를 푼다
+        AUTO_TURN["seq"] = seq
+        AUTO_TURN["idle"] = 0
+    key = (seq, turn)
+    if key != AUTO_TURN["key"]:      # 차례가 막 바뀌었다 — 시계를 다시 잡고 이번엔 넘어간다
+        AUTO_TURN["key"] = key
+        AUTO_TURN["since"] = now
+        return
+    if not started or ph.get("key") != "invest" or not turn:
+        return
+    if mode != "ai":                 # 사람 차례 — 대신 넘기지 않는다
+        return
+    if remaining <= 0:               # 이번 라운드 몫을 이미 다 썼다(페이즈 진행은 호스트 몫)
+        return
+    if AUTO_TURN["idle"] > lap:      # 한 바퀴 돌도록 아무도 뽑을 게 없었다 — 그만 돌린다
+        return
+    if now - AUTO_TURN["since"] < AUTO_TURN["delay"]:
+        return
+    with LOCK:
+        # 기다리는 사이 판이 바뀌었을 수 있다 — 잡고 나서 한 번 더 확인한다
+        if (ROOM["seq"], ROOM.get("turn")) != key or not ROOM.get("started"):
+            return
+        if SC.phase_by_seq(ROOM["seq"]).get("key") != "invest":
+            return
+        if (ROOM["roles"].get(turn) or {}).get("mode") != "ai":
+            return
+        picks = _ai_take_turn(turn)
+    AUTO_TURN["idle"] = 0 if picks else AUTO_TURN["idle"] + 1
+    AUTO_TURN["since"] = time.monotonic()
+
+
+def _auto_turn_loop():
+    while True:
+        time.sleep(2.0)
+        try:
+            _auto_turn_tick()
+        except Exception:                # noqa: BLE001  한 번 실패해도 루프는 계속 돈다
+            pass
+
+
 @app.on_event("startup")
-def _start_chatter():
+def _start_loops():
     threading.Thread(target=_chatter_loop, daemon=True).start()
+    threading.Thread(target=_auto_turn_loop, daemon=True).start()
 
 
 @app.post("/api/chat")
