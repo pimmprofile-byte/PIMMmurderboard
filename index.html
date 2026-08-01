@@ -103,9 +103,7 @@
   /* -webkit-line-clamp는 브라우저에 따라 display가 blockify돼 안 먹는다.
      2줄 높이를 직접 잡고 넘치는 부분은 페이드로 흘려보낸다 — 글자가 중간에 잘려 보이지 않게. */
   .rc .tg{font-size:11.5px;line-height:1.5;color:#bbbab9;padding:8px 10px 10px;
-    height:calc(3em + 18px);overflow:hidden;
-    -webkit-mask-image:linear-gradient(180deg,#000 62%,transparent 97%);
-    mask-image:linear-gradient(180deg,#000 62%,transparent 97%)}
+    min-height:calc(3em + 18px);word-break:keep-all}
   /* 카드마다 붙는 선택 버튼 */
   .rc-go{display:block;width:calc(100% - 20px);margin:0 10px;padding:8px 6px;border-radius:9px;
     font-family:inherit;font-size:12.5px;font-weight:800;text-align:center;border:1px solid var(--line);
@@ -160,6 +158,14 @@
   .sys{align-self:center;text-align:center;color:var(--muted);font-size:12px;border:1px dashed var(--line);border-radius:20px;padding:4px 14px;max-width:92%}
   .sys.bc{color:var(--cold);border-color:#2c465a;background:#0e1620}
   .msg{display:flex;gap:8px;max-width:90%}.msg.own{align-self:flex-end;flex-direction:row-reverse}
+  /* 얼굴 아바타 — 초상을 동그랗게 자른다. 초상이 없으면 .noimg가 붙고 이모지가 대신 뜬다. */
+  .ava{display:inline-grid;place-items:center;overflow:hidden;border-radius:50%;flex:0 0 auto;
+    vertical-align:middle;background:var(--panel);border:1px solid var(--ac,var(--line));position:relative}
+  .ava img.pt{width:100%;height:100%;object-fit:cover;object-position:50% 22%;display:block}
+  .ava.noimg::after{content:attr(data-emo);font-size:.72em;line-height:1}
+  .ava.xs{width:20px;height:20px;font-size:20px}
+  .ava.sm{width:30px;height:30px;font-size:30px}
+  .ava.lg{width:100%;height:100%;border-radius:inherit;border:0;font-size:60px}
   .msg .av{font-size:18px;width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);border-radius:9px}
   .msg .nm{font-size:11px;font-weight:700;margin:0 0 2px 2px}.msg.own .nm{text-align:right}
   .msg .bub{background:var(--panel);border:1px solid var(--line);border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
@@ -408,7 +414,7 @@
     border-radius:0 8px 8px 0;color:#cbbf9f;font-size:13px;line-height:1.7}
   .cnote b{color:var(--gold-b);font-weight:700;font-size:11.5px;letter-spacing:.06em;display:block;margin-bottom:2px}
   .bc-avwrap{display:flex;align-items:center;gap:14px;margin-bottom:6px}
-  .bc-av{font-size:34px;width:60px;height:60px;display:grid;place-items:center;background:var(--bg);border-radius:15px;flex:0 0 60px;border:1px solid var(--line)}
+  .bc-av{font-size:34px;width:60px;height:60px;display:grid;place-items:center;background:var(--bg);border-radius:15px;flex:0 0 60px;border:1px solid var(--line);overflow:hidden}
   .bc-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
   .bc-hidden{margin-top:14px;background:#2a1412;border:1px solid #6a2a26;border-radius:10px;padding:10px 13px;color:#f0b8b0;font-size:13.5px;font-weight:600}
   /* 옛일 연표 — 배역이 아는 만큼만 적힌 줄들. 산문 한 덩어리로 읽으면 눈이 미끄러지는데
@@ -896,6 +902,7 @@
   .por.noimg::after{content:attr(data-emo);position:absolute;inset:0;display:grid;place-items:center;
     font-size:44px;opacity:.55;filter:saturate(.7)}
   .rc .por img.pt{width:100%;height:100%;object-fit:cover;display:block}
+  .por img.pt.flip,.bc-av img.pt.flip,img.pt.flip{transform:scaleX(-1)}
   .unlocknote{margin-top:10px;padding:9px 12px;border:1px dashed var(--gold);border-radius:9px;
     background:rgba(201,162,74,.09);color:var(--gold-b);font-size:12.5px;line-height:1.55}
   .unlocknote b{color:#fff}
@@ -1616,6 +1623,20 @@ function wireZoom(){
 }
 
 
+const FLIP_PORTRAIT={submarine:["yutaeo"]};
+/* 이모지 여섯 개로는 사람이 구별되지 않는다 — 초상을 얼굴 쪽으로 잘라 동그랗게 쓴다.
+   사진을 못 찾으면 .noimg가 붙고 data-emo(이모지)가 CSS로 드러난다. 규약은 portraitHTML과 같다. */
+function avaHTML(c,cls){
+  if(!c) return `<span class="ava noimg ${cls||""}" data-emo="❔"></span>`;
+  const sid=(STATE&&STATE.scenarioId)||"";
+  const emo=esc(c.avatar||"❔");
+  if(!sid) return `<span class="ava noimg ${cls||""}" data-emo="${emo}">${emo}</span>`;
+  const flip=(FLIP_PORTRAIT[sid]||[]).includes(c.id)?" flip":"";
+  return `<span class="ava ${cls||""}" data-emo="${emo}" style="--ac:${c.color||"var(--line)"}">`
+    +`<img class="pt${flip}" src="/assets/${sid}_portrait_${c.id}.webp" alt="" decoding="async"`
+    +` onerror="if(this.dataset.f){this.closest('.ava').classList.add('noimg');this.remove()}`
+    +`else{this.dataset.f=1;this.src='/assets/${sid}_portrait_${c.id}.png'}"></span>`;
+}
 function portraitHTML(c){
   // 규약: /assets/{시나리오}_portrait_{배역}.{webp|png}
   // webp가 없으면 png로, 그것도 없으면 스스로 지워져 이모지가 드러난다.
@@ -1625,7 +1646,10 @@ function portraitHTML(c){
   // 이모지를 뒤에 깔지 않는다 — 다시 그릴 때마다 사진이 로드되는 사이에 비쳐서 깜빡여 보였다.
   // 사진을 끝내 못 찾은 경우에만 .por의 data-emo가 CSS로 드러난다.
   if(!src) return "";
-  return `<img class="pt" src="${src}" alt="" decoding="async"
+  // 초상 몇 장이 같은 포즈로 그려져 나란히 놓이면 같은 사람처럼 읽힌다.
+  // 다시 그리기 전까지는 좌우를 뒤집어 실루엣이라도 갈라놓는다.
+  const flip=(FLIP_PORTRAIT[sid]||[]).includes(c.id)?" flip":"";
+  return `<img class="pt${flip}" src="${src}" alt="" decoding="async"
     onerror="if(this.dataset.f){this.closest('.por').classList.add('noimg');this.remove()}else{this.dataset.f=1;this.src='${png}'}">`;
 }
 /* 1.5초마다 폴링하는데 그때마다 그리드를 통째로 다시 그리면 <img>가 새로 만들어져
@@ -1796,7 +1820,7 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
   h+=`<div class="gm-pick"><span class="pl">마킹 대상</span>${SCEN.characters.map(c=>{
       const u=used[c.id]||0, full=ap>0&&u>=ap;
       return `<button class="pk${c.id===target?" on":""}${full?" full":""}" style="--pc:${c.color}"
-        onclick="setGmTarget('${c.id}')">${c.avatar} ${esc(c.name)}
+        onclick="setGmTarget('${c.id}')">${avaHTML(c,"xs")} ${esc(c.name)}
         <span class="n">${(checked[c.id]||[]).length}</span></button>`;
     }).join("")}</div>`;
 
@@ -1819,7 +1843,7 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
         return `<div class="gcell took${isPub?" pub":""}${jm?" justmark":""}" style="--cc:${(who&&who.color)||'var(--gold)'}"
           onclick="${act}" title="${tip}">
           <div class="cid">${esc(cd.spot||cd.locName)}${isPub?`<span class="pubtag">전체공개</span>`:""}</div>
-          ${who?`<div class="cwho">${who.avatar} ${esc(who.name)}</div>`:`<div class="cwho">공개됨</div>`}
+          ${who?`<div class="cwho">${avaHTML(who,"xs")} ${esc(who.name)}</div>`:`<div class="cwho">공개됨</div>`}
           ${isPub?`<div class="cspot">${esc(pubById[cd.id].title)}</div>`:""}</div>`;
       }
       return `<div class="gcell${target?"":" nopick"}" onclick="gmMarkHere('${cd.id}')" title="${tip}">
@@ -1844,7 +1868,7 @@ async function loadGMFinalAnswers(){
   if(!ids.length){ box.innerHTML=`<div class="gm-note">아직 들어온 답안이 없습니다. 각자 제출하면 여기에 쌓입니다.</div>`; return; }
   box.innerHTML=ids.map(id=>{ const c=roleById(id)||{}; const a=fa[id]||[];
     return `<div class="gm-a" style="--ac:${c.color||"var(--gold)"}">
-      <div class="ah">${c.avatar||"❔"} ${esc(c.name||id)}</div>
+      <div class="ah">${avaHTML(c,"sm")} ${esc(c.name||id)}</div>
       ${qs.map((q,i)=>`<div class="aq">${i+1}. ${esc(q)}</div><div class="ab">${esc((a[i]||"").trim()||"(무응답)")}</div>`).join("")}
     </div>`; }).join("")
     +`<div class="gm-note" style="margin-top:10px">${ids.length}명 제출 / 사람 배역 ${Object.keys(STATE.roles||{}).filter(r=>(STATE.roles[r]||{}).mode==="human").length}명</div>`;
@@ -1922,7 +1946,7 @@ function alibiHTML(){
     const c=roleById(a.who)||{};
     const col=c.color||"var(--gold)";
     return `<div class="alb">
-      <div class="alb-w" style="border-color:${col}">${esc(c.avatar||"·")}</div>
+      <div class="alb-w">${avaHTML(c,"sm")}</div>
       <div class="alb-b">
         <div class="alb-h"><b style="color:${col}">${esc(c.name||a.who)}</b>
           <span class="alb-j">${esc(c.job||"")}</span>
@@ -2278,7 +2302,7 @@ function igRender(){
   else if(igW.step==="who"){
     const list=SCEN.characters.filter(c=>c.id!==myRoleId).map(c=>{ const n=heldCardsOf(c.id).length;
       return `<button class="ig-p" style="--pc:${c.color}" ${n?"":"disabled"} onclick="igPickWho('${c.id}')">
-        <span class="av">${c.avatar||"❔"}</span><span><span class="nm">${esc(c.name)}</span>
+        <span class="av">${avaHTML(c,"sm")}</span><span><span class="nm">${esc(c.name)}</span>
         <span class="sub">${n?`쥔 카드 ${n}장`:"쥔 카드 없음"}</span></span></button>`; }).join("");
     body=bar+`<div class="mlead">누구를 붙잡을지 고르세요.</div><div class="ig-people">${list}</div>`;
     foot=`<button class="btn" onclick="closeModal('interrogModal')">취소</button>`;
@@ -2304,7 +2328,7 @@ function igRender(){
   }
   else {
     body=bar+`<div class="ig-sum">
-      <div class="r"><span class="k">누구를</span><span class="v" style="color:${tc.color}">${tc.avatar} ${esc(tc.name)}</span></div>
+      <div class="r"><span class="k">누구를</span><span class="v" style="color:${tc.color}">${avaHTML(tc,"xs")} ${esc(tc.name)}</span></div>
       <div class="r"><span class="k">무엇을</span><span class="v">${esc((cd&&(cd.spot||cd.locName))||"")}</span></div>
       <div class="r"><span class="k">증거</span><span class="v">${evCard?esc(evCard.title):"카드 없이 맨손"}</span></div></div>
       <div class="ig-warn">⚠ 보내면 심문 <b>1회</b>가 즉시 소모됩니다. 남은 횟수 ${ig.remaining||0}회 — 되돌릴 수 없어요.</div>`;
@@ -2313,7 +2337,7 @@ function igRender(){
   }
   $("interrogBox").innerHTML=`<div class="mhead">
       <div class="mh-t"><span class="mh-eb">심층심문 · 남은 ${ig.remaining||0}회</span>
-        <h2>${igW.result?"추궁 결과":(tc?`<span style="color:${tc.color}">${tc.avatar} ${esc(tc.name)}</span> 추궁`:"누구를 추궁할까")}</h2>
+        <h2>${igW.result?"추궁 결과":(tc?`<span style="color:${tc.color}">${avaHTML(tc,"xs")} ${esc(tc.name)}</span> 추궁`:"누구를 추궁할까")}</h2>
         ${cd?`<span class="mh-sub">${esc(cd.spot||cd.locName||"")}</span>`:""}</div>
       <button class="mh-x" onclick="closeModal('interrogModal')" aria-label="닫기">✕</button></div>
     <div class="mbody">${body}</div><div class="mfoot">${foot}</div>`;
@@ -2543,7 +2567,7 @@ function claudeHandoffText(){
   return L.join("\n");
 }
 function claudeHandoffHTML(){
-  const who=finalAnswerRoles().map(c=>`<span class="pill" style="color:${c.color}">${c.avatar} ${esc(c.name)}</span>`).join("");
+  const who=finalAnswerRoles().map(c=>`<span class="pill" style="color:${c.color}">${avaHTML(c,"xs")} ${esc(c.name)}</span>`).join("");
   return `<div class="card"><h2>📋 클로드에 물어보기</h2>
     <div class="mlead">진행석이 없으니 이 글을 통째로 복사해 클로드 세션에 붙여넣으세요. 거기가 진행석이 됩니다.</div>
     <div class="panel-note" style="margin-bottom:9px">담긴 답안 ${who}</div>
@@ -2572,7 +2596,7 @@ function gradeRow(id,g){ const c=roleById(id)||{color:"#999",avatar:"❔",name:i
   }else{ // 졸업사진 폴백
     pills=`<span class="pill ${g.selfAccused?'':'bad'}">${g.selfAccused?'자기지목 ✓':'자기지목 ✗'}</span><span class="pill">죄 ${g.sinsAcknowledged}</span>${g.osewonIdentified?'<span class="pill">오세원 간파 ✓</span>':''}`;
   }
-  return `<div class="grade"><span style="color:${c.color};font-weight:700">${c.avatar} ${esc(c.name)}</span>${pills}<span class="pill">${g.score}점</span>${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
+  return `<div class="grade"><span style="color:${c.color};font-weight:700">${avaHTML(c,"xs")} ${esc(c.name)}</span>${pills}<span class="pill">${g.score}점</span>${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
 async function submitFinal(){ if(gradeBusy)return; const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():"")); if(answers.every(a=>!a)){alert("한 문항 이상 답해주세요.");return;} gradeBusy=true; banner("제출 중…"); const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers}); gradeBusy=false; if(r&&r.error){banner("제출 오류: "+r.error); return;} localStorage.setItem("pmb.final."+myRoleId,JSON.stringify(answers));
   // 낼 곳이 없는데 '제출 완료'라고 하지 않는다 — 어디로 갔는지를 그대로 말한다
   banner(!(r&&r.pending)?"":((gmOn||(STATE&&STATE.hasGM))?"제출 완료 — 진행석(GM)이 채점합니다":"답안을 적어뒀습니다 — 아래 글을 클로드에 붙여넣으세요"));
@@ -2611,7 +2635,7 @@ function chatRow(m){
     s.innerHTML=`<div class="ig-head">${esc(m.text)}</div><div class="ig-line">${esc(m.line||"")}</div>`; return s; }
   const c=roleById(m.roleId);
   const row=document.createElement("div"); row.className="msg"+(m.roleId===myRoleId?" own":"");
-  row.innerHTML=`<div class="av">${c?c.avatar:"❔"}</div><div><div class="nm" style="color:${c?c.color:"#999"}">${esc(m.speaker)}${m.kind==="human"?'<span class="tag-me">사람</span>':''}</div><div class="bub">${esc(m.text)}</div></div>`;
+  row.innerHTML=`<div class="av">${avaHTML(c,"sm")}</div><div><div class="nm" style="color:${c?c.color:"#999"}">${esc(m.speaker)}${m.kind==="human"?'<span class="tag-me">사람</span>':''}</div><div class="bub">${esc(m.text)}</div></div>`;
   return row;
 }
 function renderChat(boxId){
@@ -2706,7 +2730,7 @@ async function showMySheet(){
   // 1) 정체 슬라이드
   slides.push(`<div class="bigcard role" style="--rc:${s.color}">
     <div class="bc-eyebrow">나의 배역</div>
-    <div class="bc-avwrap"><div class="bc-av">${s.avatar}</div><div><div class="bc-title role">${esc(s.name)}</div><div class="bc-sub">${esc(s.age?s.age+" · ":"")}${esc(s.job)}</div></div></div>
+    <div class="bc-avwrap"><div class="bc-av">${avaHTML(s,"lg")}</div><div><div class="bc-title role">${esc(s.name)}</div><div class="bc-sub">${esc(s.age?s.age+" · ":"")}${esc(s.job)}</div></div></div>
     <div class="bc-body">${esc(s.persona)}</div>
     ${s.hidden?`<div class="bc-hidden">⚑ 스포일러 배역 — 정체를 들키지 마세요</div>`:``}</div>`);
   // 2) 내가 아는 옛일 — 연표. 여섯 사람이 같은 9년을 다르게 기억하고, 비어 있는 칸도 저마다 다르다.
@@ -2763,7 +2787,7 @@ async function showMySheet(){
         끝까지 <b>내 손패에 있어야</b> 점수가 인정된다. 전체공개되거나 남이 눈치채면 무효다.</div>`:""}</div></div>`);
   $("sheetBox").innerHTML=`<div class="mhead">
       <div class="mh-t"><span class="mh-eb">내 정보</span>
-        <h2 style="color:${s.color}">${s.avatar} ${esc(s.name)}</h2>
+        <h2 style="color:${s.color}">${avaHTML(s,"xs")} ${esc(s.name)}</h2>
         <span class="mh-sub">실물 카드처럼 옆으로 넘겨 확인하세요</span></div>
       <button class="mh-x" onclick="closeModal('sheetModal')" aria-label="닫기">✕</button></div>
     <div class="mbody">${buildSwipe(slides)}</div>
