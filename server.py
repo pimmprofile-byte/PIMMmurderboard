@@ -45,7 +45,11 @@ CLAUDE_MODEL = os.getenv("REUNION_MODEL") or os.getenv("PIMM_MODEL") or "claude-
 CLAUDE_MODEL_FAST = os.getenv("PIMM_MODEL_FAST") or "claude-haiku-4-5-20251001"
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "exaone3.5:7.8b")
+# 배역 프롬프트는 대본·공개카드·규칙까지 합쳐 5천 토큰이 넘는다. Ollama 기본 컨텍스트는
+# 그보다 훨씬 작아서, 안 넘기면 앞쪽(배경·성격·대본)이 조용히 잘린 채로 연기하게 된다 —
+# 모델이 못하는 것처럼 보이지만 실은 대본을 못 받은 것이다.
+OLLAMA_CTX = int(os.getenv("OLLAMA_CTX", "8192"))
 HOST = os.getenv("REUNION_HOST", "0.0.0.0")
 # 호스팅(Render 등)은 PORT를 주입 → 그걸 우선 사용, 로컬은 REUNION_PORT/기본값
 PORT = int(os.getenv("PORT") or os.getenv("REUNION_PORT", "8790"))
@@ -87,7 +91,8 @@ def _claude(system: str, user: str, mt: int, model: str = "") -> str:
 
 
 def _ollama(system: str, user: str, mt: int, model: str = "") -> str:
-    payload = {"model": OLLAMA_MODEL, "stream": False, "options": {"temperature": 0.85, "num_predict": mt},
+    payload = {"model": OLLAMA_MODEL, "stream": False,
+               "options": {"temperature": 0.85, "num_predict": mt, "num_ctx": OLLAMA_CTX},
                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     req = urllib.request.Request(f"{OLLAMA_URL}/api/chat", data=json.dumps(payload).encode("utf-8"),
                                  headers={"Content-Type": "application/json"})
