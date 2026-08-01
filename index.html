@@ -157,7 +157,16 @@
   .pbanner .g{color:var(--gold);font-size:11px;letter-spacing:.06em;margin-right:6px}
   .pbanner .il{color:var(--cold);margin-top:5px;font-size:12.5px}
   .ppanel{flex:1 1 auto;overflow-y:auto;padding:14px}
-  #s-play.talk .ppanel,#s-play.reveal .ppanel{flex:0 1 auto;max-height:30vh}
+  /* 토론은 말이 본체다. 패널을 눌러 대화가 화면 절반쯤을 갖게 한다. */
+  #s-play.talk .ppanel{flex:0 1 auto;max-height:26vh}
+  #s-play.reveal .ppanel{flex:0 1 auto;max-height:30vh}
+  .cchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .cchip{display:inline-flex;align-items:center;gap:4px;max-width:100%;
+    background:rgba(120,190,220,.10);border:1px solid rgba(120,190,220,.32);border-radius:999px;
+    color:#bfe0ee;font-family:inherit;font-size:12px;font-weight:600;padding:5px 11px;cursor:pointer;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cchip:active{background:rgba(120,190,220,.22)}
+  .sys .cchips{justify-content:center}
   .chattab{display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;
     background:var(--bg2);border:0;border-top:1px solid var(--line);color:var(--sub);
     font-family:inherit;font-size:12.5px;padding:8px 14px;text-align:left}
@@ -176,7 +185,7 @@
   #s-play.invest .chat{flex:0 0 18vh}
   #s-play.open .chat{flex:0 0 22vh}
   .chat{flex:0 0 32vh;overflow-y:auto;padding:12px 14px;border-top:1px solid var(--line);background:radial-gradient(130% 90% at 50% 0%,#131211,var(--bg) 70%);display:flex;flex-direction:column;gap:10px}
-  #s-play.talk .chat{flex:1 1 auto}
+  #s-play.talk .chat{flex:1 1 auto;min-height:46vh}
   .sys{align-self:center;text-align:center;color:var(--muted);font-size:12px;border:1px dashed var(--line);border-radius:20px;padding:4px 14px;max-width:92%}
   .sys.bc{color:var(--cold);border-color:#2c465a;background:#0e1620}
   .msg{display:flex;gap:8px;max-width:90%}.msg.own{align-self:flex-end;flex-direction:row-reverse}
@@ -2898,13 +2907,30 @@ function renderReveal(p){
    오갈 때마다 모든 기기에서 동시에 일어났다. 서버가 줄마다 통 번호(n)를 준다. */
 const CHAT_KEEP=220;                 // 화면에 남겨두는 최대 줄 수
 let chatDrawn={};                    // 대화창 id -> 마지막으로 그린 줄 번호
+/* 대사에 카드 제목이 나오면 그 줄 밑에 여는 단추를 붙인다.
+   내가 볼 수 있는 카드(전체공개 + 내 손패)만 걸린다 — 남의 손패는 제목이 나와도 못 연다.
+   말과 카드를 오가느라 대화를 놓치는 게 이 판에서 제일 자주 나던 불편이었다. */
+function cardChips(text){
+  if(!text) return "";
+  const seen=new Set(), out=[];
+  const pool=(STATE.revealed||[]).concat(myHand||[]);
+  for(const c of pool){
+    if(!c||!c.title||seen.has(c.id)) continue;
+    if(text.indexOf(c.title)<0) continue;
+    seen.add(c.id);
+    out.push(`<button class="cchip" onclick="openCard('${c.id}')">📄 ${esc(c.title)}</button>`);
+  }
+  return out.length?`<div class="cchips">${out.join("")}</div>`:"";
+}
+
 function chatRow(m){
-  if(m.kind==="system"){ const s=document.createElement("div"); s.className="sys"+(m.broadcast?" bc":""); s.textContent=m.text; return s; }
+  if(m.kind==="system"){ const s=document.createElement("div"); s.className="sys"+(m.broadcast?" bc":"");
+    s.innerHTML=esc(m.text)+cardChips(m.text); return s; }
   if(m.kind==="interrogate"){ const s=document.createElement("div"); s.className="interrog "+(m.outcome||"plain");
     s.innerHTML=`<div class="ig-head">${esc(m.text)}</div><div class="ig-line">${esc(m.line||"")}</div>`; return s; }
   const c=roleById(m.roleId);
   const row=document.createElement("div"); row.className="msg"+(m.roleId===myRoleId?" own":"");
-  row.innerHTML=`<div class="av">${avaHTML(c,"sm")}</div><div><div class="nm" style="color:${c?c.color:"#999"}">${esc(m.speaker)}${m.kind==="human"?'<span class="tag-me">사람</span>':''}</div><div class="bub">${esc(m.text)}</div></div>`;
+  row.innerHTML=`<div class="av">${avaHTML(c,"sm")}</div><div><div class="nm" style="color:${c?c.color:"#999"}">${esc(m.speaker)}${m.kind==="human"?'<span class="tag-me">사람</span>':''}</div><div class="bub">${esc(m.text)}</div>${cardChips(m.text)}</div>`;
   return row;
 }
 function renderChat(boxId){

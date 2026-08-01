@@ -1159,23 +1159,36 @@ def _queue_act(role_id: str, kind: str, **fmt) -> None:
     q.append({"roleId": role_id, "kind": kind, "fmt": fmt})
 
 
-def _public_suspect(exclude: str = "") -> str:
-    """공개된 카드만으로 지금 가장 많이 지목된 사람. 손패는 절대 안 센다."""
+def _public_suspect(exclude: str = "") -> tuple[str, str, str]:
+    """공개된 카드만으로 지금 가장 많이 지목된 사람과, 그 근거 문장. 손패는 절대 안 센다.
+
+    근거는 카드의 hint(손으로 써둔 해석)를 그대로 쓴다 — 모델이 없는 사실을 지어내는 것보다
+    작가가 적어둔 한 줄을 물려주는 편이 훨씬 낫다.
+    """
     fn = getattr(SC, "public_suspicion", None)
     if not fn:
-        return ""
+        return ("", "", "")
     try:
         cnt = fn(list(ROOM["revealed"]))
     except Exception:                           # noqa: BLE001
-        return ""
+        return ("", "", "")
     cnt = {k: v for k, v in cnt.items() if k != exclude and k in ROOM["roles"]}
     if not cnt:
-        return ""
+        return ("", "", "")
     top = max(cnt.values())
     if top < 2:                                 # 한 장 걸린 정도로 사람을 몰면 근거가 얇다
-        return ""
+        return ("", "", "")
     tied = sorted(k for k, v in cnt.items() if v == top)
-    return tied[zlib.crc32(str(len(ROOM["revealed"])).encode()) % len(tied)]
+    who = tied[zlib.crc32(str(len(ROOM["revealed"])).encode()) % len(tied)]
+    pts = getattr(SC, "CARD_POINTS_AT", {}) or {}
+    why = []
+    for cid in ROOM["revealed"]:
+        if who in pts.get(cid, []):
+            c = SC.get_card(cid)
+            if c:
+                why.append(f'「{c["title"]}」 — {(c.get("hint") or "").strip()}')
+    # 모델에는 최근 두 장까지, 대체 대사에는 한 장만 — 두 장을 다 읊으면 대사가 문단이 된다.
+    return (who, " / ".join(why[-2:]), (why[-1] if why else ""))
 
 
 def _act_nudge(kind: str, fmt: dict) -> str:
@@ -1215,7 +1228,10 @@ def _ai_trim_hand(role_id: str) -> list:
         out.append(drop)
         c = SC.get_card(drop)
         if c and ROOM["roles"].get(role_id, {}).get("mode") == "ai":
-            _queue_act(role_id, "reveal", card=c["title"])
+            # 제목만 넘기면 「이거 어떻게들 보세요」밖에 안 나온다. 본문과 손으로 써둔 해석을 같이 준다.
+            _queue_act(role_id, "reveal", card=c["title"],
+                       body=" ".join((c.get("text") or "").split()),
+                       hint=(c.get("hint") or "").strip())
     return out
 
 
@@ -2149,13 +2165,13 @@ def _run_free_talk() -> bool:
     if not rid:
         return False
     with LOCK:
-        target = _public_suspect(exclude=rid)
+        target, why, why1 = _public_suspect(exclude=rid)
         n = len(ROOM["table"])
     # 근거가 쌓였을 때만, 그리고 매번은 아니게. 계속 몰아세우면 대화가 한 방향으로 굳는다.
-    if target and n % 3 == 0:
+    if target and why and n % 3 == 0:
         who = (SC.get_character(target) or {}).get("name", "")
         if who:
-            fmt = {"who": who}
+            fmt = {"who": who, "why": why, "why1": why1}
             _speak(rid, _act_nudge("blame", fmt), _act_fallback("blame", fmt, f"{rid}|{n}"))
             return True
     _speak(rid, _pick_nudge(rid))
