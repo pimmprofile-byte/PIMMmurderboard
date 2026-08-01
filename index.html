@@ -275,6 +275,12 @@
   .trimcard .tt{font-weight:800;color:var(--gold-b);font-size:14.5px;margin-bottom:6px}
   .trimcard .tm{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
   .trimcard .tb{font-size:12.5px;color:#dddcdb;line-height:1.6}
+  /* 끝까지 쥐기 — 다른 목표와 성격이 달라서(카드 한 장에 매여 있다) 결을 구분한다. */
+  .bc-goal.keep{border-style:dashed}
+  .keepnote{margin-top:9px;padding:10px 12px;border:1px dashed var(--line);border-radius:9px;
+    font-size:12.5px;line-height:1.7;color:var(--sub)}
+  .keepnote b{color:var(--gold-b)}
+  .keepnote .q{color:var(--muted);font-weight:400}
   .keeprow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
   .keeprow:last-child{border-bottom:0}
   .keeprow .nm{font-weight:800}
@@ -2690,7 +2696,10 @@ async function showMySheet(){
   });
   // 7) 나의 목표
   slides.push(`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">나의 목표</div><div class="bc-title" style="font-size:18px">이번 밤, 내가 노리는 것</div>
-    <div style="margin-top:12px">${(s.goals||[]).map(g=>`<div class="bc-goal"><span>${esc(g.t)}</span><span class="pt">+${g.p}</span></div>`).join("")}</div></div>`);
+    <div style="margin-top:12px">${(s.goals||[]).map(g=>`<div class="bc-goal"><span>${esc(g.t)}</span><span class="pt">+${g.p}</span></div>`).join("")}
+    ${s.keepGoal?`<div class="bc-goal keep"><span>${esc(s.keepGoal.label)}</span><span class="pt">+${s.keepGoal.points}</span></div>
+      <div class="keepnote">이 내용이 담긴 카드는 <b>${(s.keepGoal.cards||[]).map(c=>esc(c.title)+(c.spot?` <span class="q">${esc(c.locName)} · ${esc(c.spot)}</span>`:"")).join(", ")}</b>.
+        끝까지 <b>내 손패에 있어야</b> 점수가 인정된다. 전체공개되거나 남이 눈치채면 무효다.</div>`:""}</div></div>`);
   $("sheetBox").innerHTML=`<div class="mhead">
       <div class="mh-t"><span class="mh-eb">내 정보</span>
         <h2 style="color:${s.color}">${s.avatar} ${esc(s.name)}</h2>
