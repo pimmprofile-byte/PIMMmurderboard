@@ -152,6 +152,9 @@
   .hmenu button.hm-i .s{margin-left:auto;font-size:11.5px;color:var(--sub)}
   @media (prefers-reduced-motion:reduce){ .hmenu .sheet{animation:none} }
   .chead .rt{font-weight:700;display:flex;align-items:center;gap:6px;font-size:14px}.chead .rt .mk{color:var(--ember)}
+  /* 방 코드 — 창을 여러 개 열어두면 어느 판인지 구분이 안 된다. 네 글자면 충분하다. */
+  .chead .rmid{font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--sub);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:5px;padding:2px 5px}
   .chead .ph{font-size:12px;color:var(--gold)}.chead .me{font-size:12px;color:var(--sub)}.chead .spacer{margin-left:auto}
   .pbanner{padding:9px 14px;border-bottom:1px solid var(--line);background:var(--bg2);font-size:13px;color:#dfe4f4;line-height:1.6}
   .pbanner .g{color:var(--gold);font-size:11px;letter-spacing:.06em;margin-right:6px}
@@ -166,6 +169,9 @@
     color:#bfe0ee;font-family:inherit;font-size:12px;font-weight:600;padding:5px 11px;cursor:pointer;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cchip:active{background:rgba(120,190,220,.22)}
+  /* 아직 공개되지 않은 카드 — 무엇이 언급됐는지만 알리고 내용은 잠근다 */
+  .cchip.lock{background:rgba(255,255,255,.04);border-color:var(--line);color:var(--sub)}
+  .sys.ref{color:#cfe4ee}
   .sys .cchips{justify-content:center}
   .chattab{display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;
     background:var(--bg2);border:0;border-top:1px solid var(--line);color:var(--sub);
@@ -1105,7 +1111,7 @@
 
 <div id="s-play" class="screen">
   <div class="chead">
-    <span class="rt"><span class="pmark">P</span> <span id="pTitle">졸업사진</span></span>
+    <span class="rt"><span class="pmark">P</span> <span id="pTitle">졸업사진</span><span class="rmid" id="pRoom"></span></span>
     <span class="ph" id="pPhase"></span>
     <span class="me" id="pMe"></span>
     <span class="spacer"></span>
@@ -1221,9 +1227,28 @@ async function boot(){
   await poll();
   setInterval(poll,1500);
 }
+/* 방이 갈렸는지 본다. 서버가 방을 새로 열면 roomId가 바뀌는데, 이 기기에는 지난 판의
+   배역과 「어디까지 읽었다」가 그대로 남아 있다. 그 상태로 붙으면 없는 배역을 붙들고
+   화면이 반쯤 비어 보인다 — 중복해서 방을 연 뒤 «이게 아까 그 방인가?»가 되던 자리다. */
+function checkRoomSwitch(){
+  const rid=(STATE&&STATE.roomId)||"";
+  if(!rid) return false;
+  let known=null;
+  try{ known=localStorage.getItem("pmb.room"); }catch(e){}
+  if(known===rid) return false;
+  try{ localStorage.setItem("pmb.room",rid); }catch(e){}
+  if(!known) return false;                 // 이 기기에서 처음 보는 방 — 갈린 게 아니다
+  wipeLocal(true);
+  try{ localStorage.setItem("pmb.room",rid); }catch(e){}   // wipeLocal이 지운 것을 되돌린다
+  banner("새 방이 열렸습니다 — 지난 판 기록을 지우고 배역 선택으로 돌아갑니다.");
+  go("lobby");
+  return true;
+}
+
 async function poll(){
   // clientId를 넘겨야 서버가 isHost를 판별한다(호스트 전용 UI가 여기에 달려 있다)
   try{ STATE=await (await fetch("/api/state?clientId="+encodeURIComponent(clientId)+(gmOn?"&gm=1":""))).json(); }catch(e){ return; }
+  if(checkRoomSwitch()) return;
   // 다른 사람이 시나리오를 바꿨으면(허브에서) 이 기기도 새 시나리오로 갱신
   if(STATE&&SCEN&&STATE.scenarioId&&STATE.scenarioId!==SCEN.scenarioId){ try{ await loadScenario(); }catch(e){} }
   if(myRoleValid()){ try{ myHand=(await (await fetch("/api/hand/"+myRoleId+"?clientId="+encodeURIComponent(clientId))).json()).hand||[]; }catch(e){} }
@@ -1298,6 +1323,7 @@ function applyState(){
     const ph=STATE.phase||{};
     $("s-play").className="screen on "+(ph.key||"");
     // 페이즈 이름에 이미 라운드가 들어 있는 경우가 있다 — 그대로 붙이면 「조사 R2 · 조사 R2」가 된다.
+    $("pRoom").textContent=(STATE.roomId||"").slice(1,5).toUpperCase();
     const rtag=STATE.round?`조사 R${STATE.round}`:"";
     const pn=ph.name||"";
     $("pPhase").textContent=(rtag&&!pn.includes(rtag))?`${pn} · ${rtag}`:pn;
@@ -2731,18 +2757,17 @@ function showShare(){
   const kg=(sheetRole&&sheetRole.keepGoal)?sheetRole.keepGoal:null;   // 시트를 한 번이라도 열었으면 안다
   $("swapBox").innerHTML=`<div class="mhead">
       <div class="mh-t"><span class="mh-eb">내려놓고 이야기한다</span><h2>💬 대화에 올리기</h2>
-        <span class="mh-sub">올린 카드는 전체공개됩니다 — 모두가 내용을 봅니다</span></div>
+        <span class="mh-sub">제목과 나온 자리만 알립니다 — 내용은 나만 봅니다</span></div>
       <button class="mh-x" onclick="closeModal('swapModal')" aria-label="닫기">✕</button></div>
     <div class="mbody">
-      <div class="mlead">고른 카드가 대화창에 올라가고, 누구나 눌러서 내용을 볼 수 있게 됩니다. 되돌리려면 <b>되가져오기</b>를 쓰세요.</div>
-      ${kg?`<div class="swaphint" style="margin-bottom:10px">⚠️ 끝까지 쥐어야 점수가 되는 카드가 있습니다. 그 카드를 올리면 <b>${esc(kg.label)}</b>는 무효가 됩니다.</div>`:""}
+      <div class="mlead"><b>공개가 아닙니다.</b> «이런 걸 하나 쥐고 있다»고 말만 하는 겁니다 — 남들은 제목과 나온 자리만 보고, 내용은 못 봅니다. 카드는 그대로 내 손패에 남습니다.</div>
       <div class="swaprow" id="shareRow">${myHand.map(c=>`<button class="swapcard" data-id="${c.id}" onclick="sharePickOne('${c.id}')">
         <span class="sc-t">${esc(c.title)}</span>
         <span class="sc-w">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""}</span></button>`).join("")}</div>
       <div class="swaphint" id="shareHint">올릴 카드를 고르세요.</div>
     </div>
     <div class="mfoot"><button class="btn" onclick="closeModal('swapModal')">취소</button>
-      <button class="btn ember" id="shareGo" disabled onclick="shareConfirm()">대화에 올리기</button></div>`;
+      <button class="btn" id="shareGo" disabled onclick="shareConfirm()">대화에 올리기</button></div>`;
   $("swapBox").style.setProperty("--mt","var(--cold)");
   openModal("swapModal");
 }
@@ -2750,13 +2775,13 @@ function sharePickOne(id){
   sharePick=id;
   document.querySelectorAll("#shareRow .swapcard").forEach(b=>b.classList.toggle("on",b.dataset.id===id));
   const c=myHand.find(x=>x.id===id);
-  $("shareHint").innerHTML=c?`<b style="color:var(--cold)">${esc(c.title)}</b>을(를) 모두 앞에 내려놓습니다.`:"올릴 카드를 고르세요.";
+  $("shareHint").innerHTML=c?`<b style="color:var(--cold)">${esc(c.title)}</b>을(를) 쥐고 있다고 말합니다. 내용은 알리지 않습니다.`:"올릴 카드를 고르세요.";
   $("shareGo").disabled=!sharePick;
 }
 async function shareConfirm(){
   if(shareBusy||!sharePick) return;
   shareBusy=true; $("shareGo").disabled=true;
-  const r=await post("/api/publish",{cardId:sharePick,roleId:myRoleId,clientId});
+  const r=await post("/api/mention",{cardId:sharePick,roleId:myRoleId,clientId});
   shareBusy=false;
   if(r&&r.error){ banner(r.error); $("shareGo").disabled=false; return; }
   closeModal("swapModal"); closeModal("handModal");
@@ -2953,6 +2978,17 @@ let chatDrawn={};                    // 대화창 id -> 마지막으로 그린 �
 /* 대사에 카드 제목이 나오면 그 줄 밑에 여는 단추를 붙인다.
    내가 볼 수 있는 카드(전체공개 + 내 손패)만 걸린다 — 남의 손패는 제목이 나와도 못 연다.
    말과 카드를 오가느라 대화를 놓치는 게 이 판에서 제일 자주 나던 불편이었다. */
+function canSeeCard(id){
+  return (STATE.revealed||[]).some(c=>c.id===id) || (myHand||[]).some(c=>c.id===id);
+}
+function lockedCard(title){
+  banner(`「${title}」은(는) 아직 공개되지 않았습니다 — 쥐고 있는 사람만 내용을 봅니다.`);
+}
+function chipFor(id,title){
+  return canSeeCard(id)
+    ? `<button class="cchip" onclick="openCard('${id}')">📄 ${esc(title)}</button>`
+    : `<button class="cchip lock" onclick="lockedCard('${esc(title).replace(/'/g,"&#39;")}')">🔒 ${esc(title)}</button>`;
+}
 function cardChips(text){
   if(!text) return "";
   const seen=new Set(), out=[];
@@ -2961,7 +2997,7 @@ function cardChips(text){
     if(!c||!c.title||seen.has(c.id)) continue;
     if(text.indexOf(c.title)<0) continue;
     seen.add(c.id);
-    out.push(`<button class="cchip" onclick="openCard('${c.id}')">📄 ${esc(c.title)}</button>`);
+    out.push(chipFor(c.id,c.title));
   }
   return out.length?`<div class="cchips">${out.join("")}</div>`:"";
 }
@@ -2969,6 +3005,10 @@ function cardChips(text){
 function chatRow(m){
   if(m.kind==="system"){ const s=document.createElement("div"); s.className="sys"+(m.broadcast?" bc":"");
     s.innerHTML=esc(m.text)+cardChips(m.text); return s; }
+  if(m.kind==="cardref"){
+    const s=document.createElement("div"); s.className="sys ref";
+    s.innerHTML=esc(m.text)+`<div class="cchips">${chipFor(m.cardId,m.cardTitle)}</div>`;
+    return s; }
   if(m.kind==="interrogate"){ const s=document.createElement("div"); s.className="interrog "+(m.outcome||"plain");
     s.innerHTML=`<div class="ig-head">${esc(m.text)}</div><div class="ig-line">${esc(m.line||"")}</div>`; return s; }
   const c=roleById(m.roleId);

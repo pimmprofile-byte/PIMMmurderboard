@@ -1929,6 +1929,42 @@ def _advance():
         return {"seq": ROOM["seq"]}
 
 
+class MentionCard(BaseModel):
+    cardId: str
+    roleId: str
+    clientId: str
+
+
+@app.post("/api/mention")
+def mention_card(b: MentionCard):
+    """손패 카드를 대화에 「언급」한다 — 공개가 아니다.
+
+    실제 테이블에서 «내가 본 게 하나 있는데» 하고 운을 떼는 동작이다. 남들은 그 카드가
+    무엇인지(제목·나온 자리)만 알고 내용은 못 본다. 공개는 여전히 별도 행동이라,
+    실수로 눌러 목표 카드를 날리는 일이 없다.
+    """
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId:
+            return JSONResponse({"error": "그 배역으로 말할 수 없습니다"}, status_code=403)
+        if b.cardId not in ROOM["hands"].get(b.roleId, []):
+            return JSONResponse({"error": "손패에 없는 카드입니다"}, status_code=409)
+        c = SC.get_card(b.cardId)
+        if not c:
+            return JSONResponse({"error": "없는 카드"}, status_code=404)
+        who = SC.get_character(b.roleId) or {}
+        nm = who.get("name", b.roleId)
+        where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c["locName"]
+        ROOM["table"].append({
+            "kind": "cardref", "roleId": b.roleId, "speaker": nm,
+            "cardId": c["id"], "cardTitle": c["title"], "cardWhere": where,
+            "text": f'🃏 {nm}{_subj(nm)} [{where}] 「{c["title"]}」{_obj(c["title"])} 손에 쥐고 있다고 말했습니다.',
+        })
+        _ev("mention", roleId=b.roleId, speaker=nm, cardId=c["id"], title=c["title"])
+        bump()
+    return {"ok": True}
+
+
 @app.post("/api/human-say")
 def human_say(b: HumanSay):
     with LOCK:
