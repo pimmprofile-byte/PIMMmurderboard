@@ -166,6 +166,7 @@ def fresh_room() -> dict:
         "gmSeats": {},            # clientId -> 마지막으로 진행석을 켜둔 시각. 방에 진행자가 있는지 판단용
         "podVotes": {},           # roleId -> 태울 사람. 최종 토론에서 사람이 던진 표만 담는다
         "accuse": {},             # roleId -> 지목한 사람. 종막의 범인 지목, 사람 표만
+        "dest": {},               # roleId -> 향한 곳. 종막에서 각자 정하고, 다 정해야 열린다
         "typing": None,
         "events": [],            # 진행 세션이 따라 읽는 사건 기록
         "podOpen": False,        # 특정 카드가 전체공개되면 지도에 탈출 포드가 드러난다
@@ -370,7 +371,9 @@ def public_state() -> dict:
             "usedAP": used,
             "handLimit": _hand_limit(),
             "pod": _pod_state(),
-            "arrest": (_arrest_state() if ROOM["seq"] >= 8 else None),
+            # seq 8은 잠수정 기준의 매직넘버였다. 사건마다 막 수가 달라서 페이즈 키로 본다.
+            "arrest": (_arrest_state() if ph.get("key") in ("final", "reveal") else None),
+            "dest": (_dest_state() if ph.get("key") in ("final", "reveal") else None),
             # 남의 차례일 때 화면이 멈춘 것처럼 보이지 않게, 다음 차례까지 남은 시간을 내려보낸다.
             "turnWait": (round(max(0.0, AUTO_TURN["delay"] - (time.monotonic() - AUTO_TURN["since"])), 1)
                          if (AUTO_TURN["on"] and ROOM.get("turn")
@@ -740,9 +743,12 @@ def state(clientId: str = "", gm: int = 0):
         # 잡은 직후나 새로고침 뒤에 자기 배역을 '참여 중'(남이 맡음)으로 그리곤 했다.
         st["myRole"] = next((rid for rid, r in ROOM["roles"].items()
                              if clientId and r["clientId"] == clientId), None)
-        if st.get("pod") is not None and st["myRole"]:
-            st["pod"]["mine"] = ROOM["podVotes"].get(st["myRole"])
+        if st["myRole"]:
+            # 내가 던진 표만 나에게 돌려준다. 남의 표는 열릴 때까지 아무에게도 안 간다.
+            if st.get("pod") is not None:
+                st["pod"]["mine"] = ROOM["podVotes"].get(st["myRole"])
             st["myAccuse"] = ROOM["accuse"].get(st["myRole"])
+            st["myDest"] = ROOM.get("dest", {}).get(st["myRole"])
         # 내가 볼 수 있는 카드(전체공개 + 내 손패)에 대해서만, 나에게만 붙는 메모를 얹는다.
         if st["myRole"]:
             seen = list(ROOM["revealed"]) + list(ROOM["hands"].get(st["myRole"], []))
@@ -1528,7 +1534,7 @@ def _pod_state() -> dict:
     done = bool(humans) and len(voted) >= len(humans)
     st = {"seats": getattr(SC, "POD_SEATS", 3), "voters": len(humans),
           "voted": len(voted), "done": done, "mine": None}
-    if done:
+    if done and hasattr(SC, "pod_result"):
         merged = dict(getattr(SC, "POD_VOTE_AI", {}) or {})
         for r in humans:                       # 사람 표가 AI 고정표를 덮는다
             merged[r] = ROOM["podVotes"][r]
@@ -1572,6 +1578,70 @@ def pod_vote(b: VoteReq):
     return {"ok": True, "pod": _pod_state()}
 
 
+def _dest_state():
+    """어디로 갈 것인가. 이 기믹이 있는 사건에서만 내려간다(지금은 쉘터).
+
+    포드와 같은 규칙으로 감춘다 — 마지막에 정하는 사람이 남의 선택을 다 보고 고르면
+    그건 선택이 아니라 계산이다. 전원이 정해야 한꺼번에 열린다.
+    """
+    dests = getattr(SC, "DESTINATIONS", None)
+    if not dests:
+        return None
+    humans = _human_roles()
+    picked = ROOM.setdefault("dest", {})   # 시나리오 전환 전에 열린 방에는 이 칸이 없다
+    chosen = [r for r in humans if picked.get(r)]
+    done = bool(humans) and len(chosen) >= len(humans)
+    st = {"options": dests, "voters": len(humans), "chosen": len(chosen), "done": done}
+    if done:
+        merged = dict(getattr(SC, "DEST_AI", {}) or {})
+        for r in humans:                      # 사람의 선택이 AI 기본값을 덮는다
+            merged[r] = picked[r]
+        arrested = ""
+        ar = _arrest_state() or {}
+        if ar.get("caught"):
+            arrested = getattr(SC, "CULPRIT_ID", "")
+        st["result"] = SC.dest_result(merged, arrested)
+        # 검거된 사람은 아무 데도 못 간다. 판정에서는 이미 빠지는데 목록에는 남아서,
+        # 잡혀놓고 태연히 어딘가로 떠난 것처럼 보였다.
+        st["picks"] = {r: d for r, d in merged.items() if r != arrested}
+        st["arrested"] = arrested
+        if hasattr(SC, "ending_for"):
+            st["ending"] = SC.ending_for(st["result"], arrested)
+    return st
+
+
+@app.post("/api/destination")
+def choose_destination(b: VoteReq):
+    """b.targetRoleId에 행선지 id를 담아 보낸다(배역이 아니라 장소다)."""
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "그 배역으로 정할 수 없습니다"}, status_code=403)
+        if not getattr(SC, "DESTINATIONS", None):
+            return JSONResponse({"error": "이 사건에는 행선지가 없습니다"}, status_code=409)
+        if SC.phase_by_seq(ROOM["seq"]).get("key") != "final":
+            return JSONResponse({"error": "행선지는 최후의 선택에서만 정할 수 있습니다"}, status_code=409)
+        if b.targetRoleId not in [d["id"] for d in SC.DESTINATIONS]:
+            return JSONResponse({"error": "없는 행선지"}, status_code=404)
+        first = b.roleId not in ROOM.setdefault("dest", {})
+        ROOM["dest"][b.roleId] = b.targetRoleId
+        nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
+        if first:
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": f"🧭 {nm}{_subj(nm)} 갈 곳을 정했습니다. (어디인지는 전원이 정한 뒤에 열립니다)"})
+        st = _dest_state()
+        if st and st["done"]:
+            byd = {}
+            for rid, d in (st.get("picks") or {}).items():
+                byd.setdefault(d, []).append((SC.get_character(rid) or {}).get("name", rid))
+            label = {d["id"]: d["name"] for d in SC.DESTINATIONS}
+            lines = " · ".join(f"{label.get(d, d)} — {', '.join(ns)}" for d, ns in byd.items())
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": f"🧭 길이 갈립니다. {lines}"})
+        bump()
+    return {"ok": True, "dest": _dest_state()}
+
+
 @app.post("/api/accuse")
 def accuse(b: VoteReq):
     with LOCK:
@@ -1587,7 +1657,15 @@ def accuse(b: VoteReq):
     return {"ok": True}
 
 
-def _arrest_state() -> dict:
+def _arrest_state():
+    """검거 판정. 이 기믹이 없는 사건도 있다 — 잠수정만 표로 범인을 잡는다.
+
+    예전엔 seq 8이 되면 무조건 여기까지 들어와서, arrest_result가 없는 사건은
+    /api/state가 통째로 500을 냈다. 폴링이 죽으니 종막에 들어선 순간 모두의 화면이
+    멈췄다. 없으면 없는 대로 None을 준다.
+    """
+    if not hasattr(SC, "arrest_result"):
+        return None
     humans = _human_roles()
     culprit_human = (ROOM["roles"].get(SC.CULPRIT_ID) or {}).get("mode") == "human"
     res = SC.arrest_result(ROOM["accuse"], humans, culprit_human)

@@ -136,8 +136,10 @@ PHASES = [
      "gm": "마지막입니다. 책상 위의 서류와, 넷이 여기까지 오게 된 진짜 경로. (각자 2장 조사)"},
     {"seq": 7, "key": "talk", "name": "최종 토론", "min": 12, "ap": 0,
      "gm": "범인을 정하고, 보고서를 어떻게 할지 정하고, 각자 어디로 갈지 정합니다. 셋은 서로를 방해합니다."},
-    {"seq": 8, "key": "reveal", "name": "진상 공개", "min": 10, "ap": 0,
-     "gm": "그날 밤의 시각표와 진상을 봅니다."},
+    {"seq": 8, "key": "final", "name": "최후의 선택", "min": 10, "ap": 0,
+     "gm": "각자 범인을 지목하고, 질문지에 답하고, 어디로 갈지 정합니다. 행선지는 서로 모릅니다 — 다 정해야 열립니다."},
+    {"seq": 9, "key": "reveal", "name": "진상 공개", "min": 10, "ap": 0,
+     "gm": "그날 밤의 시각표와 진상을 봅니다. 그리고 넷이 각각 어디로 갔는지를."},
 ]
 
 INTERLUDES = {
@@ -146,6 +148,7 @@ INTERLUDES = {
     5: "…라디오 잡음 사이로 중국어가 섞여 들었다. 한 문장이 반복된다. 무슨 말인지는 아무도 모른다.",
     6: "…물탱크가 절반을 밑돌았다. 넷이 여기서 더 버틸 수 있는 건 아흐레쯤이다.",
     7: "…연기가 짙어졌다. 오늘 안에 정하지 않으면 길이 막힌다.",
+    8: "…바람이 바뀌었다. 지금 나서지 않으면 아무 데도 못 간다.",
 }
 
 CULPRIT_ID = "inhyesuk"
@@ -815,6 +818,25 @@ DEST_AI = {                    # 사람이 안 맡은 배역의 고정 선택
     "nogangil": "stay",
     "inhyesuk": "stay",
 }
+
+
+def arrest_needed(human_n: int, culprit_is_human: bool) -> int:
+    """검거에 필요한 지목 수. AI 표는 세지 않는다 — 판단은 사람 몫이다.
+
+    범인이 사람 쪽이면 범인을 포함한 인원의 과반, AI 쪽이면 사람 전체의 과반이되
+    반은 무조건 넘긴다. 넷짜리 사건이라 숫자가 작고, 한 표가 무겁다.
+    """
+    n = max(1, int(human_n))
+    return (n + 1) // 2 if culprit_is_human else (n // 2) + 1
+
+
+def arrest_result(accuse: dict, human_ids: list, culprit_is_human: bool) -> dict:
+    """accuse: roleId -> 지목한 roleId (사람만). 범인 본인의 표는 세지 않는다."""
+    humans = list(human_ids or [])
+    need = arrest_needed(len(humans), culprit_is_human)
+    hits = [r for r in humans if r != CULPRIT_ID and (accuse or {}).get(r) == CULPRIT_ID]
+    return {"caught": len(hits) >= need, "hits": len(hits), "need": need,
+            "voters": len(humans), "by": hits}
 
 
 def dest_result(choices: dict, arrested: str = "") -> dict:

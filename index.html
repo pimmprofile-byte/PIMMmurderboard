@@ -1376,7 +1376,8 @@ function applyState(){
     $("s-play").className="screen on "+(ph.key||"");
     // 페이즈 이름에 이미 라운드가 들어 있는 경우가 있다 — 그대로 붙이면 「조사 R2 · 조사 R2」가 된다.
     $("pRoom").textContent=(STATE.roomId||"").slice(1,5).toUpperCase();
-    const rtag=STATE.round?`조사 R${STATE.round}`:"";
+    // 라운드 꼬리표는 조사 중일 때만 뜻이 있다. 종막에까지 붙어서 「최후의 선택 · 조사 R3」이 됐다.
+    const rtag=(STATE.round&&ph.key==="invest")?`조사 R${STATE.round}`:"";
     const pn=ph.name||"";
     $("pPhase").textContent=(rtag&&!pn.includes(rtag))?`${pn} · ${rtag}`:pn;
     updateComposer();
@@ -3060,8 +3061,58 @@ function renderFinal(p){
   if(route==="claude"&&finalAnswerRoles().length) h+=claudeHandoffHTML();
   const others=Object.keys(STATE.grades||{}).filter(id=>id!==myRoleId);
   if(others.length){ h+=`<div class="card"><h2>다른 배역 채점</h2>${others.map(id=>gradeRow(id,STATE.grades[id])).join("")}</div>`; }
-  p.innerHTML=h;
+  p.innerHTML=accuseHTML()+destHTML()+h;
 }
+
+/* 범인 지목 — 서버에는 처음부터 있었는데 누를 데가 없었다.
+   내가 누구를 찍었는지만 보이고, 남의 표는 끝까지 안 보인다. */
+function accuseHTML(){
+  const a=STATE.arrest; if(!a||!myRoleValid()) return "";
+  const mine=STATE.myAccuse||"";
+  const opts=(SCEN.characters||[]).filter(c=>c.id!==myRoleId).map(c=>
+    `<button class="btn ${mine===c.id?"ember":""}" onclick="sendAccuse('${c.id}')">${esc(c.name)}</button>`).join("");
+  return `<div class="card"><h2>범인 지목</h2>
+    <div class="panel-note">이 밤을 누가 만들었는지 한 사람만 고르세요. <b>남이 누구를 찍었는지는 보이지 않습니다.</b>
+      ${a.need?` 잡으려면 사람 ${a.voters}명 중 <b>${a.need}표</b>가 같은 사람을 가리켜야 합니다.`:""}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:10px">${opts}</div>
+    <div class="panel-note" style="margin-top:8px">${mine?`내 지목 — <b>${esc(nameOf(mine))}</b> (종막이 끝나기 전까지 바꿀 수 있습니다)`:"아직 고르지 않았습니다."}</div>
+  </div>`;
+}
+async function sendAccuse(target){
+  const r=await post("/api/accuse",{roleId:myRoleId,clientId,targetRoleId:target});
+  if(r&&r.error) banner(r.error); else { banner(""); poll(); }
+}
+
+/* 행선지 — 다 정해야 한꺼번에 열린다. 먼저 정한 사람이 손해 보면 선택이 아니라 눈치싸움이 된다. */
+function destHTML(){
+  const d=STATE.dest; if(!d) return "";
+  const mine=(STATE.myDest||"");
+  if(d.done&&d.picks){
+    const by={}; Object.keys(d.picks).forEach(rid=>{ (by[d.picks[rid]]=by[d.picks[rid]]||[]).push(nameOf(rid)); });
+    return `<div class="card"><h2>길이 갈렸다</h2>`
+      +(d.arrested?`<div class="panel-note" style="margin-bottom:8px">🔒 <b>${esc(nameOf(d.arrested))}</b>는 여기 남습니다 — 아무 데도 가지 못합니다.</div>`:"")
+      +(d.options||[]).filter(o=>by[o.id]).map(o=>
+        `<div class="q-block"><div class="q">${o.icon||""} ${esc(o.name)} — ${by[o.id].map(esc).join(", ")}</div>
+         <div class="b">${esc(o.desc||"")}</div></div>`).join("")
+      +(d.ending?`<div class="q-block"><div class="q">— ${esc(d.ending.name||"")}</div><div class="b">${esc(d.ending.desc||"")}</div></div>`:"")
+      +`</div>`;
+  }
+  if(!myRoleValid()) return `<div class="card"><h2>행선지</h2><div class="panel-note">관전 중 — 사람 배역만 정합니다. (${d.chosen}/${d.voters} 정함)</div></div>`;
+  const opts=(d.options||[]).map(o=>
+    `<button class="btn ${mine===o.id?"ember":""}" style="text-align:left" onclick="sendDest('${o.id}')">
+       <b>${o.icon||""} ${esc(o.name)}</b><div class="panel-note" style="margin-top:3px">${esc(o.desc||"")}</div></button>`).join("");
+  return `<div class="card"><h2>어디로 갈 것인가</h2>
+    <div class="panel-note">여기서 나가면 다시는 못 만납니다. <b>서로의 선택은 전원이 정한 뒤에 한꺼번에 열립니다.</b> (${d.chosen}/${d.voters} 정함)</div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-top:10px">${opts}</div>
+    <div class="panel-note" style="margin-top:8px">${mine?"정했습니다. 열리기 전까지는 바꿀 수 있습니다.":"아직 정하지 않았습니다."}</div>
+  </div>`;
+}
+async function sendDest(id){
+  const r=await post("/api/destination",{roleId:myRoleId,clientId,targetRoleId:id});
+  if(r&&r.error) banner(r.error); else { banner(""); poll(); }
+}
+function nameOf(rid){ const c=roleById(rid); return c?c.name:rid; }
+
 /* 이 기기에 답이 적힌 배역들. 한 기기에서 여럿이 돌려 쓰면 전부 모인다 —
    다른 기기에 있는 답까지 모으려면 서버가 열어줘야 한다(지금은 GM 키가 있어야 읽힌다). */
 function finalAnswerRoles(){
