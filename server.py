@@ -337,6 +337,10 @@ def public_state() -> dict:
             "checked": checked,
             "usedAP": used,
             "handLimit": _hand_limit(),
+            # 남의 차례일 때 화면이 멈춘 것처럼 보이지 않게, 다음 차례까지 남은 시간을 내려보낸다.
+            "turnWait": (round(max(0.0, AUTO_TURN["delay"] - (time.monotonic() - AUTO_TURN["since"])), 1)
+                         if (AUTO_TURN["on"] and ROOM.get("turn")
+                             and (ROOM["roles"].get(ROOM["turn"]) or {}).get("mode") == "ai") else None),
             "keepGoals": _keep_goal_results() if ph.get("key") in ("final", "reveal") else [],
             "overLimit": {rid: max(0, len(cs) - _hand_limit()) for rid, cs in ROOM["hands"].items() if len(cs) > _hand_limit()},
             "turn": ROOM.get("turn") if ap > 0 else None,
@@ -599,7 +603,8 @@ def admin_roles(key: str = "", scenarioId: str = ""):
             "persona": ch.get("persona", ""),
             "isCulprit": cid == culprit, "isHidden": cid == hidden or bool(ch.get("hidden")),
             "past": ch.get("past", []) or [],
-            "sheet": ch.get("sheet", []) or [],
+            "story": ch.get("story", ""),
+            "hide": ch.get("hide", []) or [],
             "sins": ch.get("sins", []) or [],
             "goals": ch.get("goals", []) or [],
             "keepGoal": ({"label": kg.get("label", ""), "points": kg.get("points", 0),
@@ -654,6 +659,13 @@ def state(clientId: str = "", gm: int = 0):
         # 각자 자기 것만 들고 있으면 판이 흩어진 방에서는 아무도 전체를 못 만든다.
         if (st.get("phase") or {}).get("key") == "final":
             st["finalAnswers"] = dict(ROOM["finalAnswers"])
+        # 진상 공개에서는 그날 밤의 시각표와 진상 전문을 푼다. 알리바이가 이 장르의 뼈대라
+        # 마지막에 분 단위로 맞춰 보여줘야 «아, 그래서 그랬구나»가 온다.
+        # 채점이 붙든 안 붙든 이 화면은 비면 안 된다 — 진행자 없이 도는 방이 대부분이다.
+        if (st.get("phase") or {}).get("key") == "reveal":
+            st["timeline"] = list(getattr(SC, "TIMELINE", []) or [])
+            st["truthFull"] = getattr(SC, "TRUTH_FULL", "")
+            st["culpritId"] = getattr(SC, "CULPRIT_ID", "")
         st["hasHost"] = ROOM.get("host") is not None
         # 내가 맡은 배역. 예전엔 클라이언트가 localStorage 기억만 보고 판단해서,
         # 잡은 직후나 새로고침 뒤에 자기 배역을 '참여 중'(남이 맡음)으로 그리곤 했다.
@@ -1914,7 +1926,9 @@ def _chatter_loop():
 # 사람 차례는 절대 대신 넘기지 않는다. 서버는 그 자리에서 기다린다.
 AUTO_TURN = {
     "on": os.getenv("AUTO_TURN", "1") != "0",
-    "delay": float(os.getenv("AUTO_TURN_DELAY", "10")),  # AI에게 차례가 온 뒤 기다리는 초
+    # AI 차례 하나에 10초를 쓰면 다섯이면 한 바퀴가 1분이다. 사람은 그동안 할 게 없다.
+    # 이 시간은 연출이 아니라 순수한 대기라서, 「방금 뭔가 일어났다」가 읽힐 만큼만 남긴다.
+    "delay": float(os.getenv("AUTO_TURN_DELAY", "2.5")),  # AI에게 차례가 온 뒤 기다리는 초
     "key": None,        # 지금 재고 있는 차례 (seq, roleId)
     "seq": None,        # idle 카운터를 리셋할 기준 페이즈
     "since": 0.0,       # 그 차례가 시작된 시각(monotonic)
@@ -1967,7 +1981,8 @@ def _auto_turn_tick():
 
 def _auto_turn_loop():
     while True:
-        time.sleep(2.0)
+        # 틱이 2초면 2.5초짜리 대기가 실제로는 4초가 된다. 다섯 명이면 그 차이가 10초다.
+        time.sleep(0.5)
         try:
             _auto_turn_tick()
         except Exception:                # noqa: BLE001  한 번 실패해도 루프는 계속 돈다

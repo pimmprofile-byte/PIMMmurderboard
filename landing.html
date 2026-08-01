@@ -626,7 +626,8 @@ function admRole(r,d){
   const cardRef=c=>`${ADM_ESC(c.id)}${c.title?" 「"+ADM_ESC(c.title)+"」":""}`;
   const sec=(h,body)=>body?`<h5>${h}</h5>${body}`:"";
   const past=(r.past||[]).map(x=>`<div class="rli"><span class="w">${ADM_ESC(x.w||"")}</span><span>${ADM_ESC(x.t||"")}</span></div>`).join("");
-  const sheet=(r.sheet||[]).map(x=>`<p><b style="color:var(--bone)">${ADM_ESC(x.h||"")}</b><br>${ADM_ESC(x.b||"")}</p>`).join("");
+  const story=(r.story||"").split("\n\n").map(t=>t.trim()).filter(Boolean).map(t=>`<p>${ADM_ESC(t)}</p>`).join("");
+  const hide=(r.hide||[]).map(x=>`<div class="rli"><span>· ${ADM_ESC(x)}</span></div>`).join("");
   const sins=(r.sins||[]).map(x=>`<div class="rli"><span>· ${ADM_ESC(x)}</span></div>`).join("");
   // 점수 총합을 같이 보여준다 — 목표가 몇 점짜리로 흩어져 있는지가 검수의 핵심이라서.
   const gp=(r.goals||[]).reduce((a,g)=>a+(g.p||0),0)+((r.keepGoal&&r.keepGoal.points)||0);
@@ -648,7 +649,8 @@ function admRole(r,d){
     ${sec("겉모습", r.look?`<p>${ADM_ESC(r.look)}</p>`:"")}
     ${sec("말투·성격", r.persona?`<p>${ADM_ESC(r.persona)}</p>`:"")}
     ${sec("내가 아는 옛일", past)}
-    ${sec("롤카드 본문", sheet)}
+    ${sec("나의 이야기", story)}
+    ${sec("들키면 안 되는 것", hide)}
     ${sec("죄목", sins)}
     ${sec(`목표 · 합계 ${gp}점`, goals+keep)}
     ${sec("알고 있는 조사카드", cards)}
