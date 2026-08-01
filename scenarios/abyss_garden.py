@@ -353,6 +353,7 @@ CARDS = [
     {"id": "C3", "loc": "C", "locName": "화물실", "round": 2, "reveal": "private", "bait": False, "requires": "C1",
      "title": "이중바닥의 단말기", "text": "이중바닥을 열자 방수천에 싸인 선장 개인 단말기가 나온다. 사라진 물건이 여기 있었다. 포드 인증코드가 이 안에 있다 — 그리고 선장이 지키려던 다른 것도 함께.", "hint": "사라졌던 단말기다. 여기 숨긴 사람이 범인일 가능성이 크다."},
     {"id": "C4", "loc": "C", "locName": "화물실", "round": 3, "reveal": "obligatory", "bait": False, "requires": "C3",
+     "unlocks": "pod",
      "title": "단말기 속 은폐 문서", "text": "단말기를 열자 포드 인증코드와 함께 9년 전 문서가 쏟아진다. 결함을 알고도 덮은 기록에 서준혁과 한무영이 나란히 서명했다. 그리고 한무영이 '더는 못 덮겠다, 전부 밝히겠다'고 보낸 마지막 메시지 — 그 사흘 뒤 그는 설비 사고로 죽었고 수사는 의문사로 닫혔다. 세상은 아직 그를 성실한 기관사로 기억한다. 코드를 꺼내려면 이 문서가 통째로 함께 나온다.", "hint": "포드 코드를 꺼내려면 이 문서가 같이 나온다. 살려면 공개해야 한다."},
     {"id": "C5", "loc": "C", "locName": "화물실", "round": 2, "reveal": "private", "bait": True,
      "title": "자재함 옆의 작업복", "text": "화물실 진하람의 자재함 옆에 구겨 넣어진 작업복. 소매엔 이중바닥을 헤집은 먼지가 그대로 묻어 있다. 화물장은 자기 것이 아니라고 한다 — 하지만 그의 구역, 그의 자재함 옆이다. 다만 집어 들면 냄새가 먼저 온다. 화물실 냄새가 아니라 기관실 윤활유다.", "hint": "화물장 구역에서 나왔는데 기관실 냄새가 난다. 누구 것인지가 문제."},
@@ -453,52 +454,88 @@ CARD_PAIRS = [
 AP_BY_ROUND = {1: 2, 2: 2, 3: 1}
 
 # ── 침수 대응 퍼즐 ────────────────────────────────────────────────
-# 조사 R2에 들어서면 배가 기운다. 여기서 멈추지 못하면 마지막 조사를 물속에서 한다.
-# 답은 전부 1라운드에 이미 나온 것 안에 있다 — 새 정보를 캐는 문제가 아니라
-# 들어놓고 이어 붙이지 않은 것을 이어 붙이는 문제다.
-# 세 번째 문항이 이 퍼즐의 값이다: 물을 멈추려면 범인이 들고 나간 그 물건이 필요하다.
-# 살아 나가는 길과 사건의 길이 같은 물건에서 만난다.
+# 조사 R2에 들어서면 기관실에서 물이 새는 게 확인된다. 카드에서 답을 캐는 문제가 아니라
+# 배치도를 '보고' 푸는 문제다 — 이 배에서 네모가 아닌 칸은 기관실 하나뿐이고,
+# 그 칸은 격벽이 한 번 꺾여 ㄴ자를 이룬다. 새는 자리는 정확히 그 꺾인 목이다.
+# 그러니 거기 물릴 수 있는 건 같은 각으로 꺾인 물건뿐이다.
+# 실패하면 해치를 밖에서 잠근다 — 기관실은 그 밤 내내 잠긴 채로 남는다.
 CRISIS = {
     "seq": 4,
     "kick": "비상",
-    "title": "배가 기운다",
-    "intro": "선체가 왼쪽으로 기울기 시작했다. 방송은 균형을 재조정하라고 하지만 어디를 어떻게 잡으라는 말은 없다.\n"
-             "지금 흩어지면 각자 다른 칸으로 뛴다. 먼저 맞춰야 한다 — 세 가지만.\n"
-             "새로 조사할 것은 없다. 답은 첫 조사에서 이미 나왔다.",
-    "prompt": "각자 답을 고르세요. 절반 넘게 같은 판단에 닿으면 그리로 몰려가 잡습니다.",
+    "title": "꺾인 목",
+    "intro": "기관실에서 물이 새는 게 확인됐다. 파공은 격벽이 꺾이는 자리, 딱 그 목이다.\n"
+             "임시로 물려 막을 수는 있다. 다만 그 자리에 맞물리려면 물건이 파공과 같은 모양이라야 한다.\n"
+             "배치도를 보면 이 배에서 네모가 아닌 칸은 기관실 하나뿐이다.",
+    "prompt": "지도를 보고 고르세요. 카드를 뒤질 필요 없습니다.",
     "questions": [
-        {"q": "물은 어디로 들어오고 있나?",
-         "opts": ["선체가 찢어진 곳으로", "밸러스트 밸브가 열려 있어서", "펌프가 거꾸로 돌아서"],
+        {"q": "배치도에서 기관실 칸은 어떤 모양인가?",
+         "opts": ["다른 칸과 같은 네모", "한 번 꺾인 ㄴ자", "가운데가 뚫린 ㅁ자"],
          "a": 1,
-         "why": "첫 조사에서 기관실을 본 사람이 말했다 — 침수는 파손 때문이 아니다. 밸브가 활짝 열려 있다."},
-        {"q": "그 밸브를 닫으려면 어디에 서야 하나?",
-         "opts": ["함교 조타석에서 원격으로", "통신실 콘솔에서", "기관실 밸브 앞에서"],
-         "a": 2,
-         "why": "자동 제어로 열린 게 아니라 누가 손으로 돌려서 열었다. 손으로 연 것은 손으로만 닫힌다."},
-        {"q": "닫으려면 무엇이 손에 있어야 하나?",
-         "opts": ["선장 인증코드", "밸브핸들", "기관 마스터 권한"],
+         "why": "여섯 칸 중 다섯은 네모다. 기관실만 격벽이 한 번 꺾여 있다."},
+        {"q": "파공은 그 칸의 어디인가?",
+         "opts": ["꺾이는 안쪽 모서리", "선미 끝 벽", "통신실과 맞닿은 천장"],
+         "a": 0,
+         "why": "물 표시가 찍힌 자리다. 꺾이는 안쪽 모서리 — 두 격벽이 만나 각을 이루는 곳이다."},
+        # 여기가 이 퍼즐이다. 세 물건 중 파공의 각과 맞물리는 건 하나뿐이고,
+        # 지도에서 기관실 칸을 한 번 본 사람이면 그림만 보고 짚을 수 있다.
+        {"q": "그 자리에 물릴 수 있는 물건은?",
+         "opts": ["곧은 쇠파이프 토막", "ㄴ자로 꺾인 배관 이음쇠", "둥근 밸브핸들"],
          "a": 1,
-         "why": "손으로 돌리려면 돌릴 것이 있어야 한다. 그리고 기관실 공구걸이에서는 지금 그것이 한 자루 비어 있다."},
+         "shapes": ["bar", "elbow", "ring"],
+         "why": "곧은 것은 각진 자리에 들뜨고, 둥근 것은 아예 걸리지 않는다."
+                " 꺾인 목에 맞물리는 건 같은 각으로 꺾인 이음쇠뿐이다."},
     ],
-    "success": "여섯 중 절반이 넘는 사람이 같은 곳을 가리켰다. 다들 기관실로 내려가 예비 핸들을 밸브에 물리고 몸으로 눌렀다. "
+    "success": "절반이 넘는 사람이 같은 것을 짚었다. 이음쇠를 꺾인 목에 밀어 넣고 몸으로 눌러 물렸다.\n"
                "쇳소리가 길게 울리다 뚝 끊긴다 — 물이 멈췄다. 발밑에 찬 것은 그대로지만, 더는 올라오지 않는다.",
-    "fail": "판단이 갈렸다. 누구는 함교로 뛰고 누구는 통신실로 갔다. 그 사이에도 물은 올라온다. "
-            "돌아왔을 때 밸브 앞은 이미 무릎까지 잠겨 있었다. 이제 마지막 조사는 물속에서 해야 한다.",
-    # 이 퍼즐을 풀고 나면 남는 물음. 답을 알아도 그 물건이 어디 있는지는 아직 모른다.
-    "after": "잠그는 데 쓴 건 예비 핸들이다. 규격이 안 맞아 겨우 물렸다. "
-             "그런데 제 규격 핸들 한 자루는 여전히 어디에도 없다 — 누가, 언제, 왜 들고 나갔나.",
+    "fail": "물릴 것을 찾다 시간을 버렸다. 물은 기관실 무릎을 넘어 정강이까지 올라왔고,\n"
+            "결국 누군가 기관실 해치를 밖에서 잠갔다. 「저 안은 이제 안 됩니다. 아무도 들어가지 마세요.」\n"
+            "기관실은 그 밤 내내 잠긴 채로 남는다.",
+    "after": "막긴 막았다. 임시다. 그리고 하나가 남는다 —"
+             " 밸러스트 밸브는 여전히 열려 있고, 그건 손으로 돌려야만 닫힌다."
+             " 돌릴 물건이 지금 이 배 어디에도 걸려 있지 않다.",
+    "board": {"leak": "B"},
+    "seals": ["B"],          # 실패하면 잠기는 구역
 }
 
 # 사람이 맡지 않은 배역은 알아서 답한다. 다만 모두가 살고 싶은 건 아니다 —
-# 이 배가 가라앉기를 바라는 두 사람은 알면서 다른 곳을 가리킨다.
+# 이 배가 가라앉기를 바라는 두 사람은 보고도 다른 것을 가리킨다.
 CRISIS_AI = {
     "munjaei":    True,   # 누구보다 살고 싶다
     "kangyunseo": True,
     "oserin":     True,   # 그가 살아 올라가야 기사도 산다
-    "yutaeo":     True,   # 배워둔 게 여기서도 쓰인다
+    "yutaeo":     True,   # 겁이 많은 만큼 그림을 오래 본다
     "jinharam":   False,  # 이대로 다 같이 가라앉는 게 낫다고 믿는다
     "handokyung": False,  # 애초에 자기가 연 밸브다
 }
+
+# 이 밤이 한 번 꺾이는 자리. 물을 잡았는지 놓쳤는지에 따라 사람들의 속이 갈라진다 —
+# 각자 '내 정보 · 지금 할 말'에 한 줄이 더 붙는다.
+CRISIS_AFTERMATH = {
+    "held": {
+        "munjaei":    "막긴 막았어. 임시로. …그러니까 지금부터가 진짜 시간이야. 헛되이 쓰지 말자.",
+        "kangyunseo": "물이 멈췄으면 전력이 좀 남는다는 거잖아요. 회선부터 다시 잡아볼게요.",
+        "oserin":     "다들 침착하셨네요. …그런데 기관장님, 아까 왜 그 자리에서 다른 걸 가리키셨어요?",
+        "yutaeo":     "제가… 제가 그 모양 맞다고 했잖아요. 맞았어요. 다음엔 더 빨리 말할게요.",
+        "jinharam":   "막았다고 다 된 게 아니다. 어차피 임시야. …나갈 자리는 셋이고 우린 여섯이다.",
+        "handokyung": "잘했다. …다만 기관은 내가 본다. 아무도 손대지 마라.",
+    },
+    "sealed": {
+        "munjaei":    "기관실은 끝났어. 그럼 남은 건 시간뿐이야 — 나가는 방법을 지금 정해야 해.",
+        "kangyunseo": "저 안에 통신 계통 단자가 있었는데. 이제 못 봐요. 회선은 영영 못 살리는 건가요.",
+        "oserin":     "저 문을 잠근 게 최선이었을까요. 저는 아직 저 안에서 볼 게 남아 있었는데요.",
+        "yutaeo":     "제가 들은 소리가 저 안에서 났어요. 근데 이제 못 들어가잖아요. …말할 걸 그랬어요.",
+        "jinharam":   "…나가야 한다. 저 문 잠갔으면 이 배는 끝난 거다. 셋은 나갈 수 있어. 셋은.",
+        "handokyung": "해치를 다시 열어야 한다. 물이 한쪽에만 고이면 배가 뒤집힌다 — 고르게 퍼뜨려야 해.",
+    },
+}
+
+
+def crisis_aftermath(cid: str, solved) -> str:
+    """물을 잡은 뒤(혹은 놓친 뒤) 이 인물이 이제부터 하려는 말."""
+    if solved is None:
+        return ""
+    return CRISIS_AFTERMATH["held" if solved else "sealed"].get(cid, "")
+
 
 MEMORY = {
     "munjaei": {
@@ -605,13 +642,21 @@ def private_sheet(cid: str) -> dict | None:
             "hasMap": True, "showPod": cid in POD_KNOWERS}
 
 
-def memory_up_to(cid: str, current_seq: int) -> list[dict]:
+def memory_up_to(cid: str, current_seq: int, crisis_solved=None) -> list[dict]:
+    """토론마다 하나씩. 침수 대응이 끝난 뒤에는 그 결과에 따라 한 줄이 더 붙는다 —
+    같은 밤인데도 물을 잡았을 때와 놓쳤을 때 사람들이 하려는 말이 갈라진다."""
     out = []
     for seq, key in TALK_FRAGMENT_KEY.items():
         if seq <= current_seq:
             frag = MEMORY.get(cid, {}).get(key, "")
             if frag:
                 out.append({"when": next(p["name"] for p in PHASES if p["seq"] == seq), "text": frag})
+    if crisis_solved is not None and current_seq >= CRISIS["seq"]:
+        line = crisis_aftermath(cid, crisis_solved)
+        if line:
+            when = next(p["name"] for p in PHASES if p["seq"] == CRISIS["seq"])
+            out.append({"when": when, "text": line})
+    out.sort(key=lambda m: [p["name"] for p in PHASES].index(m["when"]))
     return out
 
 
@@ -619,7 +664,9 @@ def crisis_public() -> dict | None:
     """퍼즐 문항만. 정답(a)과 근거(why)는 서버에 남긴다."""
     return {"seq": CRISIS["seq"], "kick": CRISIS["kick"], "title": CRISIS["title"],
             "intro": CRISIS["intro"], "prompt": CRISIS["prompt"],
-            "questions": [{"q": q["q"], "opts": list(q["opts"])} for q in CRISIS["questions"]]}
+            "board": CRISIS.get("board", {}),
+            "questions": [{"q": q["q"], "opts": list(q["opts"]), "shapes": list(q.get("shapes") or [])}
+                          for q in CRISIS["questions"]]}
 
 
 def crisis_answer_key() -> list[int]:
@@ -690,13 +737,14 @@ def _hand_cards_text(hand_ids: list[str]) -> str:
 
 
 def build_play_prompt(c: dict, seq: int, revealed_ids: list[str], table: list[dict],
-                      nudge: str = "", hand_ids: list[str] | None = None) -> str:
+                      nudge: str = "", hand_ids: list[str] | None = None,
+                      crisis_solved=None) -> str:
     phase = phase_by_seq(seq)
     others = ", ".join(o["name"] for o in CHARACTERS if o["id"] != c["id"])
     dossier_lines = "\n".join(f"● {s['h']}\n{s['b']}" for s in c["sheet"])
     past_lines = "\n".join(f"- {r['w']}: {r['t']}" for r in c.get("past", [])) or "- (특별히 떠올릴 옛일이 없다.)"
     goals = " / ".join(f"{g['t']}(+{g['p']})" for g in c["goals"])
-    mem = memory_up_to(c["id"], seq)
+    mem = memory_up_to(c["id"], seq, crisis_solved)
     mem_txt = "\n".join(f"- {m['text']} ({m['when']})" for m in mem) or "- (아직 꺼내기로 한 말이 없다.)"
     return f"""너는 캐주얼 머더미스터리 《{TITLE}》에서 '{c['name']}'({c['age']}세) 배역을 맡은 '플레이어'다.
 새벽 3시 10분, 수심 400미터의 심해 잠수정 이원록함. 함교에서 선장 서준혁이 살해된 채 발견됐고, 배는 침수 중이다. 통신은 끊겨 구조 신호가 나가지 않는다. 갇힌 사람들({c['name']}, {others})이 서로를 의심하며 추궁 중이다.

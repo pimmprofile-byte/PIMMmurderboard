@@ -587,6 +587,10 @@
   .mapwrap.live svg .z-done .zone-fill{stroke:#4e8a6a}
   .mapwrap.live svg .z-done .z-cnt{fill:#7ee0a8}
   .mapwrap.live svg .z-empty{opacity:.35}
+  /* 밖에서 잠근 칸 — 누를 수 없고, 그렇게 보여야 한다 */
+  svg .z-sealed .zone-fill{fill:#0d1218;stroke:#3a4a56;stroke-dasharray:5 4}
+  svg .z-sealed .z-name{fill:#5d6b76}
+  svg .z-sealed .z-cnt{fill:#5d6b76;font-size:12px}
 
   /* ── 침수 대응 퍼즐 ─────────────────────────────────────────
      조사 화면 맨 위를 차지한다. 이걸 넘기고 조사부터 하면 안 되니까 눈에 걸리게. */
@@ -597,6 +601,22 @@
   .crisis h3{margin:0 0 8px;font-size:17px;color:#fff}
   .crisis .cr-intro{font-size:13.5px;line-height:1.8;color:#e8d8d4;white-space:pre-line;word-break:keep-all}
   .crisis .cr-prompt{margin-top:11px;font-size:13px;color:var(--gold-b);font-weight:700;word-break:keep-all}
+  /* 퍼즐 판 — 문제에 필요한 것은 전부 이 그림 안에 있다 */
+  .cr-board{margin-top:13px;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#0b1016}
+  .cr-board svg{width:100%;height:auto;display:block}
+  .cr-board #m-floodwater,.cr-board #m-pod,.cr-board #m-doors,.cr-board .trim{display:none}
+  .cr-board .zone-fill{fill:#101c26;stroke:#456b83}
+  .cr-board .z-leak .zone-fill{fill:#12303f;stroke:#5aa6cd;stroke-width:2.4}
+  .cr-key{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;
+    font-size:11.5px;color:var(--muted)}
+  .cr-key span{width:11px;height:11px;border-radius:3px;display:inline-block;margin-left:9px}
+  .cr-key span:first-child{margin-left:0}
+  .cr-key .k-leak{background:#12303f;border:1.5px solid #5aa6cd}
+  /* 물건 실루엣 — 선지를 눈으로 비교하게 만드는 게 이 문제의 전부다 */
+  .cr-opts.shaped .cr-opt{padding:9px 12px}
+  .cr-opt .shp{flex:0 0 auto;width:38px;height:29px;fill:#9fb4c4;transition:fill .13s}
+  .cr-opt.on .shp{fill:var(--ember-b)}
+
   .cr-q{margin-top:13px}
   .cr-q .qt{font-size:14px;font-weight:700;color:#f3ece2;margin-bottom:7px;word-break:keep-all}
   .cr-opts{display:flex;flex-direction:column;gap:6px}
@@ -651,7 +671,7 @@
     overflow:hidden;background:#0b1016}
   .minimap svg{width:100%;height:auto;display:block}
   .minimap text{display:none}
-  .minimap .trim,.minimap #m-floodwater,.minimap #m-pod{display:none}
+  .minimap .trim,.minimap #m-floodwater,.minimap #m-pod,.minimap #m-doors,.minimap #m-leak{display:none}
   .minimap.podon #m-pod{display:block}
   .minimap .hull{stroke:#4c748f;stroke-width:2}
   .minimap .zone-fill{fill:#121d27;stroke:#2b4557;stroke-width:1.2}
@@ -1650,7 +1670,7 @@ function renderPanel(ph){
   }
   else if(k==="invest"){ const ap=ph.ap||0; const u=(STATE.usedAP||{})[myRoleId]||0; const left=Math.max(0,ap-u); const apPill=myRoleValid()?`<span class="pill" style="color:${left>0?'var(--good)':'var(--ember-b)'}">이번 턴 조사 ${u}/${ap}</span>`:"";
     p.innerHTML=`${crisisHTML()}${handWarn()}${turnBar()}<div class="clue-h"><h3>조사 맵</h3>${apPill}<span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">${myRoleValid()?`내 차례에 <b>${ap}장</b>까지 조사할 수 있어요. 카드를 눌러 <b>조사</b>하면 <b>손패(비공개)</b>로 들어옵니다. 알아낸 것은 <b>대화로만</b> 공유하세요(감춰도 됩니다).`:`관전 중 — 배역을 맡아야 조사할 수 있어요.`}</div><div id="cmap"></div>`;
-    renderMap($("cmap")); }
+    renderMap($("cmap")); paintCrisisBoard(); }
   else if(k==="talk"){
     const mineIds=new Set(myHand.map(c=>c.id));
     const pubc=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
@@ -1679,9 +1699,11 @@ function cardState(c){
   const ap=(STATE.phase||{}).ap||0, used=(STATE.usedAP||{})[myRoleId]||0;
   const apOut=myRoleValid()&&ap>0&&used>=ap;
   const turn=STATE.turn, myTurn=(!turn)||turn===myRoleId;
+  if(sealedLoc(c.loc)) return {k:"lock", label:"물에 잠김", act:""};
   if(roundOk&&reqOk&&myRoleValid()&&!apOut&&myTurn) return {k:"open", label:"조사하기", act:`investigate('${c.id}')`};
   return {k:"lock", label:(!roundOk?`조사 R${c.round}에 열림`:(!myRoleValid()?"관전 중":(!myTurn?"내 차례 아님":(apOut?"이번 턴 소진":"먼저 밝혀질 것이 있다")))), act:""};
 }
+function sealedLoc(loc){ return ((STATE&&STATE.sealed)||[]).indexOf(loc)>=0; }
 /* 그 구역에서 지금 볼 수 있는 카드 */
 function zoneCards(loc){
   const cr=STATE.round||0;
@@ -1701,6 +1723,12 @@ function zonePips(loc){
    조사 R2에 들어서면 조사 화면 맨 위에 열린다. 답은 전부 1라운드에 이미 나왔다 —
    새로 캐는 문제가 아니라 들어놓고 이어 붙이지 않은 것을 이어 붙이는 문제다.
    과반이 셋 다 맞히면 물이 멈추고, 갈리면 마지막 조사를 물속에서 한다(조사 한 장 감소). */
+/* 선지에 붙는 물건 그림. 실루엣만 보고 파공의 각과 맞는 걸 고르는 문제라, 글자보다 이게 먼저다. */
+const SHAPE_SVG={
+  bar:  `<svg class="shp" viewBox="0 0 44 34"><rect x="5" y="14" width="34" height="7" rx="2"/></svg>`,
+  elbow:`<svg class="shp" viewBox="0 0 44 34"><path d="M11 5 h7 v14 h15 v7 H11 Z"/></svg>`,
+  ring: `<svg class="shp" viewBox="0 0 44 34"><path d="M22 5 a12 12 0 1 0 .1 0 Z m0 7 a5 5 0 1 1-.1 0 Z"/></svg>`,
+};
 let crAns=[];                                  // 이 기기가 고른 답. 낼 때까지는 화면에만 있다.
 function crPick(i,j){ crAns[i]=j; renderPanel._sig=null; applyState(); }
 async function crSubmit(){
@@ -1716,6 +1744,20 @@ async function crClose(){
   const r=await post("/api/crisis/close",{clientId,key:gmKey});
   if(r&&r.error){ banner(r.error); return; }
   await poll();
+}
+/* 퍼즐 판 — 배치도를 그대로 쓴다. 이름은 남기고(선택지가 이름으로 말한다) 개수 표시만 지운다.
+   물이 드는 칸에 표시를 켜고, 문은 원래 지도에 이미 그려져 있다. */
+async function paintCrisisBoard(){
+  const box=$("crBoard"); if(!box) return;
+  const txt=await loadMapSVG(); const b=$("crBoard"); if(!txt||!b) return;
+  b.innerHTML=miniSVG(txt);
+  const svg=b.querySelector("svg"); if(!svg) return;
+  const leak=((STATE.crisis||{}).board||{}).leak;
+  const lk=svg.querySelector("#m-leak"); if(lk) lk.style.display="block";
+  if(leak){ const g=svg.querySelector(`[data-loc="${leak}"]`); if(g) g.classList.add("z-leak"); }
+  svg.querySelectorAll(".z-cnt").forEach(t=>t.remove());
+  // 퍼즐에서는 선체 안쪽만 크게 본다 — 칸 모양을 눈으로 비교해야 하는 문제라 작으면 안 된다.
+  svg.setAttribute("viewBox","144 78 548 244");
 }
 function crisisHTML(){
   const cr=(STATE&&STATE.crisis)||null; if(!cr) return "";
@@ -1734,13 +1776,16 @@ function crisisHTML(){
   if(!cr.open) return "";
   const mine=(cr.answered||[]).indexOf(myRoleId)>=0;
   const qs=(cr.questions||[]).map((q,i)=>`<div class="cr-q"><div class="qt">${i+1}. ${esc(q.q)}</div>
-    <div class="cr-opts">${q.opts.map((o,j)=>`<button class="cr-opt${crAns[i]===j?" on":""}"
-      ${mine?"disabled":""} onclick="crPick(${i},${j})"><span class="mk"></span>${esc(o)}</button>`).join("")}</div></div>`).join("");
+    <div class="cr-opts${(q.shapes&&q.shapes.length)?" shaped":""}">${q.opts.map((o,j)=>`<button class="cr-opt${crAns[i]===j?" on":""}"
+      ${mine?"disabled":""} onclick="crPick(${i},${j})"><span class="mk"></span>${
+        (q.shapes&&q.shapes.length)?(SHAPE_SVG[q.shapes[j]]||""):""}${esc(o)}</button>`).join("")}</div></div>`).join("");
   const n=(cr.answered||[]).length;
   return `<div class="crisis"><div class="cr-kick">${esc(cr.kick||"비상")}</div>
     <h3>${esc(cr.title)}</h3>
     <div class="cr-intro">${esc(cr.intro||"")}</div>
     <div class="cr-prompt">${esc(cr.prompt||"")}</div>
+    <div class="cr-board" id="crBoard"></div>
+    <div class="cr-key"><span class="k-leak"></span>물이 새는 칸 — 표시된 자리가 파공입니다</div>
     ${myRoleValid()?qs:`<div class="panel-note" style="margin-top:12px">관전 중 — 배역을 맡은 사람만 답합니다.</div>`}
     <div class="cr-foot">
       <span class="tally">${n}/${cr.total} 답함 · ${cr.need}명이 맞히면 잡힙니다${mine?" · 내 답 제출됨":""}</span>
@@ -1791,6 +1836,8 @@ function wireZones(svg){
     const p=zonePips(z.loc);
     const cnt=svg.querySelector("#cnt-"+z.loc);
     if(cnt) cnt.textContent=`${p.done}/${p.cards.length}`;
+    if(sealedLoc(z.loc)){ g.classList.add("z-sealed");
+      if(cnt) cnt.textContent="잠김"; return; }
     if(!p.cards.length){ g.classList.add("z-empty"); return; }
     g.classList.add("z-live");
     if(p.done>=p.cards.length) g.classList.add("z-done");

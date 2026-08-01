@@ -161,6 +161,7 @@ def fresh_room() -> dict:
         "podOpen": False,        # 특정 카드가 전체공개되면 지도에 탈출 포드가 드러난다
         # 침수 대응 퍼즐 — 열림/답안/판정. flood는 0~100, 배치도의 물 높이를 그린다.
         "crisis": {"open": False, "solved": None, "answers": {}},
+        "sealed": [],            # 잠긴 구역 — 침수 대응에 실패하면 기관실이 여기 들어간다
         "flood": 0,
         "turn": None,             # 조사 페이즈 현재 차례 roleId (하이브리드 턴)
         "interrogate": {"seq": None, "used": 0, "votes": [], "bonus": False},  # 토론 페이즈 심층심문 예산
@@ -270,6 +271,9 @@ def _crisis_resolve():
     ok = right * 2 > len(assigned)
     cr["open"] = False
     cr["solved"] = ok
+    if not ok:
+        # 해치를 밖에서 잠갔다. 그 안은 그 밤 내내 못 들어간다.
+        ROOM["sealed"] = sorted(set((ROOM.get("sealed") or []) + list(conf.get("seals") or [])))
     ROOM["table"].append({"kind": "system", "broadcast": True,
                           "text": ("🌊 " + conf["success"]) if ok else ("🌊 " + conf["fail"])})
     if ok and conf.get("after"):
@@ -322,6 +326,7 @@ def public_state() -> dict:
             "podOpen": bool(ROOM.get("podOpen")),
             "flood": int(ROOM.get("flood", 0)),
             "crisis": _crisis_public(),
+            "sealed": list(ROOM.get("sealed") or []),
             "chat": {"on": CHAT["on"], "gap": CHAT["gap"]},
             "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"]},
             "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
@@ -479,6 +484,10 @@ class FinalAnswers(BaseModel):
 def scenario():
     ok, label = backend_ready()
     d = SC.public_scenario()
+    # 클라이언트는 STATE.scenarioId와 이걸 비교해 시나리오가 바뀐 걸 알아챈다.
+    # 여태 어느 시나리오도 이 값을 안 실어 보내서, 호스트가 시나리오를 바꿔도
+    # 다른 기기는 옛 대본을 그대로 들고 있었다.
+    d["scenarioId"] = SC.ID
     d["backend"] = {"ok": ok, "label": label}
     # 조사카드 카탈로그(제목·본문 제외 — 미공개 슬롯 구조만)
     d["cardCatalog"] = [{"id": c["id"], "loc": c["loc"], "locName": c["locName"], "round": c["round"],
@@ -641,7 +650,11 @@ def sheet(role_id: str, clientId: str = ""):
         if r["clientId"] != clientId:  # 엄격: 내가 '맡은' 배역만 (빈자리·AI 배역 비밀 열람 차단)
             return JSONResponse({"error": "자기 배역만 열람할 수 있습니다"}, status_code=403)
     s = SC.private_sheet(role_id)
-    s["fragments"] = SC.memory_up_to(role_id, seq)
+    _cs = (ROOM.get("crisis") or {}).get("solved")
+    try:
+        s["fragments"] = SC.memory_up_to(role_id, seq, _cs)
+    except TypeError:                      # 위기 개념이 없는 시나리오
+        s["fragments"] = SC.memory_up_to(role_id, seq)
     return s
 
 
@@ -944,6 +957,8 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
     cur = current_round(ROOM["seq"])
     if c["round"] > cur:
         return f"아직 조사할 수 없습니다 (조사 R{c['round']}에 열림)"
+    if c.get("loc") in (ROOM.get("sealed") or []) and card_id not in ROOM["hands"].get(role_id, []):
+        return f"{c.get('locName', '그 구역')}은 잠겼습니다 — 물이 차서 들어갈 수 없어요"
     ap = _ap_for(ROOM["seq"])
     already = card_id in ROOM["hands"].get(role_id, [])
     holder = _holder_of(card_id)
@@ -1496,8 +1511,9 @@ def _role_prompt(role_id: str, nudge: str = "") -> str:
         revealed = list(ROOM["revealed"])
         table = list(ROOM["table"])
         hand = list(ROOM["hands"].get(role_id, []))   # 자기 것만. 남의 손패는 넘기지 않는다.
+        cs = (ROOM.get("crisis") or {}).get("solved")
     c = SC.get_character(role_id)
-    for args in ((nudge, hand), (nudge,), ()):        # 아직 손패·nudge를 안 받는 시나리오도 있다
+    for args in ((nudge, hand, cs), (nudge, hand), (nudge,), ()):   # 아직 이걸 안 받는 시나리오도 있다
         try:
             return SC.build_play_prompt(c, seq, revealed, table, *args)
         except TypeError:
