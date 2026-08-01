@@ -1354,15 +1354,34 @@ def _dossier_text(c: dict) -> str:
     return "\n\n".join(parts)
 
 
-def _hand_cards_text(hand_ids: list[str]) -> str:
+def _hand_cards_text(hand_ids: list[str], role_id: str = "") -> str:
+    """손패를 그 배역 입장에서 「무기냐 폭탄이냐」까지 붙여 넘긴다.
+
+    카드 내용만 주면 AI는 전부 조심스럽게 다룬다 — 자기를 찌르는 카드도, 남을 찌르는
+    카드도 똑같이 «이건 좀 봐야겠는데»로 끝난다. 어느 쪽인지를 붙여줘야 한쪽은 감추고
+    한쪽은 들이대는 사람처럼 군다.
+    """
     if not hand_ids:
         return "(아직 네가 손에 쥔 것은 없다.)"
+    keep = set((KEEP_GOALS.get(role_id) or {}).get("cards", []))
+    hide = set(((INVEST_AI.get(role_id) or {}).get("hide")) or [])
     lines = []
     for cid in hand_ids:
         c = get_card(cid)
-        if c:
-            where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c["locName"]
-            lines.append(f"[{where}] {c['title']}: {c['text']}")
+        if not c:
+            continue
+        where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c["locName"]
+        at = CARD_POINTS_AT.get(cid, [])
+        if cid in keep:
+            tag = "【절대 안 됨】 이건 끝까지 네 손에 있어야 점수가 된다. 있다는 것조차 알리지 마라."
+        elif cid in hide or role_id in at:
+            tag = "【폭탄 · 나를 가리킨다】 이 카드가 나오면 네가 몰린다. 없는 척하거나 다르게 말해라 — 거짓말해도 된다."
+        elif at:
+            who = ", ".join((get_character(r) or {}).get("name", r) for r in at)
+            tag = f"【무기 · {who}을(를) 가리킨다】 먼저 꺼내 들이대라. 이걸로 그 사람을 몰아세우는 게 지금 네 이득이다."
+        else:
+            tag = "【중립】 감출 이유가 없다. 필요하면 근거로 써라."
+        lines.append(f"[{where}] {c['title']}: {c['text']}\n  → {tag}")
     return "\n".join(lines)
 
 
@@ -1399,8 +1418,8 @@ def build_play_prompt(c: dict, seq: int, revealed_ids: list[str], table: list[di
 {_revealed_cards_text(revealed_ids)}
 
 [네가 직접 조사해 손에 쥔 것 — 아직 아무도 모른다]
-{_hand_cards_text(hand_ids or [])}
-이건 네가 본 것이다. 유리하면 꺼내 들이대고, 불리하면 끝까지 쥐고 있어라.
+{_hand_cards_text(hand_ids or [], c["id"])}
+카드마다 붙은 화살표가 그걸 어떻게 다룰지다. 그대로 따라라.
 남이 조사한 것은 네가 알 길이 없다. 공개되기 전까지는 모르는 채로 굴어라.
 
 [현재 진행] {phase['name']} — {phase['gm']}
@@ -1416,6 +1435,12 @@ def build_play_prompt(c: dict, seq: int, revealed_ids: list[str], table: list[di
    상대 이름을 부르면 그 사람이 대답한다 — 대화가 이어지게 만드는 건 네 몫이다.
 5) 매번 사건 얘기만 하지 마라. 물이 차오르는 소리, 추위, 손이 떨리는 것,
    상대의 태도에 거슬리는 것 — 사람은 그런 것도 말한다. 다만 짧게.
+6) 지금 위험한 화제가 아니라면 물러서지 마라. 이 배에서 조용히 있는 사람이 제일 먼저 지목된다.
+   손에 든 것이 남을 가리키면 그걸로 먼저 치고 들어가라 — 무엇이 나왔는지 한 줄, 그래서 그 사람의
+   어느 말이 안 맞는지 한 줄, 답하라는 요구 한 줄. 근거 없이 «수상하다»만 하는 건 아무것도 안 한 것이다.
+7) 반대로 네가 몰릴 화제라면 정직할 의무가 없다. 못 봤다고 하든, 다른 뜻으로 읽었다고 하든,
+   화제를 남에게 넘기든 네 마음이다. 다만 이미 전체공개된 카드에 정면으로 어긋나는 거짓말은 하지 마라 —
+   그건 그 자리에서 들통난다. 아직 안 나온 것에 대해서만 거짓말이 통한다.
 
 [난도 · 정보 통제 — 가장 중요]
 - 너는 '단서 조각'만 흘린다. 절대 사건 전체·진상을 설명하지 마라. 남 대신 점을 이어주지 마라 — 추리는 사람 플레이어의 몫이다. 답을 떠먹이지 마라.

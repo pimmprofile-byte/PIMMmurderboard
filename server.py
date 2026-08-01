@@ -499,6 +499,7 @@ class SelectScenario(BaseModel):
     scenarioId: str
     key: str = ""
     clientId: str = ""
+    force: bool = False        # 진행 중인 방을 일부러 갈아엎을 때만
 
 
 class CrisisAnswer(BaseModel):
@@ -669,6 +670,19 @@ def select_scenario(b: SelectScenario):
         return JSONResponse({"error": "host"}, status_code=403)
     if b.scenarioId not in scenarios.ids():
         return JSONResponse({"error": "없는 시나리오"}, status_code=400)
+    with LOCK:
+        same = (b.scenarioId == SC.ID)
+        running = bool(ROOM.get("started"))
+    # 같은 사건을 다시 고른 것뿐이면 방을 건드리지 않는다. 예전엔 이것도 초기화라
+    # 호스트가 뒤로 가기로 로비에 들렀다 돌아오기만 해도 판이 통째로 날아갔다.
+    if same:
+        return {"ok": True, "active": SC.ID, "unchanged": True}
+    # 진행 중인 방은 사건을 못 바꾼다. 바꾸면 배역·손패·공개카드가 전부 사라진다 —
+    # 다른 기기에서 링크를 다시 연 사람에게 그 권한이 있어선 안 된다.
+    # _agent_ok는 AGENT_KEY가 안 걸린 서버에서 빈 키에도 True를 준다 — 여기서 쓰면 가드가 없는 것과 같다.
+    if running and not b.force:
+        return JSONResponse({"error": "진행 중인 게임이 있습니다 — 사건을 바꾸려면 방을 새로 여세요"},
+                            status_code=409)
     use_scenario(b.scenarioId)  # 방을 새 시나리오로 초기화(호스트는 유지)
     return {"ok": True, "active": SC.ID}
 

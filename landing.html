@@ -388,9 +388,15 @@ async function claimHost(){
   }catch(e){ return {isHost:false}; }
 }
 async function joinGame(){
-  // 내가 고른 사건이 있고, 아직 아무도 호스트가 아니면(=사실상 첫 입장) 그걸로 실제 적용한다.
-  // 이미 다른 호스트가 진행 중이면 건드리지 않고 그냥 참가자로 들어간다(진행 중인 게임을 리셋하면 안 되니까).
-  if(me.pick){
+  // 이미 판이 돌고 있으면 사건을 건드리지 않는다. 호스트 본인이 뒤로 가기로 여기 들렀다
+  // 돌아오는 경우가 흔한데(특히 모바일), 예전엔 그때마다 apiSelect가 방을 초기화해서
+  // 배역·손패·공개카드가 전부 사라지고 다른 사건으로 넘어가 있었다.
+  let running=false;
+  try{
+    const st=await (await fetch("/api/state?clientId="+encodeURIComponent(clientId))).json();
+    running=!!(st&&st.started);
+  }catch(e){}
+  if(me.pick && !running){
     const claim=await claimHost();
     if(claim&&claim.isHost) await apiSelect(me.pick);
   }
