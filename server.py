@@ -1028,6 +1028,12 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
     if card_id not in h:
         h.append(card_id)
         ROOM["checkedRound"].setdefault(role_id, {})[card_id] = cur
+        # 카드의 제목과 본문은 그 배역의 손패다. 하지만 '누가 어디를 봤는가'는 공개 정보고,
+        # 마킹이 존재하는 이유가 바로 그것이다 — 그 자체가 추리 재료다.
+        nm = (SC.get_character(role_id) or {}).get("name", role_id)
+        where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c.get("locName", "")
+        ROOM["table"].append({"kind": "system", "broadcast": True,
+                              "text": f'🔎 {nm}{_subj(nm)} 〈{where}〉{_obj(where)} 살펴봤습니다.'})
         bump()
     return None
 
@@ -1108,11 +1114,7 @@ def _ai_take_turn(rid: str) -> list:
     """
     remaining = _ap_for(ROOM["seq"]) - _round_checks(rid, current_round(ROOM["seq"]))
     picks = _ai_pick(rid, remaining)
-    if picks:
-        # 무엇을 봤는지는 그 배역의 손패다 — 테이블에는 '움직였다'는 사실만 남긴다.
-        nm = (SC.get_character(rid) or {}).get("name", rid)
-        ROOM["table"].append({"kind": "system", "broadcast": True,
-                              "text": f"🔎 {nm}{_subj(nm)} 어딘가를 살펴봤습니다. (조사 {len(picks)}장)"})
+    # 어디를 살펴봤는지는 _try_investigate가 한 장씩 테이블에 남긴다(사람이든 AI든 같은 길).
     if ROOM.get("turn") == rid:
         _advance_turn()
     bump()

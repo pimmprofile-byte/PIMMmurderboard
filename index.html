@@ -59,6 +59,14 @@
   .btn.primary:hover{filter:brightness(1.08);color:#1a1509}
   .btn.quiet{background:none;border-color:transparent;color:var(--sub)}
   .btn.quiet:hover{border-color:var(--line);color:var(--ink)}
+  /* 읽을 게 새로 생겼다는 신호. 처음 하는 사람은 자기 시트가 있는 줄도 모른다. */
+  .btn.fresh{border-color:var(--gold);color:var(--gold-b);
+    background:linear-gradient(180deg,rgba(196,158,74,.16),rgba(196,158,74,.05));
+    animation:freshpulse 1.9s ease-in-out infinite}
+  .btn.fresh::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--ember);margin-left:6px;vertical-align:middle;box-shadow:0 0 0 2px rgba(160,40,30,.28)}
+  @keyframes freshpulse{0%,100%{box-shadow:0 0 0 0 rgba(196,158,74,0)}50%{box-shadow:0 0 0 3px rgba(196,158,74,.16)}}
+  @media (prefers-reduced-motion:reduce){.btn.fresh{animation:none}}
   .btn:disabled{opacity:.4;cursor:not-allowed}
   .pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);color:var(--sub)}
   .pill.bad{color:var(--bad);border-color:#5a2c2c}
@@ -138,7 +146,10 @@
   .chattab .ct-n{color:var(--muted);font-variant-numeric:tabular-nums;flex:1}
   .chattab .ct-a{transition:transform .18s ease}
   #s-play.chatoff .chattab .ct-a{transform:rotate(-90deg)}
-  #s-play.chatoff .chat{display:none}
+  #s-play.chatoff .chat,#s-play.chatoff .aicall{display:none}
+  /* 접었는데 대화창이 앉아 있던 자리가 빈 채로 남으면 «대사만 사라진» 꼴이 된다.
+     토론·진상 페이즈는 패널을 30vh로 묶어두므로, 접는 순간 그 족쇄를 풀어 패널이 자리를 물려받게 한다. */
+  #s-play.chatoff .ppanel,#s-play.chatoff.talk .ppanel,#s-play.chatoff.reveal .ppanel{flex:1 1 auto;max-height:none}
 
   /* 조사 페이즈엔 지도가 주인공이다 — 대화는 한 줄 눈치만 보이게 줄인다.
      32vh를 그대로 두면 폰에서 지도가 60px밖에 못 받는다. */
@@ -184,6 +195,22 @@
 
   /* 오프닝/토론 패널 */
   .intro{white-space:pre-line;font-size:15px;line-height:1.95;color:#dddcdb;border-left:2px solid var(--ember);padding-left:14px}
+
+  /* 알리바이 대화록 — 조서를 옮겨 적은 결. 시각은 오른쪽에 붙여 표처럼 훑히게 한다. */
+  .alb-list{display:flex;flex-direction:column;gap:2px}
+  .alb{display:flex;gap:11px;padding:11px 2px;border-top:1px solid var(--line)}
+  .alb:first-child{border-top:0}
+  .alb-w{flex:0 0 30px;height:30px;border-radius:50%;border:1px solid var(--line);
+    display:grid;place-items:center;font-size:15px;background:var(--bg2)}
+  .alb-b{flex:1 1 auto;min-width:0}
+  .alb-h{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-bottom:4px}
+  .alb-h b{font-size:13.5px}
+  .alb-j{font-size:11px;color:var(--muted)}
+  .alb-t{margin-left:auto;font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;
+    border:1px solid var(--line);border-radius:20px;padding:1px 8px;white-space:nowrap}
+  .alb-l{font-size:13.5px;line-height:1.75;color:#d8d6d4}
+  .alb-n{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);
+    font-size:12.5px;line-height:1.7;color:var(--muted)}
   .panel-note{color:var(--sub);font-size:13.5px;line-height:1.8}
 
   /* 카드맵 */
@@ -900,6 +927,7 @@ let SCEN=null, STATE=null, myHand=[], scr="lobby", lastRev=-1, gradeBusy=false;
 let clientId=localStorage.getItem("pmb.cid");
 if(!clientId){clientId="c"+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);localStorage.setItem("pmb.cid",clientId);}
 let myRoleId=localStorage.getItem("pmb.role")||null;
+let sheetSeenSeq=null;   // 첫 폴링에서 배역에 맞춰 읽어들인다
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -972,12 +1000,14 @@ function applyState(){
   if(!STATE)return;
   // 내 배역은 서버 말을 따른다. 로컬 기억과 어긋나면 서버가 맞다 —
   // 잡은 직후 폴링이 먼저 오면 내 카드가 '참여 중'으로 보이던 원인이었다.
+  const wasRole=myRoleId;
   if(STATE.myRole!==undefined){
     if(STATE.myRole){ if(myRoleId!==STATE.myRole){ myRoleId=STATE.myRole; localStorage.setItem("pmb.role",myRoleId); } }
     else if(myRoleId){ myRoleId=null; localStorage.removeItem("pmb.role"); }
   } else if(myRoleId&&(!STATE.roles[myRoleId]||STATE.roles[myRoleId].mode!=="human")){
     myRoleId=null; localStorage.removeItem("pmb.role");
   }
+  if(myRoleId!==wasRole||sheetSeenSeq===null) loadSheetSeen();   // 배역이 바뀌면 '어디까지 읽었나'도 그 배역 것으로
   applyGM();   // 배역이 바뀌면 진행석 쪽 '내 자리' 버튼도 따라 바뀐다
   // 오프닝은 화면에도 배역에도 매이지 않는다.
   // 예전엔 플레이 화면의 오프닝 패널이 그릴 때만 열렸는데, 거기로 넘어가는 조건에
@@ -1713,6 +1743,29 @@ async function resetRoom(){
   banner(""); await poll(); go("lobby");
 }
 
+/* 알리바이 대화록 — 오프닝이 끝난 직후, «그 시간에 어디 있었는지»를 한 바퀴 돌린 기록.
+   여기 적힌 건 전부 주장이다. 조사 카드가 이 줄들을 하나씩 무너뜨린다. */
+function alibiHTML(){
+  const log=(SCEN&&SCEN.alibiLog)||[];
+  if(!log.length) return "";
+  const rows=log.map(a=>{
+    const c=roleById(a.who)||{};
+    const col=c.color||"var(--gold)";
+    return `<div class="alb">
+      <div class="alb-w" style="border-color:${col}">${esc(c.avatar||"·")}</div>
+      <div class="alb-b">
+        <div class="alb-h"><b style="color:${col}">${esc(c.name||a.who)}</b>
+          <span class="alb-j">${esc(c.job||"")}</span>
+          <span class="alb-t">${esc(a.t||"")}</span></div>
+        <div class="alb-l">${esc(a.line||"")}</div>
+      </div></div>`;
+  }).join("");
+  const note=SCEN.alibiNote?`<div class="alb-n">${esc(SCEN.alibiNote)}</div>`:"";
+  return `<div class="card"><h2>사건 당시 · 알리바이 대화록</h2>
+    <div class="panel-note" style="margin-bottom:10px">사망 추정 2시 10~35분. 각자가 한 말을 그대로 옮긴 것이다 — 참인지는 아무도 모른다.</div>
+    <div class="alb-list">${rows}</div>${note}</div>`;
+}
+
 /* 페이즈 패널 */
 function renderPanel(ph){
   const p=$("ppanel"); const k=ph.key;
@@ -1727,6 +1780,7 @@ function renderPanel(ph){
     const introHTML=chunks.map((c,i)=>`<p class="cine-p" style="animation-delay:${(i*0.9+0.15).toFixed(2)}s">${esc(c).replace(/\n/g,"<br>")}</p>`).join("");
     p.innerHTML=`<div class="card"><div class="clue-h"><h2 style="margin:0">사건 · 공통지문</h2><button class="btn sm" onclick="replayVN()">🎬 오프닝 보기</button></div><div class="cine-intro">${introHTML}</div></div>
     <div class="card"><h2>피해자</h2><div class="panel-note">${esc(SCEN.victim||"")}</div></div>
+    ${alibiHTML()}
     <div class="panel-note" style="text-align:center">각자 <b>내 정보</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`;
     // 오프닝은 GM 보드(호스트 화면)에서만 재생한다 — 16:9 큰 화면에 띄워 다 같이 보는 연출이라,
     // 각자 폰에서 따로 돌면 소리가 겹치고 진행이 흩어진다.
@@ -2169,6 +2223,9 @@ function updateComposer(){
   const ok=myRoleValid(); const c=ok?roleById(myRoleId):null;
   $("melab").textContent=ok?("나: "+c.name):"관전 중"; $("melab").style.color=ok?c.color:"var(--sub)";
   $("input").disabled=!ok; $("sendBtn").disabled=!ok; $("sheetBtn").style.display=ok?"":"none";
+  // 페이즈가 넘어갈 때마다 시트에는 읽을 게 붙는다(옛일·기억의 파편·이번 페이즈에 할 말).
+  // 그걸 아직 안 열어봤으면 버튼을 물들여 «여기 열어보세요»를 보이게 한다.
+  $("sheetBtn").classList.toggle("fresh", ok && sheetSeenSeq < (STATE&&STATE.seq!=null?STATE.seq:0));
   $("handBtn").style.display=ok?"":"none"; $("handN").textContent=myHand.length+"/"+handLimit();
   $("handBtn").classList.toggle("ember",overLimit()>0);
   $("input").placeholder=ok?"배역이 되어 말하세요…  (Enter 전송)":"로비에서 배역을 골라야 말할 수 있어요";
@@ -2216,8 +2273,21 @@ function wireSwipe(box){
 }
 
 /* 내 정보(배역 시트) — 실물카드처럼 스와이프로 넘겨보기(큰 글씨) */
+/* 어느 페이즈까지의 시트를 읽었는지. 배역별로 따로 센다 — 배역을 바꾸면 처음부터 다시 새 것이다. */
+function loadSheetSeen(){
+  try{ sheetSeenSeq=parseInt(localStorage.getItem("pmb.sheetseen."+(myRoleId||""))||"-1",10); }catch(e){ sheetSeenSeq=-1; }
+  if(isNaN(sheetSeenSeq)) sheetSeenSeq=-1;
+}
+function markSheetSeen(){
+  const s=(STATE&&STATE.seq!=null)?STATE.seq:0;
+  if(s<=sheetSeenSeq) return;
+  sheetSeenSeq=s;
+  try{ localStorage.setItem("pmb.sheetseen."+(myRoleId||""),String(s)); }catch(e){}
+  $("sheetBtn").classList.remove("fresh");
+}
 async function showMySheet(){
   if(!myRoleValid())return;
+  markSheetSeen();
   let s; try{ s=await (await fetch("/api/sheet/"+myRoleId+"?clientId="+encodeURIComponent(clientId))).json(); }catch(e){ banner("큐카드 로드 실패"); return; }
   if(s.error){ banner(s.error); return; }
   const curPhase=(STATE&&STATE.phase)?STATE.phase.name:"";
