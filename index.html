@@ -666,23 +666,49 @@
     #vn .vn-line.typing::after{animation:none}
   }
 
-  /* ── 조사 대시보드 ──────────────────────────────────────────
-     본문은 '누가 어디를 봤나'만 보여주는 현황판이다.
-     실제 조사는 지도를 열고 그 구역 안으로 들어가서 한다. */
-  .dashhead{display:flex;align-items:baseline;gap:9px;margin:18px 0 8px;font-size:13.5px;font-weight:700}
+  /* ── 조사 현황판 ────────────────────────────────────────────
+     구역마다 한 줄에 점과 얼굴만 찍어두던 판이었다 — 몇 장 중 몇 장인지는 보였지만
+     '누가 무엇을 쥐었나'는 그 줄을 열어봐야 알았고, 그게 이 화면의 존재 이유였다.
+     조사카드를 전부 펼쳐놓고 카드마다 임자를 붙인다(관리자 훑어보기와 같은 결).
+     남의 손패는 임자만 보인다 — 제목·본문은 전체공개된 것만 나온다. */
+  .dashhead{display:flex;align-items:baseline;gap:9px;margin:18px 0 8px;font-size:13.5px;font-weight:700;flex-wrap:wrap}
   .dashhead .dh-note{font-size:12px;color:var(--muted);font-weight:400}
-  .dash{display:flex;flex-direction:column;gap:6px}
-  .zrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
-    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 12px;
-    font-family:inherit;color:var(--ink);font-size:13.5px;transition:.13s}
-  .zrow:hover{border-color:var(--gold)}
-  .zrow .zi{font-size:16px}
-  .zrow .zn{font-weight:700;flex:1}
-  .zrow .zhc{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
-    font-variant-numeric:tabular-nums}
-  .zrow .zwho{display:flex;gap:2px}
-  .zrow .zwho i{font-style:normal;font-size:13px}
-  .zrow .zgo{color:var(--muted)}
+  .dash{display:flex;flex-direction:column;gap:14px}
+  .dz-h{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;cursor:pointer;
+    background:none;border:0;padding:0 0 7px;margin-bottom:8px;border-bottom:1px solid var(--line);
+    font-family:inherit;color:var(--ink);font-size:14px;font-weight:700}
+  .dz-h:hover{color:var(--gold-b)}
+  .dz-h .n{margin-left:auto;font-size:11.5px;font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
+  .dz-h .go{font-size:12px;color:var(--muted)}
+  /* 칸은 제 내용만큼만 높다 — 늘려 맞추면 전체공개 한 장 때문에 한 줄이 통째로 길어진다 */
+  .dcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,214px),1fr));gap:8px;align-items:start}
+  .dc{--wc:var(--line);display:flex;flex-direction:column;gap:5px;text-align:left;font-family:inherit;
+    background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--wc);
+    border-radius:10px;padding:10px 12px;color:var(--ink);transition:.13s}
+  .dc.act{cursor:pointer}
+  .dc.act:hover{border-color:var(--wc)}
+  .dc .sp{font-size:12.5px;font-weight:700;word-break:keep-all;line-height:1.45}
+  .dc .ti{font-size:13.5px;font-weight:800;color:var(--gold-b);word-break:keep-all;line-height:1.45}
+  /* 본문은 네 줄까지만 — 여기는 훑는 판이고, 전문은 카드를 눌러 읽는다.
+     한 장이 길어지면 그 줄의 다른 칸까지 통째로 늘어나 판이 성겨진다. */
+  .dc .tx{font-size:12px;color:var(--sub);line-height:1.65;word-break:keep-all;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
+  .dc .st{font-size:11.5px;color:var(--muted)}
+  .dc .wh{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--wc);font-weight:700}
+  .dc .wh i{font-style:normal;font-size:14px}
+  /* 아직 아무도 안 본 카드 — 판에 있다는 것만 알린다 */
+  .dc.none{background:var(--bg2);border-style:dashed}
+  .dc.none .sp{color:var(--sub);font-weight:400}
+  /* 누가 쥐고 있다 — 그 사람의 키컬러가 카드 옆구리에 선다 */
+  .dc.held{background:var(--panel2)}
+  .dc.mine{--wc:var(--gold);background:linear-gradient(160deg,#221c14,#151413)}
+  /* 전체공개 — 제목도 본문도 나온다. 여기만 읽을 것이 있다. */
+  .dc.pub{--wc:var(--cold);background:linear-gradient(160deg,#111a22,#0e1620)}
+  .dc.pub .ti{color:var(--cold)}
+  .dc.lock{opacity:.5}
+  .dash-lg{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:10px}
+  .dash-lg span{display:inline-flex;align-items:center;gap:5px}
+  .dash-lg b{width:9px;height:9px;border-radius:2px;display:inline-block;background:var(--line)}
   /* 구역 점 — 시나리오 선택창 사람표시와 같은 읽는 법 */
   .zpips{display:flex;gap:3px}
   .zp{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18)}
@@ -1446,10 +1472,12 @@ function openZone(loc){
   const z=((SCEN.map)||[]).find(x=>x.loc===loc)||{loc,name:loc};
   const cards=zoneCards(loc);
   const done=cards.filter(c=>{ const k=cardState(c).k; return k!=="open"&&k!=="lock"; }).length;
-  const list=cards.map(c=>{ const st=cardState(c);
+  const list=cards.map(c=>{ const st=cardState(c); const full=cardOpen(c.id);
+    // 제목은 카탈로그가 아니라 실제로 열린 판본에서 가져온다 — 카탈로그에는 제목이 없어서
+    // 여태 내 손패·전체공개 카드의 이름 자리가 빈 채로 떴다.
     return `<div class="zcard ${st.k}"${st.who?` style="--tc:${st.who.color}"`:""}>
       <div class="zc-spot">${esc(c.spot||z.name||"")}</div>
-      <div class="zc-body">${st.k==="pub"||st.k==="hand"?`<b>${esc(c.title)}</b>`:`<span class="zc-q">아직 보지 않은 곳</span>`}</div>
+      <div class="zc-body">${full?`<b>${esc(full.title)}</b>`:`<span class="zc-q">아직 보지 않은 곳</span>`}</div>
       ${st.act?`<button class="btn ${st.k==="open"?"primary":"quiet"} sm" onclick="${st.act}">${st.label}</button>`
               :`<span class="zc-off">${esc(st.label)}</span>`}</div>`; }).join("");
   $("mapBox").innerHTML=`<div class="mhead">
@@ -2067,18 +2095,55 @@ function wireZones(svg){
     g.addEventListener("click",()=>openZone(z.loc));
   });
 }
+/* 제목·본문이 실린 판본. SCEN.cardCatalog 에는 슬롯 구조만 오고 제목·본문은 아예 실려
+   오지 않는다(그게 서버가 스포일러를 막는 방식이다). 그래서 읽을 것이 있는 카드는
+   전체공개된 것과 내 손패뿐이고, 그 둘만 여기서 찾아진다. */
+function cardOpen(id){ return (STATE.revealed||[]).find(c=>c.id===id)||myHand.find(c=>c.id===id)||null; }
+/* 카드 한 장의 현황판 칸 — 상태는 셋이다.
+   아직 아무도 안 봄 / 누가 쥐고 있음(임자만) / 전체공개(제목·본문). */
+function dashCard(c){
+  const st=cardState(c), full=cardOpen(c.id);
+  const spot=esc(c.spot||c.locName||"");
+  if(st.k==="pub") return `<button class="dc pub act" onclick="openCard('${c.id}')">
+    <span class="sp">${spot}</span><span class="ti">${esc((full&&full.title)||"")}</span>
+    ${full&&full.text?`<span class="tx">${esc(full.text)}</span>`:""}
+    <span class="st">전체공개 — 모두가 봅니다</span></button>`;
+  if(st.k==="hand") return `<button class="dc mine act" onclick="openCard('${c.id}')">
+    <span class="sp">${spot}</span><span class="ti">${esc((full&&full.title)||"")}</span>
+    <span class="wh"><i>🃏</i>내 손패 · 비공개</span></button>`;
+  if(st.k==="taken"){ const w=st.who||{};
+    // 남이 쥔 카드는 임자만 말한다 — 제목이 새면 그 사람이 감출 것이 없어진다
+    return `<div class="dc held" style="--wc:${w.color||"var(--line)"}">
+      <span class="sp">${spot}</span>
+      <span class="wh"><i>${w.avatar||"❔"}</i>${esc(w.name||"")} 쥐고 있음</span></div>`; }
+  // cardState 의 잠김 사유에는 '내 차례 아님'처럼 내 사정이 섞여 있다. 현황판은 판 전체를
+  // 읽는 자리라 카드 쪽 사정만 적는다 — 나머지는 그냥 아직 아무도 안 본 카드다.
+  let why="아직 아무도 보지 않음", dim=false;
+  if(sealedLoc(c.loc)){ why="물에 잠김 — 닿을 수 없음"; dim=true; }
+  else if(c.round>(STATE.round||0)){ why=`조사 R${c.round}에 열림`; dim=true; }
+  else if(c.requires&&!discoveredIds().has(c.requires)){ why="먼저 밝혀질 것이 있다"; dim=true; }
+  return `<div class="dc none${dim?" lock":""}">
+    <span class="sp">${spot}</span><span class="st">${esc(why)}</span></div>`;
+}
+/* 지금까지 누구든 꺼낸 카드 — 선행 조건이 풀렸는지 보는 데 쓴다 */
+function discoveredIds(){
+  const s=new Set(STATE.revealedIds||[]);
+  Object.values(STATE.checked||{}).forEach(a=>(a||[]).forEach(x=>s.add(x)));
+  return s;
+}
 function dashHTML(){
-  const rows=((SCEN.map)||[]).map(z=>{
-    const p=zonePips(z.loc); if(!p.cards.length) return "";
-    const who=[...new Set(p.cards.map(c=>{const st=cardState(c);
-      return st.k==="taken"?st.who:(st.k==="hand"?roleById(myRoleId):null);}).filter(Boolean))];
-    return `<button class="zrow" onclick="openZone('${z.loc}')">
-      <span class="zi">${z.icon||"📍"}</span><span class="zn">${esc(z.name||z.loc)}</span>
-      <span class="zhc">${p.html}</span>
-      <span class="zwho">${who.map(w=>`<i style="--wc:${w.color}" title="${esc(w.name)}">${w.avatar}</i>`).join("")}</span>
-      <span class="zgo">›</span></button>`;
+  const blocks=((SCEN.map)||[]).map(z=>{
+    const cards=zoneCards(z.loc); if(!cards.length) return "";
+    const done=cards.filter(c=>{ const k=cardState(c).k; return k!=="open"&&k!=="lock"; }).length;
+    return `<div class="dz">
+      <button class="dz-h" onclick="openZone('${z.loc}')">${z.icon||"📍"} ${esc(z.name||z.loc)}
+        <span class="n">${done}/${cards.length}</span><span class="go">들어가기 ›</span></button>
+      <div class="dcards">${cards.map(dashCard).join("")}</div></div>`;
   }).join("");
-  return `<div class="dashhead">조사 현황<span class="dh-note">누가 어디를 봤는지</span></div>${rows}`;
+  return `<div class="dashhead">조사 현황<span class="dh-note">누가 무엇을 쥐고 있는지</span></div>
+    <div class="dash-lg"><span><b style="background:var(--bg2);border:1px dashed var(--line)"></b>아직 아무도 안 봄</span>
+      <span><b style="background:var(--sub)"></b>누가 쥐고 있음</span>
+      <span><b style="background:var(--cold)"></b>전체공개</span></div>${blocks}`;
 }
 /* ── 심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다(예산 소모, 그 자리에서 공개) ── */
 function heldCardsOf(roleId){ return ((STATE.checked||{})[roleId]||[]).map(id=>cardCat(id)).filter(Boolean); }
