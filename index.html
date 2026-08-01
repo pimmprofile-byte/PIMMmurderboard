@@ -2722,6 +2722,47 @@ async function trimConfirm(){
    한 번 내려놓은 카드를 다시 품을 길이 없으면 초반의 한 수가 판 끝까지 간다.
    다만 공짜는 아니다. 되가져온 만큼 내 것 하나가 반드시 테이블로 나가고, 그 교환은 모두가 본다. */
 let swapGive=null, swapTake=null, swapBusy=false;
+/* 손패 한 장을 대화에 올린다 — 실제 테이블에서 카드를 뒤집어 내려놓는 동작이다.
+   올리는 순간 전체공개가 되므로(모두가 내용을 본다) 무엇이 걸리는지 먼저 알려준다. */
+let sharePick=null, shareBusy=false;
+function showShare(){
+  if(!myRoleValid()||!myHand.length) return;
+  sharePick=null; shareBusy=false;
+  const kg=(sheetRole&&sheetRole.keepGoal)?sheetRole.keepGoal:null;   // 시트를 한 번이라도 열었으면 안다
+  $("swapBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">내려놓고 이야기한다</span><h2>💬 대화에 올리기</h2>
+        <span class="mh-sub">올린 카드는 전체공개됩니다 — 모두가 내용을 봅니다</span></div>
+      <button class="mh-x" onclick="closeModal('swapModal')" aria-label="닫기">✕</button></div>
+    <div class="mbody">
+      <div class="mlead">고른 카드가 대화창에 올라가고, 누구나 눌러서 내용을 볼 수 있게 됩니다. 되돌리려면 <b>되가져오기</b>를 쓰세요.</div>
+      ${kg?`<div class="swaphint" style="margin-bottom:10px">⚠️ 끝까지 쥐어야 점수가 되는 카드가 있습니다. 그 카드를 올리면 <b>${esc(kg.label)}</b>는 무효가 됩니다.</div>`:""}
+      <div class="swaprow" id="shareRow">${myHand.map(c=>`<button class="swapcard" data-id="${c.id}" onclick="sharePickOne('${c.id}')">
+        <span class="sc-t">${esc(c.title)}</span>
+        <span class="sc-w">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""}</span></button>`).join("")}</div>
+      <div class="swaphint" id="shareHint">올릴 카드를 고르세요.</div>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="closeModal('swapModal')">취소</button>
+      <button class="btn ember" id="shareGo" disabled onclick="shareConfirm()">대화에 올리기</button></div>`;
+  $("swapBox").style.setProperty("--mt","var(--cold)");
+  openModal("swapModal");
+}
+function sharePickOne(id){
+  sharePick=id;
+  document.querySelectorAll("#shareRow .swapcard").forEach(b=>b.classList.toggle("on",b.dataset.id===id));
+  const c=myHand.find(x=>x.id===id);
+  $("shareHint").innerHTML=c?`<b style="color:var(--cold)">${esc(c.title)}</b>을(를) 모두 앞에 내려놓습니다.`:"올릴 카드를 고르세요.";
+  $("shareGo").disabled=!sharePick;
+}
+async function shareConfirm(){
+  if(shareBusy||!sharePick) return;
+  shareBusy=true; $("shareGo").disabled=true;
+  const r=await post("/api/publish",{cardId:sharePick,roleId:myRoleId,clientId});
+  shareBusy=false;
+  if(r&&r.error){ banner(r.error); $("shareGo").disabled=false; return; }
+  closeModal("swapModal"); closeModal("handModal");
+  await poll();
+}
+
 function showSwap(){
   if(!myRoleValid()) return;
   swapGive=null; swapTake=null; swapBusy=false;
@@ -3173,6 +3214,7 @@ function showMyHand(){
     h+=buildSwipe(slides); }
   const pubN=(STATE.revealed||[]).length;
   h+=`</div><div class="mfoot">
+    ${(myRoleValid()&&myHand.length)?`<button class="btn" onclick="showShare()">💬 대화에 올리기</button>`:""}
     ${(myRoleValid()&&myHand.length&&pubN)?`<button class="btn" onclick="showSwap()">🔄 되가져오기</button>`:""}
     <button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
   $("handBox").innerHTML=h;
