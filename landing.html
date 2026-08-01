@@ -159,6 +159,9 @@
   .poster.on .meta .sel{color:var(--blood-bri)}
   .poster.locked{opacity:.72;cursor:not-allowed}
   .poster.locked .frame{filter:grayscale(.55)}
+  /* 지금 판이 돌고 있는 사건. 다른 걸 고르면 그 판을 닫아야 한다는 걸 미리 알려준다. */
+  .livetag{position:absolute;top:9px;right:9px;z-index:5;font-family:var(--mono);font-size:.56rem;
+    letter-spacing:.18em;color:#0d0b0c;background:var(--brass);border-radius:20px;padding:3px 9px;font-weight:700}
   .lockband{position:absolute;top:46%;left:-9px;right:-9px;transform:translateY(-50%) rotate(-7deg);z-index:4;
     background:repeating-linear-gradient(45deg,#141013 0 14px,#c8392b 14px 28px);border-top:1px solid #000;border-bottom:1px solid #000;box-shadow:0 4px 14px rgba(0,0,0,.6)}
   .lockband span{display:block;text-align:center;font-family:var(--mono);font-weight:700;font-size:.7rem;letter-spacing:.3em;color:#fff;padding:6px 0;text-shadow:0 1px 2px #000;background:rgba(20,16,19,.35)}
@@ -361,12 +364,15 @@ const CAP={submarine:6, subway:4, graduation:4};
 // 아무도 없는 방인데 잠수정에 2명, 막차에 1명이 들어와 있는 것처럼 보였다.
 // 방은 한 번에 하나뿐이라, 지금 열려 있는 시나리오만 실제 인원이 찬다.
 let liveSeats={};
+// 지금 실제로 판이 돌고 있는 사건. 이게 보이지 않으면 «왜 다른 게 뜨지»가 된다.
+let liveId="";
 async function refreshSeats(){
   try{
     const st=await (await fetch("/api/state")).json();
     const n=Object.values(st.roles||{}).filter(r=>r.claimed).length;
     liveSeats = st.scenarioId ? {[st.scenarioId]:n} : {};
-  }catch(e){ liveSeats={}; }
+    liveId = st.started ? (st.scenarioId||"") : "";
+  }catch(e){ liveSeats={}; liveId=""; }
   render();
 }
 let me={mode:null, pick:null};   // mode: 'host' | 'participant'
@@ -400,12 +406,33 @@ async function loadTextLoads(){
     if($("scr-scenarios").classList.contains("on")) render();
   }catch(e){}
 }
-async function apiSelect(id){
+async function apiSelect(id,force){
   try{
-    const r=await fetch("/api/select",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenarioId:id,clientId,key:""})});
+    const r=await fetch("/api/select",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenarioId:id,clientId,key:"",force:!!force})});
     const j=await r.json().catch(()=>({}));
-    return j&&j.error?{ok:false,error:j.error}:{ok:true};
-  }catch(e){ return {ok:false,error:"network"}; }
+    return j&&j.error?{ok:false,status:r.status,error:j.error,activeTitle:j.activeTitle||""}:{ok:true};
+  }catch(e){ return {ok:false,status:0,error:"network"}; }
+}
+async function apiResetRoom(){
+  try{ await fetch("/api/reset",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({clientId,key:localStorage.getItem("pmb.gmkey")||""})}); }catch(e){}
+}
+/* 고른 사건으로 실제로 들어가기까지. 여기서 조용히 포기하면 «뭘 눌러도 저번 사건이 뜨는»
+   증상이 된다 — 앞 세션이 남긴 방이 그대로 살아 있기 때문이다. 그래서 실패는 반드시 말한다. */
+async function openScenario(id){
+  let r=await apiSelect(id);
+  if(r.ok) return true;
+  if(r.status===409){
+    const keep=confirm(`${r.error}.\n\n확인 = 그 판을 닫고 《${(SCEN.find(x=>x.id===id)||{}).title}》을 새로 엽니다.\n취소 = 진행 중인 판에 그대로 들어갑니다.`);
+    if(!keep) return true;                 // 이어서 들어가기
+    await apiResetRoom();
+    await claimHost();
+    r=await apiSelect(id,true);
+    if(r.ok) return true;
+  }
+  note(r.error==="host" ? "다른 기기가 호스트예요 — 그 기기에서 사건을 고르세요."
+                        : ("사건을 여는 데 실패했어요: "+r.error));
+  return false;
 }
 // 아무도 호스트를 맡고 있지 않으면 내가 맡는다(안전: 이미 다른 사람이 있으면 그대로 둔다)
 async function claimHost(){
@@ -415,17 +442,17 @@ async function claimHost(){
   }catch(e){ return {isHost:false}; }
 }
 async function joinGame(){
-  // 이미 판이 돌고 있으면 사건을 건드리지 않는다. 호스트 본인이 뒤로 가기로 여기 들렀다
-  // 돌아오는 경우가 흔한데(특히 모바일), 예전엔 그때마다 apiSelect가 방을 초기화해서
-  // 배역·손패·공개카드가 전부 사라지고 다른 사건으로 넘어가 있었다.
+  // 참가자는 남의 판에 끼어드는 쪽이다. 이미 판이 돌고 있으면 사건을 건드리지 않는다 —
+  // 호스트 본인이 뒤로 가기로 여기 들렀다 돌아오는 경우가 흔한데(특히 모바일), 예전엔
+  // 그때마다 apiSelect가 방을 초기화해서 배역·손패·공개카드가 전부 사라졌다.
   let running=false;
   try{
     const st=await (await fetch("/api/state?clientId="+encodeURIComponent(clientId))).json();
     running=!!(st&&st.started);
   }catch(e){}
   if(me.pick && !running){
-    const claim=await claimHost();
-    if(claim&&claim.isHost) await apiSelect(me.pick);
+    await claimHost();
+    if(!await openScenario(me.pick)) return;
   }
   location.href="/play";
 }
@@ -480,14 +507,8 @@ function pickScenario(id){
 async function launch(){
   const s=SCEN.find(x=>x.id===me.pick); if(!s) return;
   note(`《${s.title}》 여는 중…`);
-  const claim=await claimHost();
-  if(claim&&claim.isHost){
-    // 내가 호스트다 — 고른 사건으로 방을 연다
-    const r=await apiSelect(me.pick);
-    if(!r.ok){ note("사건을 여는 데 실패했어요."); return; }
-  }
-  // 이미 다른 사람이 호스트면 사건은 그쪽이 정한다. 나는 그냥 들어가면 된다 —
-  // 예전엔 여기서 막혀 폰으로 합류가 아예 안 됐다.
+  await claimHost();               // 비어 있으면 잡는다. 이미 남이 쥐고 있으면 그대로 둔다
+  if(!await openScenario(me.pick)) return;
   location.href="/play";
 }
 function note(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(note._t); note._t=setTimeout(()=>t.classList.remove("on"),2600); }
@@ -508,6 +529,7 @@ function render(){
           <div style="position:absolute;inset:0;background:radial-gradient(130% 72% at 50% 130%, ${s.glow}, transparent 66%)"></div>
           <div class="grain"></div><div class="gloss"></div>
           ${s.locked?`<div class="lockband"><span>COMING SOON</span></div>`:""}
+          ${liveId===s.id?`<div class="livetag">진행 중</div>`:""}
           ${pips(s.id)}
           <div class="cap"><div class="tone">${s.tone}</div><div class="pt">${s.title}</div><div class="psub">${s.sub}</div></div>
         </div>

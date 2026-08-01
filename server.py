@@ -670,24 +670,38 @@ def scenarios_list():
 
 @app.post("/api/select")
 def select_scenario(b: SelectScenario):
-    # 호스트(또는 AGENT_KEY 보유 GM 콘솔)만 시나리오 전환 가능
-    if not (_is_host(b.clientId) or _agent_ok(b.key)):
-        return JSONResponse({"error": "host"}, status_code=403)
     if b.scenarioId not in scenarios.ids():
         return JSONResponse({"error": "없는 시나리오"}, status_code=400)
+    if getattr(scenarios.get(b.scenarioId), "META", {}).get("locked"):
+        return JSONResponse({"error": "아직 준비 중인 사건입니다"}, status_code=400)
     with LOCK:
         same = (b.scenarioId == SC.ID)
         running = bool(ROOM.get("started"))
+        held = ROOM.get("host")
+        # 판이 안 돌고 있으면 지킬 게 없다. 예전엔 여기서도 호스트를 요구해서,
+        # 앞선 세션의 브라우저가 호스트를 쥔 채 사라지면 아무도 사건을 못 바꿨다 —
+        # 무엇을 골라도 그 방에 마지막으로 올라와 있던 사건으로 들어가버렸다.
+        if not running and held is None and b.clientId:
+            ROOM["host"] = b.clientId
+            held = b.clientId
+    mine = (held in (None, b.clientId)) or _gm_key_ok(b.key)
     # 같은 사건을 다시 고른 것뿐이면 방을 건드리지 않는다. 예전엔 이것도 초기화라
     # 호스트가 뒤로 가기로 로비에 들렀다 돌아오기만 해도 판이 통째로 날아갔다.
     if same:
-        return {"ok": True, "active": SC.ID, "unchanged": True}
-    # 진행 중인 방은 사건을 못 바꾼다. 바꾸면 배역·손패·공개카드가 전부 사라진다 —
-    # 다른 기기에서 링크를 다시 연 사람에게 그 권한이 있어선 안 된다.
-    # _agent_ok는 AGENT_KEY가 안 걸린 서버에서 빈 키에도 True를 준다 — 여기서 쓰면 가드가 없는 것과 같다.
-    if running and not b.force:
-        return JSONResponse({"error": "진행 중인 게임이 있습니다 — 사건을 바꾸려면 방을 새로 여세요"},
-                            status_code=409)
+        return {"ok": True, "active": SC.ID, "unchanged": True, "started": running}
+    if running:
+        # 진행 중인 방은 사건을 못 바꾼다. 바꾸면 배역·손패·공개카드가 전부 사라진다 —
+        # 다른 기기에서 링크를 다시 연 사람에게 그 권한이 있어선 안 된다.
+        if not b.force:
+            return JSONResponse({"error": f"《{SC.TITLE}》 판이 진행 중입니다",
+                                 "active": SC.ID, "activeTitle": SC.TITLE, "started": True},
+                                status_code=409)
+        if not mine:
+            return JSONResponse({"error": "host", "active": SC.ID, "activeTitle": SC.TITLE},
+                                status_code=403)
+    elif not mine:
+        return JSONResponse({"error": "host", "active": SC.ID, "activeTitle": SC.TITLE},
+                            status_code=403)
     use_scenario(b.scenarioId)  # 방을 새 시나리오로 초기화(호스트는 유지)
     return {"ok": True, "active": SC.ID}
 
@@ -914,6 +928,15 @@ def reveal_card(b: CardOnly):
 
 def _agent_ok(key: str) -> bool:
     return (not AGENT_KEY) or key == AGENT_KEY
+
+
+def _gm_key_ok(key: str) -> bool:
+    """진짜 GM 콘솔인가. _agent_ok와 달리 빈 키를 통과시키지 않는다.
+
+    _agent_ok는 AGENT_KEY를 안 건 서버에서 빈 키에도 True를 준다. 권한을 나누는
+    자리에 그걸 쓰면 가드가 아예 없는 것과 같아서, 아무 기기나 남의 방을 갈아엎을 수 있다.
+    """
+    return bool(AGENT_KEY) and key == AGENT_KEY
 
 
 def _is_host(client_id: str) -> bool:
