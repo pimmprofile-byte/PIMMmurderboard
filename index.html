@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>졸업사진 卒業寫眞 — PIMMmurderboard</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230b0a0d' stroke='%23c9a24a' stroke-width='2'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='17' font-weight='700' fill='%23c9a24a'%3EP%3C/text%3E%3C/svg%3E">
 
@@ -127,7 +127,7 @@
     color:var(--sub);font-size:12.5px}
 
   /* 플레이 · 페이즈 드리븐 */
-  #s-play{display:none;flex-direction:column;height:100vh;max-width:920px;width:100%;margin:0 auto;border-inline:1px solid var(--line)}#s-play.on{display:flex}
+  #s-play{display:none;flex-direction:column;height:100dvh;max-width:920px;width:100%;margin:0 auto;border-inline:1px solid var(--line)}#s-play.on{display:flex}
   .chead{display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(17,16,15,.97),rgba(17,16,15,.85));flex-wrap:wrap}
   .chead .rt{font-weight:700;display:flex;align-items:center;gap:6px;font-size:14px}.chead .rt .mk{color:var(--ember)}
   .chead .ph{font-size:12px;color:var(--gold)}.chead .me{font-size:12px;color:var(--sub)}.chead .spacer{margin-left:auto}
@@ -233,7 +233,13 @@
   .ig-out .ln{margin-top:9px;font-size:14px;line-height:1.8;white-space:pre-wrap;color:#e3e2e1}
   .composer{display:flex;gap:8px;padding:9px 12px;border-top:1px solid var(--line);background:var(--bg2);align-items:flex-end}
   .composer .melab{font-size:12px;color:var(--sub);align-self:center;white-space:nowrap;max-width:88px;overflow:hidden;text-overflow:ellipsis}
-  .composer textarea{flex:1;resize:none;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:9px 12px;font-size:14px;font-family:inherit;line-height:1.5;max-height:96px}
+  .composer textarea{flex:1;resize:none;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:9px 12px;font-size:16px;font-family:inherit;line-height:1.5;max-height:96px}
+  /* 손가락으로 쓰는 기기에서 입력칸 글자가 16px보다 작으면 사파리가 화면을 확대해버리고,
+     확대된 채로 돌아오지 않는다. 타이핑하는 모든 칸의 바닥을 16px로 잡는다. */
+  @media (pointer:coarse){
+    textarea,input[type="text"],input[type="password"],input[type="search"],input:not([type]),select{font-size:16px}
+    #gmAiRole{font-size:16px}   /* id 선택자라 위 규칙에 안 걸린다 */
+  }
   .composer textarea:focus{outline:none;border-color:var(--gold)}.composer textarea:disabled{opacity:.5}
   .banner{background:#2a1414;border:1px solid #5a2c2c;color:#ffd3d3;padding:8px 14px;font-size:13px;text-align:center;display:none}.banner.on{display:block}
   .aicall{display:flex;gap:6px;flex-wrap:wrap;padding:7px 12px;border-top:1px solid var(--line);background:var(--bg2);align-items:center}
@@ -530,7 +536,7 @@
   .tb-wait{margin-top:10px;font-size:12.5px;color:var(--muted);text-align:center}
 
   /* ============ GM 마킹 보드 ============ */
-  #s-gm{display:none;flex-direction:column;height:100vh}#s-gm.on{display:flex}
+  #s-gm{display:none;flex-direction:column;height:100dvh}#s-gm.on{display:flex}
   .gm-main{flex:1 1 auto;display:flex;min-height:0}
   .gm-matrix{flex:1.3 1 0;overflow-y:auto;padding:14px 16px 30px;min-width:0}
   .gm-side{flex:1 1 0;max-width:440px;display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--line);background:var(--bg2)}
@@ -2727,6 +2733,15 @@ function renderChat(boxId){
   while(box.children.length>CHAT_KEEP) box.removeChild(box.firstChild);
   if(near&&added) box.scrollTop=box.scrollHeight;
 }
+/* 키보드가 올라오면 화면이 줄어든다(dvh). 그때 대화창이 읽던 자리에 그대로 있으면
+   방금 온 말이 위로 밀려 사라진 것처럼 보인다 — 바닥에 붙어 있었으면 계속 바닥에 붙인다. */
+(function(){
+  const vv=window.visualViewport; if(!vv) return;
+  const stick=()=>{ const box=$("chat"); if(!box) return;
+    if(box.scrollHeight-box.scrollTop-box.clientHeight<120) box.scrollTop=box.scrollHeight; };
+  vv.addEventListener("resize",()=>{ requestAnimationFrame(stick); setTimeout(stick,180); });
+  document.addEventListener("focusin",e=>{ if(e.target&&e.target.id==="input") setTimeout(stick,220); });
+})();
 function updateComposer(){
   const ok=myRoleValid(); const c=ok?roleById(myRoleId):null;
   $("melab").textContent=ok?("나: "+c.name):"관전 중"; $("melab").style.color=ok?c.color:"var(--sub)";
