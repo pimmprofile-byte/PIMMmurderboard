@@ -152,6 +152,8 @@ def fresh_room() -> dict:
         "roles": {c["id"]: {"mode": "open", "clientId": None} for c in SC.CHARACTERS},
         "table": [{"kind": "system", "text": f'— {SC.PHASES[0]["name"]} —'}],
         "revealed": [],           # 전체공개 card id
+        "aiActs": [],             # AI가 곧 해야 할 액션(카드 해석·추궁). 침묵 대기 없이 바로 나간다
+        "cuts": [],               # 조사 중에 튼 짧은 컷(비주얼노벨). 클라이언트가 안 본 것부터 재생한다
         "hands": {},              # roleId -> [cardId] (손패, 비공개 · 조사/마킹 통합)
         "checkedRound": {},       # roleId -> {cardId: round} (턴별 조사 수 제한 계산용)
         "grades": {},             # roleId -> grade dict (name 포함)
@@ -356,6 +358,7 @@ def public_state() -> dict:
             "table": table_tail(),
             "revealed": [SC.public_card(cid) for cid in ROOM["revealed"]],
             "revealedIds": list(ROOM["revealed"]),
+            "cuts": list(ROOM.get("cuts") or []),
             "checked": checked,
             "usedAP": used,
             "handLimit": _hand_limit(),
@@ -858,9 +861,9 @@ def reveal_card(b: CardOnly):
         if req and req not in ROOM["revealed"]:
             rq = SC.get_card(req)
             return JSONResponse({"error": f"먼저 '{rq['title'] if rq else req}'가 필요합니다"}, status_code=409)
-        if b.cardId not in ROOM["revealed"]:
-            ROOM["revealed"].append(b.cardId)
-            bump()
+        # 예전엔 여기서 revealed에 직접 밀어 넣었다. 그래서 이 경로로 연 카드는
+        # 포드 개방도, 사건 기록도, 컷도 붙지 않았다 — 공개는 _publish 한 곳으로 모은다.
+        _publish(b.cardId)
     return {"card": SC.public_card(b.cardId)}
 
 
@@ -1117,6 +1120,80 @@ def _ai_pick(role_id: str, n: int) -> list:
     return picks
 
 
+def _fire_cut(key: str) -> None:
+    """조사 중 컷을 하나 띄운다. 같은 키는 판당 한 번만.
+
+    상태에 실어 보내면 각 화면이 «아직 안 본 것»을 골라 재생한다. 서버가 재생을
+    강제하지 않는 건, 카드를 읽는 중에 화면을 뺏기면 그게 더 방해라서다.
+    """
+    fn = getattr(SC, "event_cut", None)
+    if not fn:
+        return
+    q = ROOM.setdefault("cuts", [])
+    if any(c["id"] == key for c in q):
+        return
+    try:
+        cuts = fn(key)
+    except Exception:                           # noqa: BLE001
+        cuts = None
+    if not cuts:
+        return
+    q.append({"id": key, "cuts": cuts})
+    del q[:-4]                                  # 늦게 들어온 화면이 옛 컷을 몰아 보는 일은 없게
+    bump()
+
+
+def _queue_act(role_id: str, kind: str, **fmt) -> None:
+    """AI 배역에게 「지금 이 말을 하라」를 예약한다. 잠금은 부르는 쪽이 쥔다.
+
+    자발 대화는 정적이 흘러야 시작하지만 액션은 사건 직후에 붙어야 뜻이 산다 —
+    카드를 내려놓고 한참 뒤에 해석을 말하면 무슨 카드 얘긴지 아무도 모른다.
+    """
+    q = ROOM.setdefault("aiActs", [])
+    if any(a["roleId"] == role_id and a["kind"] == kind for a in q):
+        return                                  # 같은 배역이 같은 결로 줄 서 있으면 하나면 된다
+    if len(q) >= 4:                             # 밀리면 판이 AI 독백이 된다
+        return
+    q.append({"roleId": role_id, "kind": kind, "fmt": fmt})
+
+
+def _public_suspect(exclude: str = "") -> str:
+    """공개된 카드만으로 지금 가장 많이 지목된 사람. 손패는 절대 안 센다."""
+    fn = getattr(SC, "public_suspicion", None)
+    if not fn:
+        return ""
+    try:
+        cnt = fn(list(ROOM["revealed"]))
+    except Exception:                           # noqa: BLE001
+        return ""
+    cnt = {k: v for k, v in cnt.items() if k != exclude and k in ROOM["roles"]}
+    if not cnt:
+        return ""
+    top = max(cnt.values())
+    if top < 2:                                 # 한 장 걸린 정도로 사람을 몰면 근거가 얇다
+        return ""
+    tied = sorted(k for k, v in cnt.items() if v == top)
+    return tied[zlib.crc32(str(len(ROOM["revealed"])).encode()) % len(tied)]
+
+
+def _act_nudge(kind: str, fmt: dict) -> str:
+    tpl = (getattr(SC, "CHAT_NUDGES", {}) or {}).get(kind, "")
+    try:
+        return tpl.format(**fmt)
+    except Exception:                           # noqa: BLE001 — 자리표시자가 안 맞아도 넘어간다
+        return tpl
+
+
+def _act_fallback(kind: str, fmt: dict, seed: str) -> str:
+    lines = (getattr(SC, "CHAT_FALLBACK", {}) or {}).get(kind) or []
+    if not lines:
+        return ""
+    try:
+        return lines[zlib.crc32(seed.encode()) % len(lines)].format(**fmt)
+    except Exception:                           # noqa: BLE001
+        return ""
+
+
 def _ai_trim_hand(role_id: str) -> list:
     """손패 상한을 넘으면 AI가 알아서 내려놓는다.
     자기에게 불리한 카드(interest 음수 = 감추고 싶은 것)는 끝까지 쥐고, 무해하거나 공유해도 될 것부터 공개한다."""
@@ -1134,6 +1211,9 @@ def _ai_trim_hand(role_id: str) -> list:
                                           zlib.crc32(f"{role_id}|{cid}".encode()) % 97))
         _publish_from(role_id, drop)
         out.append(drop)
+        c = SC.get_card(drop)
+        if c and ROOM["roles"].get(role_id, {}).get("mode") == "ai":
+            _queue_act(role_id, "reveal", card=c["title"])
     return out
 
 
@@ -1245,11 +1325,13 @@ def _publish(card_id: str, by: str = "") -> None:
             ROOM["table"].append({"kind": "system", "broadcast": True,
                                   "text": "🛟 계통도가 가리키던 것이 드러났습니다 — 배치도에 탈출 포드가 표시됩니다."})
             _ev("unlock", what="pod", cardId=card_id)
+            _fire_cut("pod")
         if c:
             who = SC.get_character(by) or {}
             _ev("reveal", roleId=by, speaker=who.get("name", ""), cardId=card_id,
                 title=c["title"], loc=c["loc"], locName=c["locName"], spot=c.get("spot", ""),
                 text=c.get("text", ""), hint=c.get("hint", ""))
+            _fire_cut(f"card:{card_id}")
         bump()
 
 
@@ -1805,6 +1887,8 @@ def _advance():
             if conf and seq == conf["seq"]:
                 _crisis_open()
             ROOM["flood"] = _flood_for(seq)
+            if int(ph.get("ap", 0) or 0) > 0:
+                _fire_cut(f"round:{current_round(seq)}")
             bump()
         return {"seq": ROOM["seq"]}
 
@@ -1848,8 +1932,12 @@ def _role_prompt(role_id: str, nudge: str = "") -> str:
     return SC.build_play_prompt(c, seq, revealed, table)
 
 
-def _speak(role_id: str, nudge: str = "") -> dict:
-    """AI 배역 한 명에게 한마디 시킨다. 프롬프트는 그 배역 것만 들어간다."""
+def _speak(role_id: str, nudge: str = "", fallback: str = "") -> dict:
+    """AI 배역 한 명에게 한마디 시킨다. 프롬프트는 그 배역 것만 들어간다.
+
+    fallback은 모델이 빈손으로 돌아왔을 때 대신 나가는 한 줄이다. 「…」만 남는 것보다
+    정해둔 문장이라도 나가는 편이 낫다 — 특히 카드를 방금 내려놓은 직후가 그렇다.
+    """
     with LOCK:
         r = ROOM["roles"].get(role_id)
         if not r or r["mode"] != "ai":
@@ -1866,7 +1954,17 @@ def _speak(role_id: str, nudge: str = "") -> dict:
         system = _role_prompt(role_id, nudge)
         reply = llm(system, f"이제 '{c['name']}'로서 다음 한마디를 하라 (1~3문장).", 400, fast=True)
         reply = re.sub(rf"^{re.escape(c['name'])}\s*[:：]\s*", "", reply or "").strip()
+        if not reply:
+            reply = fallback
     except Exception:
+        if fallback:                       # 모델 쪽이 통째로 막혀도 액션은 나가야 한다
+            with LOCK:
+                entry = {"kind": "ai", "roleId": role_id, "speaker": c["name"], "text": fallback}
+                ROOM["table"].append(entry)
+                _ev("say", who="ai", roleId=role_id, speaker=c["name"], text=fallback)
+                ROOM["typing"] = None
+                bump()
+            return entry
         with LOCK:
             ROOM["typing"] = None
             bump()
@@ -2016,14 +2114,53 @@ def _chatter_tick():
         return
     CHAT["busy"] = True
     try:
-        rid = _pick_reactor()
-        if rid:
-            _speak(rid, _pick_nudge(rid))
+        _run_queued_act() or _run_free_talk()
     except Exception:                    # 한 번 실패해도 루프는 계속 돈다
         pass
     finally:
         CHAT["busy"] = False
         CHAT["lastAt"] = time.monotonic()
+
+
+def _run_queued_act() -> bool:
+    """예약된 액션 하나를 내보낸다. 카드를 내려놓은 직후의 해석, 몰린 사람에 대한 추궁.
+
+    액션은 정적 대기(_chat_gap_now)를 건너뛴다 — 사건과 붙어 있어야 무슨 얘긴지 통한다.
+    """
+    with LOCK:
+        q = ROOM.get("aiActs") or []
+        act = None
+        while q:
+            a = q.pop(0)
+            r = ROOM["roles"].get(a["roleId"])
+            if r and r["mode"] == "ai":       # 그 사이 사람이 그 배역을 잡았으면 버린다
+                act = a
+                break
+        if not act:
+            return False
+        seed = f'{act["roleId"]}|{act["kind"]}|{len(ROOM["table"])}'
+    _speak(act["roleId"], _act_nudge(act["kind"], act["fmt"]),
+           _act_fallback(act["kind"], act["fmt"], seed))
+    return True
+
+
+def _run_free_talk() -> bool:
+    """정적이 흘렀을 때의 자발 발언. 공개된 것이 한 사람을 가리키면 추궁으로 바꾼다."""
+    rid = _pick_reactor()
+    if not rid:
+        return False
+    with LOCK:
+        target = _public_suspect(exclude=rid)
+        n = len(ROOM["table"])
+    # 근거가 쌓였을 때만, 그리고 매번은 아니게. 계속 몰아세우면 대화가 한 방향으로 굳는다.
+    if target and n % 3 == 0:
+        who = (SC.get_character(target) or {}).get("name", "")
+        if who:
+            fmt = {"who": who}
+            _speak(rid, _act_nudge("blame", fmt), _act_fallback("blame", fmt, f"{rid}|{n}"))
+            return True
+    _speak(rid, _pick_nudge(rid))
+    return True
 
 
 def _chatter_loop():

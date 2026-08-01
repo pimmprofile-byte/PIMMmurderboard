@@ -1249,6 +1249,7 @@ function applyState(){
   // myRoleValid()가 붙어 있어서 '배역 없는 GM'은 로비에 남고 영영 못 봤다 —
   // 정작 이 연출을 틀어야 할 사람이 GM인데.
   if(STATE.started&&(STATE.phase||{}).key==="open"&&isBoard()) openVN(false);
+  maybePlayCut();
   // 확정되면 각자 제 자리로 — 배역이 있으면 플레이 화면, 배역 없이 진행석만 켠 기기는 진행석으로.
   // 딱 한 번만 밀어준다. 매번 밀면 시작 뒤엔 로비로 못 돌아가서 헤더의 '배역' 버튼이
   // 눌러도 되돌아오는 죽은 버튼이 되고, 진행석 토글도 손댈 수 없다.
@@ -1462,7 +1463,7 @@ function vnArmAudio(){
   document.addEventListener("pointerdown",go,true);
 }
 
-let vnCuts=[], vnAt=0, vnTimer=null, vnTyping=false;
+let vnCuts=[], vnAt=0, vnTimer=null, vnTyping=false, vnIsEvent=false;
 function vnBuildCuts(){
   const cuts=(SCEN&&SCEN.openingCuts)||[];
   if(cuts.length) return cuts.map(c=>({img:c.img||"",who:c.who||"",fx:c.fx||"",lines:c.lines||[]}));
@@ -1486,6 +1487,38 @@ function vnMarkSeen(){
   vnPlayed=(STATE&&STATE.roomId)||"-";
   const k=vnSeenKey(); if(k){ try{ localStorage.setItem(k,"1"); }catch(e){} }
 }
+/* 조사 중에 끼어드는 짧은 컷. 오프닝과 같은 재생기를 쓰되 «봤다» 기억을 따로 둔다.
+   판(roomId)+컷id로 기억해서, 새로고침해도 같은 컷이 다시 뜨지 않는다. */
+let cutSeen=new Set();
+function cutKey(id){ const r=(STATE&&STATE.roomId)||"-"; return `pmb.cut.${r}.${id}`; }
+function cutWasSeen(id){
+  if(cutSeen.has(id)) return true;
+  try{ return !!localStorage.getItem(cutKey(id)); }catch(e){ return false; }
+}
+function cutMarkSeen(id){ cutSeen.add(id); try{ localStorage.setItem(cutKey(id),"1"); }catch(e){} }
+function playCuts(cuts){
+  if($("vn").classList.contains("on")) return false;   // 오프닝이 도는 중엔 끼어들지 않는다
+  if(!cuts||!cuts.length) return false;
+  vnCuts=cuts.map(c=>({img:c.img||"",who:c.who||"",fx:c.fx||"",lines:c.lines||[]}));
+  vnAt=0; vnIsEvent=true;
+  $("vnMute").textContent=vnMuted?"🔇 소리":"🔊 소리";
+  $("vn").classList.add("on"); vnArmAudio(); vnRender();
+  return true;
+}
+/* 폴링마다 불린다. 아직 안 본 컷 중 가장 오래된 것 하나만 튼다 —
+   여러 개가 한꺼번에 밀려도 한 번에 하나씩, 조사 중이 아니면 아예 안 튼다. */
+function maybePlayCut(){
+  if(!STATE||!STATE.started) return;
+  if((STATE.phase||{}).key==="open") return;          // 오프닝 자리는 오프닝 것이다
+  if($("vn").classList.contains("on")) return;
+  if(document.querySelector(".modal.on")) return;     // 카드 읽는 중에 화면을 뺏지 않는다
+  const q=(STATE.cuts||[]).filter(c=>!cutWasSeen(c.id));
+  if(!q.length) return;
+  const c=q[0];
+  cutMarkSeen(c.id);                                   // 열 때 표시한다 — 중간에 껐다 켜도 반복되지 않게
+  playCuts(c.cuts);
+}
+
 function openVN(force){
   // 이미 재생 중이면 손대지 않는다. 폴링(1.5초)마다 여기로 들어오는데 그때마다
   // vnAt=0으로 되감겨서 오프닝이 처음부터 다시 시작되고 있었다.
@@ -1494,7 +1527,7 @@ function openVN(force){
   if(!vnCuts.length){ console.warn("[vn] 재생할 컷이 없습니다 — 시나리오에 openingCuts가 있는지 확인"); return; }
   if(!force&&vnWasSeen()) return;
   vnMarkSeen();          // 닫을 때가 아니라 열 때 표시한다 — 중간에 새로고침해도 다시 안 튼다
-  vnAt=0;
+  vnAt=0; vnIsEvent=false;
   $("vnMute").textContent=vnMuted?"🔇 소리":"🔊 소리";
   $("vn").classList.add("on"); vnArmAudio(); vnRender();
 }
@@ -1590,7 +1623,8 @@ function vnAdvance(){
 function vnClose(){
   clearTimeout(vnTimer); vnTyping=false;
   $("vn").classList.remove("on");
-  vnMarkSeen();
+  if(!vnIsEvent) vnMarkSeen();
+  vnIsEvent=false;
 }
 /* 오프닝을 트는 화면인가 — 호스트 화면이거나, 호스트를 아무도 안 잡은 방이면 그 화면이 곧 보드다.
    isHost만 보면 호스트를 claim하지 않은 방에서는 아무에게도 오프닝이 안 뜬다. */
