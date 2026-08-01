@@ -573,7 +573,7 @@ function admCard(c){
     c.bait?`<i class="b">미끼</i>`:"",
     c.requires?`<i class="r">선행 ${ADM_ESC(c.requires)}</i>`:"",
     c.unlocks?`<i class="r">해금 ${ADM_ESC(c.unlocks)}</i>`:"",
-    (c.startsWith||[]).length?`<i>시작소지 ${c.startsWith.map(ADM_ESC).join("·")}</i>`:"",
+    (c.knownBy||[]).length?`<i>미리 앎 ${c.knownBy.map(ADM_ESC).join("·")}</i>`:"",
   ].filter(Boolean).join("");
   return `<div class="adc ${c.bait?"bait":""} ${c.unlocks?"rulecard":""}">
     <div class="ch"><span class="cid">${ADM_ESC(c.id)}</span><span class="cti">${ADM_ESC(c.title)}</span></div>
@@ -633,7 +633,7 @@ function admRole(r,d){
   const goals=(r.goals||[]).map(g=>`<div class="rli"><span>${ADM_ESC(g.t||"")}</span><span class="p">${g.p||0}점</span></div>`).join("");
   const keep=r.keepGoal?`<div class="rli"><span>${ADM_ESC(r.keepGoal.label||"")} <span class="e">— ${(r.keepGoal.cards||[]).map(cardRef).join(", ")}</span></span><span class="p">${r.keepGoal.points||0}점</span></div>
     ${r.keepGoal.fail?`<div class="rnote" style="margin-top:6px">실패하면 — ${ADM_ESC(r.keepGoal.fail)}</div>`:""}`:"";
-  const cards=(r.cards||[]).map(c=>`<div class="rli"><span>${cardRef(c)}${c.where?` <span class="e">· ${ADM_ESC(c.where)}</span>`:""}</span></div>`).join("");
+  const cards=(r.knows||[]).map(c=>`<div class="rli"><span>${cardRef(c)}${c.where?` <span class="e">· ${ADM_ESC(c.where)}</span>`:""}</span></div>`).join("");
   const frags=(r.fragments||[]).map(f=>`<div class="rli"><span class="w">${ADM_ESC(f.phase||("P"+f.seq))}</span><span>${ADM_ESC(f.text)}</span></div>`).join("");
   const ig=(r.interrogate||[]).map(x=>`<div class="rli"><span class="w">${ADM_ESC(x.card.id)}</span><span class="rq">
       <span class="t">실토 — ${ADM_ESC(x.truth)}</span><br><span class="e">넘긴다 — ${ADM_ESC(x.evasive)}</span>
@@ -651,7 +651,7 @@ function admRole(r,d){
     ${sec("롤카드 본문", sheet)}
     ${sec("죄목", sins)}
     ${sec(`목표 · 합계 ${gp}점`, goals+keep)}
-    ${sec("시작 소지 카드", cards)}
+    ${sec("알고 있는 조사카드", cards)}
     ${sec(ADM_ESC((d&&d.fragLabel)||"지금 할 말"), frags)}
     ${sec("AI 연기지침", r.aiNote?`<div class="rnote">${ADM_ESC(r.aiNote)}</div>`:"")}
     ${sec("심층심문 응답", ig)}

@@ -527,10 +527,10 @@ def admin_cards(key: str = "", scenarioId: str = ""):
         })
     holders = {}
     for ch in getattr(m, "CHARACTERS", []):
-        for cid in ch.get("cards", []) or []:
+        for cid in ch.get("knows", []) or []:
             holders.setdefault(cid, []).append(ch["name"])
     for c in cards:
-        c["startsWith"] = holders.get(c["id"], [])
+        c["knownBy"] = holders.get(c["id"], [])
     return {"scenarioId": sid, "title": getattr(m, "TITLE", sid),
             "map": getattr(m, "MAP", []), "cards": cards,
             "pairs": getattr(m, "CARD_PAIRS", []),
@@ -598,7 +598,7 @@ def admin_roles(key: str = "", scenarioId: str = ""):
             "keepGoal": ({"label": kg.get("label", ""), "points": kg.get("points", 0),
                           "fail": kg.get("fail", ""),
                           "cards": [card_ref(x) for x in kg.get("cards", [])]} if kg else None),
-            "cards": [card_ref(x) for x in (ch.get("cards") or [])],
+            "knows": [card_ref(x) for x in (ch.get("knows") or [])],
             "fragments": frags,
             "aiNote": ch.get("ai_note", ""),
             "interrogate": ig,
