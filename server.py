@@ -744,6 +744,29 @@ def state(clientId: str = "", gm: int = 0):
     return st
 
 
+def _seed_alibi() -> None:
+    """알리바이 한 바퀴를 대화창에 깔아둔다.
+
+    예전에는 오프닝 화면 옆의 접힌 패널이었다. 거기 두면 조사 페이즈로 넘어가는 순간
+    화면에서 사라져서, 정작 대조가 필요한 토론 때 아무도 다시 못 봤다. 대화 기록으로
+    남겨두면 위로 올려 언제든 다시 읽을 수 있고, AI 배역도 같은 것을 읽는다.
+    """
+    log = getattr(SC, "ALIBI_LOG", None) or []
+    if not log:
+        return
+    head = getattr(SC, "ALIBI_HEAD", "") or "각자가 한 말을 그대로 옮긴 것이다 — 참인지는 아무도 모른다."
+    ROOM["table"].append({"kind": "system", "broadcast": True,
+                          "text": "🕑 사건 당시 · 알리바이 대화록 — " + head})
+    for a in log:
+        c = SC.get_character(a.get("who", "")) or {}
+        ROOM["table"].append({"kind": "alibi", "roleId": a.get("who", ""),
+                              "speaker": c.get("name", a.get("who", "")),
+                              "at": a.get("t", ""), "text": a.get("line", "")})
+    note = getattr(SC, "ALIBI_NOTE", "")
+    if note:
+        ROOM["table"].append({"kind": "system", "text": note})
+
+
 @app.post("/api/start")
 def start_game(b: HostReq):
     """호스트가 배역 확정 — 이후 배역은 바꿀 수 없고, 모두가 오프닝으로 들어간다."""
@@ -755,6 +778,7 @@ def start_game(b: HostReq):
             return JSONResponse({"error": f"아직 정해지지 않은 배역이 {len(opens)}개 있습니다"}, status_code=409)
         ROOM["started"] = True
         ROOM["table"].append({"kind": "system", "broadcast": True, "text": "🎬 배역이 확정됐습니다. 오프닝을 시작합니다."})
+        _seed_alibi()
         bump()
     return {"ok": True, "started": True}
 

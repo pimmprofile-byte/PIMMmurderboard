@@ -1043,8 +1043,15 @@ def _revealed_cards_text(ids: list) -> str:
 
 
 def _table_text(table: list) -> str:
-    return "\n".join(f'{t.get("speaker") or t.get("name") or "?"}: {t.get("text","")}'
-                     for t in table[-14:]) or "(아직 아무도 말하지 않았다.)"
+    def line(t: dict) -> str:
+        who = t.get("speaker") or t.get("name") or "?"
+        # 알리바이는 사건 직후 한 바퀴 돌린 진술이다. 방금 한 말과 섞어놓으면
+        # 배역이 그것을 지금 오간 대화로 착각하고 되받아친다.
+        if t.get("kind") == "alibi":
+            return f'{who}(사건 직후 알리바이 진술 · {t.get("at","")}): {t.get("text","")}'
+        return f'{who}: {t.get("text","")}'
+
+    return "\n".join(line(t) for t in table[-14:]) or "(아직 아무도 말하지 않았다.)"
 
 
 def _dossier_text(c: dict) -> str:

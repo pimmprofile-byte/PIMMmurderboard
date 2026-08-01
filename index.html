@@ -329,21 +329,14 @@
   /* 오프닝/토론 패널 */
   .intro{white-space:pre-line;font-size:15px;line-height:1.95;color:#dddcdb;border-left:2px solid var(--ember);padding-left:14px}
 
-  /* 알리바이 대화록 — 조서를 옮겨 적은 결. 시각은 오른쪽에 붙여 표처럼 훑히게 한다. */
-  .alb-list{display:flex;flex-direction:column;gap:2px}
-  .alb{display:flex;gap:11px;padding:11px 2px;border-top:1px solid var(--line)}
-  .alb:first-child{border-top:0}
-  .alb-w{flex:0 0 30px;height:30px;border-radius:50%;border:1px solid var(--line);
-    display:grid;place-items:center;font-size:15px;background:var(--bg2)}
-  .alb-b{flex:1 1 auto;min-width:0}
-  .alb-h{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-bottom:4px}
-  .alb-h b{font-size:13.5px}
-  .alb-j{font-size:11px;color:var(--muted)}
-  .alb-t{margin-left:auto;font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;
-    border:1px solid var(--line);border-radius:20px;padding:1px 8px;white-space:nowrap}
-  .alb-l{font-size:13.5px;line-height:1.75;color:#d8d6d4}
-  .alb-n{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);
-    font-size:12.5px;line-height:1.7;color:var(--muted)}
+  /* 알리바이 진술 — 대화창에 남는 줄이되, 방금 한 말과는 결이 달라야 한다.
+     조서를 옮겨 적은 것처럼 왼쪽에 선을 두고 시각을 이름 옆에 붙인다. */
+  .alb-msg .nm{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+  .alb-j{font-size:10.5px;font-weight:400;color:var(--muted)}
+  .alb-t{font-size:10.5px;font-weight:400;color:var(--sub);font-variant-numeric:tabular-nums;
+    border:1px solid var(--line);border-radius:20px;padding:0 7px;white-space:nowrap}
+  .alb-bub{border-left:2px solid var(--gold);background:var(--bg2);color:#d8d6d4;
+    border-radius:2px 10px 10px 10px;font-size:13.5px;line-height:1.75}
   .panel-note{color:var(--sub);font-size:13.5px;line-height:1.8}
 
   /* 카드맵 */
@@ -2296,29 +2289,6 @@ async function resetRoom(){
   location.replace(location.pathname);
 })();
 
-/* 알리바이 대화록 — 오프닝이 끝난 직후, «그 시간에 어디 있었는지»를 한 바퀴 돌린 기록.
-   여기 적힌 건 전부 주장이다. 조사 카드가 이 줄들을 하나씩 무너뜨린다. */
-function alibiHTML(){
-  const log=(SCEN&&SCEN.alibiLog)||[];
-  if(!log.length) return "";
-  const rows=log.map(a=>{
-    const c=roleById(a.who)||{};
-    const col=c.color||"var(--gold)";
-    return `<div class="alb">
-      <div class="alb-w">${avaHTML(c,"sm")}</div>
-      <div class="alb-b">
-        <div class="alb-h"><b style="color:${col}">${esc(c.name||a.who)}</b>
-          <span class="alb-j">${esc(c.job||"")}</span>
-          <span class="alb-t">${esc(a.t||"")}</span></div>
-        <div class="alb-l">${esc(a.line||"")}</div>
-      </div></div>`;
-  }).join("");
-  const note=SCEN.alibiNote?`<div class="alb-n">${esc(SCEN.alibiNote)}</div>`:"";
-  return `<div class="card"><h2>사건 당시 · 알리바이 대화록</h2>
-    <div class="panel-note" style="margin-bottom:10px">사망 추정 2시 10~35분. 각자가 한 말을 그대로 옮긴 것이다 — 참인지는 아무도 모른다.</div>
-    <div class="alb-list">${rows}</div>${note}</div>`;
-}
-
 /* 페이즈 패널 */
 function renderPanel(ph){
   const p=$("ppanel"); const k=ph.key;
@@ -2333,8 +2303,7 @@ function renderPanel(ph){
     const introHTML=chunks.map((c,i)=>`<p class="cine-p" style="animation-delay:${(i*0.9+0.15).toFixed(2)}s">${esc(c).replace(/\n/g,"<br>")}</p>`).join("");
     p.innerHTML=`<div class="card"><div class="clue-h"><h2 style="margin:0">사건 · 공통지문</h2><button class="btn sm" onclick="replayVN()">🎬 오프닝 보기</button></div><div class="cine-intro">${introHTML}</div></div>
     <div class="card"><h2>피해자</h2><div class="panel-note">${esc(SCEN.victim||"")}</div></div>
-    ${alibiHTML()}
-    <div class="panel-note" style="text-align:center">각자 <b>내 정보</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`;
+    <div class="panel-note" style="text-align:center">사건 당시 <b>알리바이 대화록</b>은 대화창 맨 위에 남아 있습니다 — 언제든 올려서 다시 읽으세요.<br>각자 <b>내 정보</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`;
     // 오프닝은 GM 보드(호스트 화면)에서만 재생한다 — 16:9 큰 화면에 띄워 다 같이 보는 연출이라,
     // 각자 폰에서 따로 돌면 소리가 겹치고 진행이 흩어진다.
   }
@@ -3239,6 +3208,13 @@ function chatRow(m){
     const s=document.createElement("div"); s.className="sys ref";
     s.innerHTML=esc(m.text)+`<div class="cchips">${chipFor(m.cardId,m.cardTitle)}</div>`;
     return s; }
+  if(m.kind==="alibi"){
+    const c=roleById(m.roleId)||{};
+    const d=document.createElement("div"); d.className="msg alb-msg";
+    d.innerHTML=`<div class="av">${avaHTML(c,"sm")}</div><div><div class="nm" style="color:${c.color||"#999"}">${esc(m.speaker)}`
+      +`<span class="alb-j">${esc(c.job||"")}</span><span class="alb-t">${esc(m.at||"")}</span></div>`
+      +`<div class="bub alb-bub">${esc(m.text)}</div></div>`;
+    return d; }
   if(m.kind==="interrogate"){ const s=document.createElement("div"); s.className="interrog "+(m.outcome||"plain");
     s.innerHTML=`<div class="ig-head">${esc(m.text)}</div><div class="ig-line">${esc(m.line||"")}</div>`; return s; }
   const c=roleById(m.roleId);

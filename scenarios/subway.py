@@ -350,7 +350,16 @@ def _table_text(table: list[dict]) -> str:
     talk = [t for t in table if t.get("kind") != "system" and t.get("text")]
     if not talk:
         return "(아직 아무 말도 오가지 않았다.)"
-    return "\n".join(f"{t.get('speaker','?')}: {t['text']}" for t in talk)
+
+    def line(t: dict) -> str:
+        who = t.get("speaker", "?")
+        # 알리바이는 사건 직후 한 바퀴 돌린 진술이다. 방금 한 말과 섞어놓으면
+        # 배역이 그것을 지금 오간 대화로 착각하고 되받아친다.
+        if t.get("kind") == "alibi":
+            return f"{who}(사건 직후 알리바이 진술 · {t.get('at','')}): {t['text']}"
+        return f"{who}: {t['text']}"
+
+    return "\n".join(line(t) for t in talk)
 
 
 def phase_by_seq(seq: int) -> dict:
