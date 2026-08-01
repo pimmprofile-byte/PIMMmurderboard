@@ -420,6 +420,13 @@ class Investigate(BaseModel):
     clientId: str
 
 
+class SwapCard(BaseModel):
+    giveId: str      # 내 손패에서 내려놓을 카드
+    takeId: str      # 테이블에서 다시 집어올 전체공개 카드
+    roleId: str
+    clientId: str
+
+
 class Interrogate(BaseModel):
     askerRoleId: str
     targetRoleId: str
@@ -1254,6 +1261,40 @@ def publish_card(b: Investigate):
             return JSONResponse({"error": "내 손패에 없는 카드입니다"}, status_code=409)
         _publish_from(b.roleId, b.cardId)
     return {"ok": True, "over": _over_limit(b.roleId)}
+
+
+@app.post("/api/swap")
+def swap_card(b: SwapCard):
+    """전체공개된 카드 한 장을 되가져오고, 대신 내 손패 한 장을 내려놓는다.
+
+    손패가 두 장뿐이라 «지금 감춰야 할 것»이 페이즈마다 바뀐다. 그때 이미 테이블에 나간 카드를
+    다시 품을 길이 없으면 한 번의 실수가 판 끝까지 간다. 다만 공짜는 아니다 —
+    되가져오는 만큼 내 것 하나가 반드시 모두의 것이 된다. 그 교환 자체가 공개 정보다.
+    """
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId:
+            return JSONResponse({"error": "권한 없음"}, status_code=403)
+        if b.giveId not in ROOM["hands"].get(b.roleId, []):
+            return JSONResponse({"error": "내 손패에 없는 카드입니다"}, status_code=409)
+        if b.takeId not in ROOM["revealed"]:
+            return JSONResponse({"error": "전체공개된 카드가 아닙니다"}, status_code=409)
+        if b.giveId == b.takeId:
+            return JSONResponse({"error": "같은 카드입니다"}, status_code=409)
+        take = SC.get_card(b.takeId)
+        if take and take.get("loc") in (ROOM.get("sealed") or []):
+            return JSONResponse({"error": f"{take.get('locName', '그 구역')}은 잠겼습니다"}, status_code=409)
+        # 먼저 집어오고 나서 내려놓는다. 순서를 뒤집으면 잠깐 상한을 넘는다.
+        ROOM["revealed"].remove(b.takeId)
+        ROOM["hands"].setdefault(b.roleId, []).append(b.takeId)
+        ROOM["checkedRound"].setdefault(b.roleId, {})[b.takeId] = current_round(ROOM["seq"])
+        _publish_from(b.roleId, b.giveId)
+        nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
+        tt = take["title"] if take else b.takeId
+        ROOM["table"].append({"kind": "system", "broadcast": True,
+                              "text": f'🔄 {nm}{_subj(nm)} 「{tt}」{_obj(tt)} 도로 가져갔습니다.'})
+        bump()
+    return {"ok": True}
 
 
 @app.post("/api/interrogate/vote")

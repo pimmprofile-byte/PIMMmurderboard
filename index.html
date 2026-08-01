@@ -269,6 +269,18 @@
   .gcard.locked{cursor:default;opacity:.5}
   /* 손패 상한 정리 */
   .trimgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:10px;margin-top:4px}
+  /* 되가져오기 — 왼쪽은 테이블 것(차가운 색), 오른쪽은 내 것(불꽃색)으로 방향을 읽히게. */
+  .swap-h{font-size:12px;letter-spacing:.05em;color:var(--muted);margin:16px 0 8px;font-weight:700}
+  .swaprow{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr))}
+  .swapcard{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:11px;
+    padding:10px 12px;color:inherit;font-family:inherit;cursor:pointer;transition:.15s;display:grid;gap:3px}
+  .swapcard:hover{border-color:var(--sub)}
+  .swapcard[data-kind="take"].on{border-color:var(--cold);background:rgba(90,140,180,.10)}
+  .swapcard[data-kind="give"].on{border-color:var(--ember-b);background:rgba(160,40,30,.12)}
+  .swapcard .sc-t{font-weight:700;font-size:13.5px;word-break:keep-all}
+  .swapcard .sc-w{font-size:11px;color:var(--muted);word-break:keep-all}
+  .swaphint{margin-top:16px;padding:11px 13px;border:1px dashed var(--line);border-radius:10px;
+    font-size:13px;line-height:1.7;color:var(--sub);word-break:keep-all}
   .trimcard{text-align:left;background:linear-gradient(160deg,#221c14,#151413);border:1px solid #5a4a2c;border-radius:12px;padding:12px;color:inherit;transition:.15s}
   .trimcard:hover{border-color:var(--gold)}
   .trimcard.on{border-color:var(--ember);box-shadow:0 0 0 1px var(--ember) inset,0 0 18px -6px var(--ember)}
@@ -1013,6 +1025,7 @@
 <div class="modal" id="cardModal"><div class="box" id="cardBox"></div></div>
 <div class="modal" id="handModal"><div class="box" id="handBox"></div></div>
 <div class="modal" id="trimModal"><div class="box" id="trimBox"></div></div>
+<div class="modal" id="swapModal"><div class="box" id="swapBox"></div></div>
 <div class="modal" id="interrogModal"><div class="box" id="interrogBox"></div></div>
 <!-- 조사 화면 열람창. 구역 팝업(#mapModal)이 이 위로 떠야 하므로 반드시 그보다 앞에 둔다. -->
 <div class="modal" id="lookModal"><div class="box" id="lookBox"></div></div>
@@ -2419,6 +2432,54 @@ async function trimConfirm(){
   if(overLimit()>0) showHandTrim(); else { closeModal("trimModal"); banner("공개했습니다."); }
 }
 
+/* 되가져오기 — 손패가 두 장뿐이라 «지금 감춰야 할 것»이 페이즈마다 바뀐다.
+   한 번 내려놓은 카드를 다시 품을 길이 없으면 초반의 한 수가 판 끝까지 간다.
+   다만 공짜는 아니다. 되가져온 만큼 내 것 하나가 반드시 테이블로 나가고, 그 교환은 모두가 본다. */
+let swapGive=null, swapTake=null, swapBusy=false;
+function showSwap(){
+  if(!myRoleValid()) return;
+  swapGive=null; swapTake=null; swapBusy=false;
+  const pub=(STATE.revealed||[]).filter(c=>!(STATE.sealed||[]).includes(c.loc));
+  if(!myHand.length||!pub.length){ banner("바꿀 카드가 없어요"); return; }
+  const cardBtn=(c,kind)=>`<button class="swapcard" data-kind="${kind}" data-id="${c.id}" onclick="swapPick('${kind}','${c.id}')">
+      <span class="sc-t">${esc(c.title)}</span>
+      <span class="sc-w">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""}</span></button>`;
+  $("swapBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">한 장 내주고 한 장 받는다</span><h2>🔄 되가져오기</h2>
+        <span class="mh-sub">손패는 ${handLimit()}장까지 — 바꾸는 장면은 모두가 봅니다</span></div>
+      <button class="mh-x" onclick="closeModal('swapModal')" aria-label="닫기">✕</button></div>
+    <div class="mbody">
+      <div class="mlead">테이블에 나가 있는 카드를 도로 품고, 대신 내 손패 한 장을 내려놓습니다.</div>
+      <h3 class="swap-h">테이블에서 가져올 카드</h3>
+      <div class="swaprow" id="swapTakeRow">${pub.map(c=>cardBtn(c,"take")).join("")}</div>
+      <h3 class="swap-h">대신 내려놓을 내 카드</h3>
+      <div class="swaprow" id="swapGiveRow">${myHand.map(c=>cardBtn(c,"give")).join("")}</div>
+      <div class="swaphint" id="swapHint">양쪽에서 한 장씩 고르세요.</div>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="closeModal('swapModal')">취소</button>
+      <button class="btn ember" id="swapGo" disabled onclick="swapConfirm()">바꾸기</button></div>`;
+  $("swapBox").style.setProperty("--mt","var(--ember)");
+  openModal("swapModal");
+}
+function swapPick(kind,id){
+  if(kind==="take") swapTake=id; else swapGive=id;
+  document.querySelectorAll(`#swapBox .swapcard[data-kind="${kind}"]`).forEach(b=>b.classList.toggle("on",b.dataset.id===id));
+  const t=(STATE.revealed||[]).find(c=>c.id===swapTake), g=myHand.find(c=>c.id===swapGive);
+  $("swapHint").innerHTML=(t&&g)
+    ? `<b style="color:var(--gold-b)">${esc(t.title)}</b>을(를) 품고, <b style="color:var(--ember-b)">${esc(g.title)}</b>을(를) 내려놓습니다.`
+    : "양쪽에서 한 장씩 고르세요.";
+  $("swapGo").disabled=!(swapTake&&swapGive);
+}
+async function swapConfirm(){
+  if(swapBusy||!swapTake||!swapGive) return;
+  const g=myHand.find(c=>c.id===swapGive);
+  if(!confirm(`「${g?g.title:""}」이(가) 전체공개됩니다. 되돌릴 수 없습니다.\n\n진행할까요?`)) return;
+  swapBusy=true; $("swapGo").disabled=true;
+  const r=await post("/api/swap",{giveId:swapGive,takeId:swapTake,roleId:myRoleId,clientId});
+  if(r&&r.error){ banner(r.error); swapBusy=false; $("swapGo").disabled=false; return; }
+  closeModal("swapModal"); await poll(); banner("바꿨습니다.");
+}
+
 /* 종막 질문지 — 답안이 어디로 가는지가 세 갈래다.
    ① AI 백엔드가 붙어 있으면 그 자리에서 채점된다.
    ② 없어도 진행석이 있으면 거기로 모인다.
@@ -2734,7 +2795,10 @@ function showMyHand(){
       <div class="bc-body">${esc(c.text)}</div>${cnote(c)}
       ${c.unlocks&&!isPub?`<div class="unlocknote">🔓 이 카드를 <b>전체공개</b>하면 무언가 밝혀질 수 있습니다.</div>`:""}</div>`; });
     h+=buildSwipe(slides); }
-  h+=`</div><div class="mfoot"><button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
+  const pubN=(STATE.revealed||[]).length;
+  h+=`</div><div class="mfoot">
+    ${(myRoleValid()&&myHand.length&&pubN)?`<button class="btn" onclick="showSwap()">🔄 되가져오기</button>`:""}
+    <button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
   $("handBox").innerHTML=h;
   $("handBox").style.setProperty("--mt","var(--gold)");
   openModal("handModal"); wireSwipe($("handBox"));
