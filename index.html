@@ -1062,14 +1062,14 @@ async function boot(){
 }
 async function poll(){
   // clientId를 넘겨야 서버가 isHost를 판별한다(호스트 전용 UI가 여기에 달려 있다)
-  try{ STATE=await (await fetch("/api/state?clientId="+encodeURIComponent(clientId))).json(); }catch(e){ return; }
+  try{ STATE=await (await fetch("/api/state?clientId="+encodeURIComponent(clientId)+(gmOn?"&gm=1":""))).json(); }catch(e){ return; }
   // 다른 사람이 시나리오를 바꿨으면(허브에서) 이 기기도 새 시나리오로 갱신
   if(STATE&&SCEN&&STATE.scenarioId&&STATE.scenarioId!==SCEN.scenarioId){ try{ await loadScenario(); }catch(e){} }
   if(myRoleValid()){ try{ myHand=(await (await fetch("/api/hand/"+myRoleId+"?clientId="+encodeURIComponent(clientId))).json()).hand||[]; }catch(e){} }
   else myHand=[];
   applyState();
 }
-function go(name){ if(name==="gm"&&!gmOn)name="lobby"; scr=name; ["lobby","play","gm"].forEach(s=>$("s-"+s).classList.remove("on")); $("s-"+name).classList.add("on"); if(name==="play")$("s-play").style.display="flex"; if(name==="gm")$("s-gm").style.display="flex"; lastRev=-1; fxSeq=null; renderPanel._sig=null; if(name==="gm")gmSeenMarks=null; if(name==="play")handSeen=null; applyGM(); applyState(); }
+function go(name){ if(name==="gm"&&!gmOn)name="lobby"; scr=name; ["lobby","play","gm"].forEach(s=>{ const e=$("s-"+s); e.classList.remove("on"); e.style.display=""; }); $("s-"+name).classList.add("on"); if(name==="play"||name==="gm")$("s-"+name).style.display="flex"; lastRev=-1; fxSeq=null; renderPanel._sig=null; if(name==="gm")gmSeenMarks=null; if(name==="play")handSeen=null; applyGM(); applyState(); }
 
 /* ── GM 진행석 — 배역과 배타적이지 않은 토글이다 ─────────────────────
    호스트가 곧 GM인 자리가 많고, GM이 배역까지 맡는 자리도 있다. 그래서 진행석은
@@ -1188,8 +1188,12 @@ function playPhaseFx(ph){
 
 /* AI 배역 진행 (서버 Claude API가 연기) — GM이 눌러 AI 턴 진행 */
 let aiBusy=false;
-function finalSubmitted(id){ return id&&localStorage.getItem("pmb.final."+id)!=null; }
-function finalAnswersOf(id){ try{ return JSON.parse(localStorage.getItem("pmb.final."+id)||"null"); }catch(e){ return null; } }
+/* 답안은 두 군데에 있다 — 이 기기가 낸 것(localStorage)과 방 전체가 낸 것(종막에만 서버가 내려준다).
+   폰이 여섯 대인 방에서는 뒤엣것이 없으면 아무도 전체 묶음을 만들 수 없다. */
+function serverAnswersOf(id){ const m=(STATE&&STATE.finalAnswers)||null; return (m&&m[id])||null; }
+function finalSubmitted(id){ return !!(id&&(localStorage.getItem("pmb.final."+id)!=null||serverAnswersOf(id))); }
+function finalAnswersOf(id){ const sv=serverAnswersOf(id); if(sv) return sv;
+  try{ return JSON.parse(localStorage.getItem("pmb.final."+id)||"null"); }catch(e){ return null; } }
 function backendOn(){ return !!(SCEN&&SCEN.backend&&SCEN.backend.ok); }
 function renderAiCall(){
   const bar=$("aicall");
@@ -2410,7 +2414,7 @@ async function trimConfirm(){
    ③ 둘 다 없으면 낼 곳이 없다. 여태 그럴 때도 「제출완료」라고만 떠서, 아무도 받지
       않은 답을 낸 것으로 보였다. 이제는 클로드에 그대로 붙여넣을 한 덩어리 글을 만들어
       준다 — 그걸 들고 클로드 세션에 물어보면 그 자리가 진행석이 된다. */
-function finalRoute(){ return backendOn()?"ai":(gmOn?"gm":"claude"); }
+function finalRoute(){ return backendOn()?"ai":((gmOn||(STATE&&STATE.hasGM))?"gm":"claude"); }
 function renderFinal(p){
   const g=myRoleId?STATE.grades[myRoleId]:null; const mine=myRoleValid();
   const route=finalRoute();
@@ -2499,7 +2503,7 @@ function gradeRow(id,g){ const c=roleById(id)||{color:"#999",avatar:"❔",name:i
   return `<div class="grade"><span style="color:${c.color};font-weight:700">${c.avatar} ${esc(c.name)}</span>${pills}<span class="pill">${g.score}점</span>${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
 async function submitFinal(){ if(gradeBusy)return; const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():"")); if(answers.every(a=>!a)){alert("한 문항 이상 답해주세요.");return;} gradeBusy=true; banner("제출 중…"); const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers}); gradeBusy=false; if(r&&r.error){banner("제출 오류: "+r.error); return;} localStorage.setItem("pmb.final."+myRoleId,JSON.stringify(answers));
   // 낼 곳이 없는데 '제출 완료'라고 하지 않는다 — 어디로 갔는지를 그대로 말한다
-  banner(!(r&&r.pending)?"":(gmOn?"제출 완료 — 진행석(GM)이 채점합니다":"답안을 적어뒀습니다 — 아래 글을 클로드에 붙여넣으세요"));
+  banner(!(r&&r.pending)?"":((gmOn||(STATE&&STATE.hasGM))?"제출 완료 — 진행석(GM)이 채점합니다":"답안을 적어뒀습니다 — 아래 글을 클로드에 붙여넣으세요"));
   // 제출 여부는 로컬에만 남아 패널 서명에 안 잡힌다 — 손으로 한 번 무효화해야 화면이 바뀐다
   renderPanel._sig=null;
   await poll(); }

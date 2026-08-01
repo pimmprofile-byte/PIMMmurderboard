@@ -156,6 +156,7 @@ def fresh_room() -> dict:
         "checkedRound": {},       # roleId -> {cardId: round} (턴별 조사 수 제한 계산용)
         "grades": {},             # roleId -> grade dict (name 포함)
         "finalAnswers": {},       # roleId -> [answer str] (백엔드 미설정 시 진행자 수동채점용 보관)
+        "gmSeats": {},            # clientId -> 마지막으로 진행석을 켜둔 시각. 방에 진행자가 있는지 판단용
         "typing": None,
         "events": [],            # 진행 세션이 따라 읽는 사건 기록
         "podOpen": False,        # 특정 카드가 전체공개되면 지도에 탈출 포드가 드러난다
@@ -625,9 +626,27 @@ def select_scenario(b: SelectScenario):
 
 
 @app.get("/api/state")
-def state(clientId: str = ""):
+def state(clientId: str = "", gm: int = 0):
     st = public_state()
     with LOCK:
+        # 진행석은 각자 기기에서 토글하는 것이라 서버는 여태 그 존재를 몰랐다.
+        # 그래서 다른 기기에 앉은 사람은 «진행석이 없다»고 판단해 버렸다 — 종막 답안이 갈 곳을
+        # 정하는 갈림길이 그 판단에 걸려 있다. 폴링에 얹어 자리를 알리게 하고, 끊기면 저절로 비운다.
+        now = time.time()
+        if clientId:
+            if gm:
+                ROOM["gmSeats"][clientId] = now
+            else:
+                ROOM["gmSeats"].pop(clientId, None)
+        for cid, t in list(ROOM["gmSeats"].items()):
+            if now - t > 20:           # 폴링이 1.5초 간격이니 20초면 확실히 떠난 것이다
+                ROOM["gmSeats"].pop(cid, None)
+        st["hasGM"] = bool(ROOM["gmSeats"])
+        # 종막에는 답안을 모두가 볼 수 있어야 한다. 진행석이 없으면 누구든 한 덩어리로 묶어
+        # 클로드에 물어보러 가야 하는데, 여태 그 답안은 AGENT_KEY로 잠긴 /api/gm에만 있었다.
+        # 각자 자기 것만 들고 있으면 판이 흩어진 방에서는 아무도 전체를 못 만든다.
+        if (st.get("phase") or {}).get("key") == "final":
+            st["finalAnswers"] = dict(ROOM["finalAnswers"])
         st["hasHost"] = ROOM.get("host") is not None
         # 내가 맡은 배역. 예전엔 클라이언트가 localStorage 기억만 보고 판단해서,
         # 잡은 직후나 새로고침 뒤에 자기 배역을 '참여 중'(남이 맡음)으로 그리곤 했다.
