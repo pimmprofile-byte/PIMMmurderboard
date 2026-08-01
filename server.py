@@ -497,6 +497,45 @@ def scenario():
     return d
 
 
+@app.get("/api/admin/cards")
+def admin_cards(key: str = "", scenarioId: str = ""):
+    """검수용 — 한 시나리오의 조사카드를 본문까지 통째로 준다.
+
+    이건 사건의 답을 통째로 내보내는 창구다. 그래서 AGENT_KEY로 잠근다 —
+    관리자 비밀번호는 landing.html 안에 그대로 적혀 있어서 잠금이 되지 않는다.
+    AGENT_KEY를 안 걸어둔 로컬 판에서는 그냥 열린다.
+    """
+    if not _agent_ok(key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    sid = scenarioId or SC.ID
+    if sid not in scenarios.ids():
+        return JSONResponse({"error": "없는 시나리오"}, status_code=404)
+    m = scenarios.get(sid)
+    zones = {z["loc"]: z for z in getattr(m, "MAP", [])}
+    cards = []
+    for c in getattr(m, "CARDS", []):
+        z = zones.get(c.get("loc"), {})
+        cards.append({
+            "id": c.get("id", ""), "loc": c.get("loc", ""),
+            "locName": c.get("locName", "") or z.get("name", ""),
+            "icon": z.get("icon", ""),
+            "spot": c.get("spot", ""), "round": c.get("round", 0),
+            "reveal": c.get("reveal", ""), "bait": bool(c.get("bait")),
+            "requires": c.get("requires", ""), "unlocks": c.get("unlocks", ""),
+            "title": c.get("title", ""), "text": c.get("text", ""), "hint": c.get("hint", ""),
+        })
+    holders = {}
+    for ch in getattr(m, "CHARACTERS", []):
+        for cid in ch.get("cards", []) or []:
+            holders.setdefault(cid, []).append(ch["name"])
+    for c in cards:
+        c["startsWith"] = holders.get(c["id"], [])
+    return {"scenarioId": sid, "title": getattr(m, "TITLE", sid),
+            "map": getattr(m, "MAP", []), "cards": cards,
+            "pairs": getattr(m, "CARD_PAIRS", []),
+            "keepGoals": getattr(m, "KEEP_GOALS", {})}
+
+
 @app.get("/api/scenarios")
 def scenarios_list():
     return {"scenarios": scenarios.meta_list(), "active": SC.ID}

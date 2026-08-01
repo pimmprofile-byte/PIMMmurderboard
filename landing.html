@@ -195,6 +195,35 @@
   .aderr{color:var(--blood-bri);font-size:.78rem;margin-top:10px;min-height:1.1em}
   .adclose{margin-top:18px;width:100%;background:none;border:1px solid var(--line2);color:var(--bone-dim);border-radius:9px;padding:11px;font-size:.85rem}
   .adclose:hover{color:var(--bone);border-color:var(--brass)}
+  /* 카드 훑어보기 — 검수용. 한 화면에 다 늘어놓고 눈으로 훑는 게 목적이라 넓게 쓴다. */
+  .adcard.wide{width:min(1080px,96vw)}
+  .adtabs{display:flex;gap:7px;flex-wrap:wrap;margin:2px 0 16px}
+  .adtab{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;background:#0c0910;
+    border:1px solid var(--line2);color:var(--bone-dim);border-radius:999px;padding:7px 13px}
+  .adtab.on{color:#120d08;background:var(--brass);border-color:var(--brass);font-weight:800}
+  .adzone{margin-top:20px}
+  .adzone > h4{font-family:var(--serif);font-size:1.05rem;margin:0 0 9px;color:var(--bone);
+    border-bottom:1px solid var(--line2);padding-bottom:7px}
+  .adzone > h4 .n{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;color:var(--faint);margin-left:8px}
+  .adcards{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))}
+  .adc{background:#0c0910;border:1px solid var(--line2);border-radius:11px;padding:13px 14px}
+  .adc.bait{border-color:color-mix(in srgb,var(--blood) 45%,var(--line2))}
+  .adc.rulecard{border-color:var(--brass)}
+  .adc .ch{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-bottom:3px}
+  .adc .cid{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;color:var(--faint)}
+  .adc .cti{font-family:var(--serif);font-weight:800;font-size:1rem;color:var(--bone)}
+  .adc .cwhere{font-size:.72rem;color:var(--brass);margin-bottom:7px}
+  .adc .ctx{font-size:.83rem;line-height:1.75;color:var(--bone-dim);word-break:keep-all}
+  .adc .chint{font-size:.75rem;line-height:1.6;color:var(--faint);margin-top:8px;
+    border-left:2px solid var(--line2);padding-left:9px;word-break:keep-all}
+  .adc .ctags{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+  .adc .ctags i{font-style:normal;font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;
+    border:1px solid var(--line2);color:var(--faint);border-radius:5px;padding:2px 6px}
+  .adc .ctags i.r{color:var(--brass);border-color:color-mix(in srgb,var(--brass) 40%,var(--line2))}
+  .adc .ctags i.b{color:var(--blood-bri);border-color:color-mix(in srgb,var(--blood) 45%,var(--line2))}
+  .adpair{font-size:.8rem;line-height:1.7;color:var(--bone-dim);padding:8px 0;border-top:1px solid var(--line2)}
+  .adpair b{color:var(--brass)}
+
   .adrow{border-top:1px solid var(--line2);padding:15px 0}
   .adrow:first-of-type{border-top:none;padding-top:4px}
   .adrow .rt{font-family:var(--serif);font-weight:800;font-size:1.08rem}
@@ -449,6 +478,7 @@ const ADMINDOC={
 };
 function toggleAdmin(){ if(admin){ showAdminPanel(); } else { openPw(); } }
 function openPw(){
+  $("adcard").className="adcard";
   $("adcard").innerHTML=`<h3>관리자 · 열람 모드</h3><div class="adsub">TEST / ADMIN ACCESS</div>
     <div class="adform"><input id="adpw" type="password" placeholder="비밀번호" autocomplete="off" inputmode="text"><button onclick="submitAdmin()">입장</button></div>
     <div class="aderr" id="aderr"></div>
@@ -469,6 +499,73 @@ function submitAdmin(){
     const i=$("adpw"); if(i){ i.value=""; i.focus(); }
   }
 }
+/* ── 조사카드 훑어보기 ─────────────────────────────────────────────
+   본문까지 통째로 보는 창구라 서버가 AGENT_KEY로 잠가 뒀다. 관리자 비밀번호는
+   이 파일 안에 그대로 적혀 있어서 잠금이 되지 않기 때문이다.
+   AGENT_KEY를 안 걸어둔 로컬 판에서는 빈 값으로 그냥 열린다. */
+let admScen="submarine", admKey=localStorage.getItem("pmb.gmkey")||"";
+const ADM_ESC=t=>String(t==null?"":t).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+async function admLoad(sid){
+  if(sid) admScen=sid;
+  const box=$("admcards"); if(box) box.innerHTML='<div class="adsub">불러오는 중…</div>';
+  let d;
+  try{ d=await (await fetch(`/api/admin/cards?scenarioId=${encodeURIComponent(admScen)}&key=${encodeURIComponent(admKey)}`)).json(); }
+  catch(e){ d={error:"network"}; }
+  const b=$("admcards"); if(!b) return;
+  if(d.error){
+    b.innerHTML=`<div class="aderr">카드를 열 수 없습니다 (${ADM_ESC(d.error)}).</div>
+      <div class="adform"><input id="admk" type="password" placeholder="GM 키 (AGENT_KEY)" autocomplete="off">
+      <button onclick="admSetKey()">확인</button></div>
+      <div class="adsub" style="margin-top:10px">배포본은 서버에 넣어둔 AGENT_KEY가 필요합니다. 로컬은 빈 값으로 열립니다.</div>`;
+    const i=$("admk"); if(i){ i.value=admKey; i.onkeydown=ev=>{ if(ev.key==="Enter") admSetKey(); }; i.focus(); }
+    return;
+  }
+  const byLoc={}; (d.cards||[]).forEach(c=>{ (byLoc[c.loc]=byLoc[c.loc]||[]).push(c); });
+  const zones=(d.map||[]).map(z=>{
+    const cs=(byLoc[z.loc]||[]).slice().sort((x,y)=>(x.round-y.round)||x.id.localeCompare(y.id));
+    if(!cs.length) return "";
+    return `<div class="adzone"><h4>${ADM_ESC(z.icon||"")} ${ADM_ESC(z.name||z.loc)}<span class="n">${cs.length}장</span></h4>
+      <div class="adcards">${cs.map(admCard).join("")}</div></div>`;
+  }).join("");
+  const loose=(d.cards||[]).filter(c=>!(d.map||[]).some(z=>z.loc===c.loc));
+  const pairs=(d.pairs||[]).map(p=>`<div class="adpair"><b>${ADM_ESC(p.key)}</b> — ${(p.cards||[]).join(" + ")} → ${ADM_ESC(p.conclusion||"")}</div>`).join("");
+  b.innerHTML=`<div class="adsub">${ADM_ESC(d.title)} · 조사카드 ${(d.cards||[]).length}장</div>
+    ${zones}${loose.length?`<div class="adzone"><h4>구역 밖<span class="n">${loose.length}장</span></h4><div class="adcards">${loose.map(admCard).join("")}</div></div>`:""}
+    ${pairs?`<div class="adzone"><h4>두 장이 만나야 나는 결론<span class="n">${(d.pairs||[]).length}쌍</span></h4>${pairs}</div>`:""}`;
+}
+function admCard(c){
+  const tags=[
+    c.round?`<i>조사 R${c.round}</i>`:"",
+    c.reveal==="obligatory"?`<i>공개의무</i>`:"",
+    c.bait?`<i class="b">미끼</i>`:"",
+    c.requires?`<i class="r">선행 ${ADM_ESC(c.requires)}</i>`:"",
+    c.unlocks?`<i class="r">해금 ${ADM_ESC(c.unlocks)}</i>`:"",
+    (c.startsWith||[]).length?`<i>시작소지 ${c.startsWith.map(ADM_ESC).join("·")}</i>`:"",
+  ].filter(Boolean).join("");
+  return `<div class="adc ${c.bait?"bait":""} ${c.unlocks?"rulecard":""}">
+    <div class="ch"><span class="cid">${ADM_ESC(c.id)}</span><span class="cti">${ADM_ESC(c.title)}</span></div>
+    <div class="cwhere">${ADM_ESC(c.icon||"")} ${ADM_ESC(c.locName||"")}${c.spot?" · "+ADM_ESC(c.spot):""}</div>
+    <div class="ctx">${ADM_ESC(c.text)}</div>
+    ${c.hint?`<div class="chint">${ADM_ESC(c.hint)}</div>`:""}
+    ${tags?`<div class="ctags">${tags}</div>`:""}</div>`;
+}
+function admSetKey(){
+  const i=$("admk"); if(!i) return;
+  admKey=i.value.trim(); try{ localStorage.setItem("pmb.gmkey",admKey); }catch(e){}
+  admLoad();
+}
+function showCardBrowser(){
+  const tabs=ORDER.map(id=>{ const sc=SCEN.find(s=>s.id===id); if(!sc) return "";
+    return `<button class="adtab${id===admScen?" on":""}" onclick="admScen='${id}';showCardBrowser()">${ADM_ESC(sc.title)}</button>`; }).join("");
+  $("adcard").className="adcard wide";
+  $("adcard").innerHTML=`<h3>조사카드 훑어보기</h3><div class="adsub">QA READOUT · 본문·힌트까지 전부</div>
+    <div class="adtabs">${tabs}<button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
+    <div id="admcards"></div>
+    <button class="adclose" onclick="closeAdmin()">닫기</button>`;
+  $("admask").classList.add("on");
+  admLoad();
+}
+
 function showAdminPanel(){
   const rows=ORDER.map(id=>SCEN.find(s=>s.id===id)).filter(Boolean).map(s=>{
     const d=ADMINDOC[s.id]||{};
@@ -480,8 +577,10 @@ function showAdminPanel(){
       <div class="rk">진행 규칙</div><div class="rd">${d.rule||"—"}</div>
     </div>`;
   }).join("");
+  $("adcard").className="adcard";
   $("adcard").innerHTML=`<h3>열람 모드 · 사건 정본</h3><div class="adsub">QA READOUT · 모든 내용 열람</div>
     ${rows}
+    <button class="adtab" style="margin-top:16px;width:100%;padding:11px" onclick="showCardBrowser()">🃏 조사카드 전부 훑어보기 →</button>
     <button class="adclose" onclick="closeAdmin()">닫기</button>`;
   $("admask").classList.add("on");
 }
