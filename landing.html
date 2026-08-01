@@ -626,7 +626,9 @@ function admRole(r,d){
   const cardRef=c=>`${ADM_ESC(c.id)}${c.title?" 「"+ADM_ESC(c.title)+"」":""}`;
   const sec=(h,body)=>body?`<h5>${h}</h5>${body}`:"";
   const past=(r.past||[]).map(x=>`<div class="rli"><span class="w">${ADM_ESC(x.w||"")}</span><span>${ADM_ESC(x.t||"")}</span></div>`).join("");
-  const story=(r.story||"").split("\n\n").map(t=>t.trim()).filter(Boolean).map(t=>`<p>${ADM_ESC(t)}</p>`).join("");
+  const P=t=>(t||"").split("\n\n").map(x=>x.trim()).filter(Boolean).map(x=>`<p>${ADM_ESC(x)}</p>`).join("");
+  const hook=r.hook?`<p style="color:var(--bone);font-weight:700;white-space:pre-line">${ADM_ESC(r.hook)}</p>`:"";
+  const story=hook+P(r.storyPast)+P(r.storyToday);
   const hide=(r.hide||[]).map(x=>`<div class="rli"><span>· ${ADM_ESC(x)}</span></div>`).join("");
   const sins=(r.sins||[]).map(x=>`<div class="rli"><span>· ${ADM_ESC(x)}</span></div>`).join("");
   // 점수 총합을 같이 보여준다 — 목표가 몇 점짜리로 흩어져 있는지가 검수의 핵심이라서.

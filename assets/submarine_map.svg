@@ -2,7 +2,7 @@
      preserveAspectRatio="xMidYMid meet"
      font-family="-apple-system,BlinkMacSystemFont,'Noto Sans KR','Apple SD Gothic Neo',sans-serif">
   <title>심해 조사정 구획 배치도</title>
-  <desc>함교 선실·격벽통로 통신실 의무실 화물실 기관실 여섯 구역</desc>
+  <desc>함교 선실 통신실 의무실 화물실 기관실 여섯 구역</desc>
 
   <defs>
     <!-- 선체 안쪽만 물이 차오르게 자르는 틀. 아래 .hull 과 d 가 같아야 한다 —
@@ -67,7 +67,7 @@
     </g>
     <g id="zone-F" data-loc="F">
       <rect class="zone-fill" x="268" y="74" width="168" height="84" rx="6"/>
-      <text class="z-name" x="284" y="110" font-size="16">선실·격벽통로</text>
+      <text class="z-name" x="284" y="110" font-size="16">선실</text>
       <text class="z-cnt" id="cnt-F" x="420" y="146" text-anchor="end">0/0</text>
     </g>
     <g id="zone-E" data-loc="E">
