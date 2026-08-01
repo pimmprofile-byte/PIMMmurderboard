@@ -213,6 +213,14 @@
   .ig-ev.bare{border-style:dashed}
   .ig-ev .ew{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
   /* 확인 — 여기서 한 번 멈춘다. 두 번뿐인 기회가 헛손질 한 번에 날아가지 않게. */
+  /* 사람을 바로 붙잡는 길 — 카드 목록 위에 따로 세워 «다른 종류의 수»라는 게 보이게 한다. */
+  .ig-selfbtn{display:block;width:100%;text-align:left;font-family:inherit;cursor:pointer;
+    background:linear-gradient(160deg,rgba(160,40,30,.16),var(--panel2));border:1px solid var(--ember-b);
+    border-radius:12px;padding:13px 14px;color:var(--ink);font-size:14px;font-weight:700;transition:.15s}
+  .ig-selfbtn:hover{filter:brightness(1.1)}
+  .ig-selfbtn .sw{display:block;margin-top:5px;font-size:11.5px;font-weight:400;color:var(--sub);
+    line-height:1.6;word-break:keep-all}
+  .ig-or{margin:16px 0 8px;font-size:11.5px;letter-spacing:.08em;color:var(--muted);font-weight:700}
   .ig-sum{display:flex;flex-direction:column;gap:9px}
   .ig-sum .r{display:flex;gap:10px;align-items:baseline;padding:10px 13px;border-radius:11px;
     background:var(--panel2);border:1px solid var(--line)}
@@ -2240,7 +2248,7 @@ function heldCardsOf(roleId){ return ((STATE.checked||{})[roleId]||[]).map(id=>c
 function interrogPanelHTML(){
   if(!myRoleValid()) return `<div class="card" style="margin-top:14px"><h2>🔦 심층심문</h2><div class="panel-note">배역을 맡아야 심문할 수 있어요.</div></div>`;
   const ig=STATE.interrogate; if(!ig) return "";
-  const targets=SCEN.characters.filter(c=>c.id!==myRoleId).map(c=>({c,cards:heldCardsOf(c.id)})).filter(x=>x.cards.length);
+  const targets=SCEN.characters.filter(c=>c.id!==myRoleId).map(c=>({c,cards:heldCardsOf(c.id)}));
   const voteBtn=(!ig.bonusGranted&&ig.voteNeed>0)?`<button class="btn sm" onclick="interrogVote()">🗳️ 추가 심문 신청 (${ig.voteHave}/${ig.voteNeed})</button>`:(ig.bonusGranted?`<span class="pill" style="color:var(--good)">추가 심문 승인됨</span>`:"");
   let h=`<div class="card" style="margin-top:14px"><h2>🔦 심층심문</h2>
     <div class="panel-note">상대가 지금 손패로 쥔 카드를 지목해 답을 요구합니다. 카드 자체는 공개되지 않아요 — 대답만 듣는 거고, 민감한 비밀이면 그 대답이 진짜라는 보장도 없습니다(몰리면 거짓말·딴소리로 넘어가요).<br><br>
@@ -2256,11 +2264,10 @@ function interrogPanelHTML(){
 }
 async function interrogVote(){ const r=await post("/api/interrogate/vote",{roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); }
 
-/* 심문 팝업 — 예전엔 패널에 인물×카드가 전부 늘어서 있어서, 누굴 몇 번 찔렀는지 세기도
-   어렵고 들이밀 카드를 고르기도 번거로웠다. 한 창 안에서 한 걸음씩 밟게 한다:
-   대상 → 무엇을 캐물을지 → 들이밀 카드(맨손 가능) → 확인. 서버 계약은 그대로다 —
-   /api/interrogate 는 대상이 '지금 쥐고 있는 카드'를 요구하므로 그 걸음을 뺄 수 없다.
-   쥔 카드가 한 장뿐이면 그 걸음은 건너뛴다. */
+/* 심문 팝업 — 한 창 안에서 한 걸음씩. 대상 → 무엇을 캐물을지 → 들이밀 카드(맨손 가능) → 확인.
+   두 번째 걸음에 길이 둘이다: 그 사람이 쥔 카드를 캐묻거나, 사람을 바로 붙잡거나.
+   사람을 붙잡으면 나오는 건 한 겹뿐이다 — 핵심을 뚫는 건 여전히 카드 쪽 일이다.
+   쥔 카드가 하나뿐이어도 이 걸음을 건너뛰지 않는다. 본인 추궁을 고를 길이 막히기 때문이다. */
 let igW={step:"who",target:null,card:null,evidence:"",busy:false,result:null};
 function openInterrog(){
   igW={step:"who",target:null,card:null,evidence:"",busy:false,result:null};
@@ -2269,21 +2276,21 @@ function openInterrog(){
 }
 function igPickWho(id){
   const cards=heldCardsOf(id);
-  igW.target=id;
+  igW.target=id; igW.card=null;
   // 쥔 게 한 장이면 고를 것이 없다 — 묻지 않고 바로 증거로 넘어간다
-  if(cards.length===1){ igW.card=cards[0].id; igW.step="ev"; } else { igW.card=null; igW.step="what"; }
+  igW.step="what";   // 카드가 하나뿐이어도 «본인 추궁»을 고를 수 있어야 하니 이 단계를 건너뛰지 않는다
   igRender();
 }
-function igPickWhat(id){ igW.card=id; igW.step="ev"; igRender(); }
+function igPickWhat(id){ igW.card=id||null; igW.step="ev"; igRender(); }
 function igPickEv(id){ igW.evidence=id; igW.step="ok"; igRender(); }
-function igBack(){ igW.step=(igW.step==="ok")?"ev":(igW.step==="ev"?(heldCardsOf(igW.target).length>1?"what":"who"):"who"); igRender(); }
+function igBack(){ igW.step=(igW.step==="ok")?"ev":(igW.step==="ev"?"what":"who"); igRender(); }
 function igRender(){
   const ig=STATE.interrogate||{};
   const tc=igW.target?(roleById(igW.target)||{}):null;
   const cd=igW.card?(cardCat(igW.card)||{}):null;
   const evCard=igW.evidence?[...myHand,...(STATE.revealed||[])].find(e=>e.id===igW.evidence):null;
-  const multi=igW.target&&heldCardsOf(igW.target).length>1;
-  const steps=[["who","대상"],...(multi?[["what","무엇을"]]:[]),["ev","증거"],["ok","확인"]];
+  const selfMode=!!igW.target&&!igW.card;
+  const steps=[["who","대상"],["what","무엇을"],["ev","증거"],["ok","확인"]];
   const order=steps.map(s=>s[0]); const cur=order.indexOf(igW.step);
   const bar=`<div class="ig-step">${steps.map(([k,l],i)=>
     `${i?"<u>›</u>":""}<i class="${k===igW.step?"on":(i<cur?"done":"")}">${i+1} ${l}</i>`).join("")}</div>`;
@@ -2301,17 +2308,23 @@ function igRender(){
   }
   else if(igW.step==="who"){
     const list=SCEN.characters.filter(c=>c.id!==myRoleId).map(c=>{ const n=heldCardsOf(c.id).length;
-      return `<button class="ig-p" style="--pc:${c.color}" ${n?"":"disabled"} onclick="igPickWho('${c.id}')">
+      return `<button class="ig-p" style="--pc:${c.color}" onclick="igPickWho('${c.id}')">
         <span class="av">${avaHTML(c,"sm")}</span><span><span class="nm">${esc(c.name)}</span>
-        <span class="sub">${n?`쥔 카드 ${n}장`:"쥔 카드 없음"}</span></span></button>`; }).join("");
+        <span class="sub">${n?`쥔 카드 ${n}장`:"쥔 카드 없음 — 본인만 추궁 가능"}</span></span></button>`; }).join("");
     body=bar+`<div class="mlead">누구를 붙잡을지 고르세요.</div><div class="ig-people">${list}</div>`;
     foot=`<button class="btn" onclick="closeModal('interrogModal')">취소</button>`;
   }
   else if(igW.step==="what"){
-    const list=heldCardsOf(igW.target).map(c=>`<button class="ig-spot" onclick="igPickWhat('${c.id}')">
+    const held=heldCardsOf(igW.target);
+    const list=held.map(c=>`<button class="ig-spot" onclick="igPickWhat('${c.id}')">
       ${esc(c.spot||c.locName)}<span class="sw">${esc(c.locName)} · R${c.round}</span></button>`).join("");
-    body=bar+`<div class="mlead"><b style="color:${tc.color}">${esc(tc.name)}</b>이(가) 쥔 것 중 무엇을 캐물을까요. 제목은 아직 안 보입니다 — 어디서 나온 것인지만 압니다.</div>
-      <div class="ig-spots">${list}</div>`;
+    body=bar+`<div class="mlead">카드를 캐물을지, 사람을 바로 붙잡을지 고르세요.</div>
+      <button class="ig-selfbtn" onclick="igPickWhat('')">
+        <b style="color:${tc.color}">${esc(tc.name)}</b> 본인을 추궁하기
+        <span class="sw">쥔 카드가 아니라 그 사람에게 직접 묻습니다 — 나오는 건 한 겹뿐입니다</span></button>
+      ${held.length?`<div class="ig-or">또는, 쥔 카드를 캐묻기</div>
+      <div class="panel-note" style="margin-bottom:8px">제목은 아직 안 보입니다. 어디서 나온 것인지만 압니다.</div>
+      <div class="ig-spots">${list}</div>`:`<div class="panel-note" style="margin-top:12px">지금 이 사람이 쥔 카드는 없습니다.</div>`}`;
     foot=`<button class="btn" onclick="igBack()">‹ 뒤로</button>`;
   }
   else if(igW.step==="ev"){
@@ -2329,7 +2342,7 @@ function igRender(){
   else {
     body=bar+`<div class="ig-sum">
       <div class="r"><span class="k">누구를</span><span class="v" style="color:${tc.color}">${avaHTML(tc,"xs")} ${esc(tc.name)}</span></div>
-      <div class="r"><span class="k">무엇을</span><span class="v">${esc((cd&&(cd.spot||cd.locName))||"")}</span></div>
+      <div class="r"><span class="k">무엇을</span><span class="v">${selfMode?"본인을 직접":esc((cd&&(cd.spot||cd.locName))||"")}</span></div>
       <div class="r"><span class="k">증거</span><span class="v">${evCard?esc(evCard.title):"카드 없이 맨손"}</span></div></div>
       <div class="ig-warn">⚠ 보내면 심문 <b>1회</b>가 즉시 소모됩니다. 남은 횟수 ${ig.remaining||0}회 — 되돌릴 수 없어요.</div>`;
     foot=`<button class="btn" ${igW.busy?"disabled":""} onclick="igBack()">‹ 뒤로</button>
@@ -2347,7 +2360,7 @@ async function submitInterrog(){
   // 결과가 온 뒤에도 다시 못 누르게 화면 자체를 바꾼다.
   if(igW.busy||igW.result) return;
   igW.busy=true; igRender();
-  const r=await post("/api/interrogate",{askerRoleId:myRoleId,targetRoleId:igW.target,cardId:igW.card,evidenceCardId:igW.evidence,clientId});
+  const r=await post("/api/interrogate",{askerRoleId:myRoleId,targetRoleId:igW.target,cardId:igW.card||"",evidenceCardId:igW.evidence,clientId});
   igW.busy=false;
   if(r&&r.error){ banner(r.error); igRender(); return; }
   banner(""); igW.result=r; igRender();

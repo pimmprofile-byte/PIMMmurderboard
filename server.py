@@ -430,7 +430,7 @@ class SwapCard(BaseModel):
 class Interrogate(BaseModel):
     askerRoleId: str
     targetRoleId: str
-    cardId: str
+    cardId: str = ""       # 비우면 카드가 아니라 사람을 바로 추궁한다
     evidenceCardId: str = ""
     clientId: str
 
@@ -1343,7 +1343,8 @@ def interrogate(b: Interrogate):
         budget = _interrogate_budget()
         if budget["remaining"] <= 0:
             return JSONResponse({"error": "이번 토론에서 쓸 수 있는 심문 횟수를 다 썼습니다"}, status_code=409)
-        if b.cardId not in ROOM["hands"].get(b.targetRoleId, []):
+        selfmode = not (b.cardId or "").strip()
+        if not selfmode and b.cardId not in ROOM["hands"].get(b.targetRoleId, []):
             return JSONResponse({"error": "그 배역이 지금 들고 있는 카드가 아닙니다"}, status_code=409)
 
         evid_id = (b.evidenceCardId or "").strip()
@@ -1352,10 +1353,12 @@ def interrogate(b: Interrogate):
             if not has_access:
                 return JSONResponse({"error": "내가 갖고 있지 않은 카드는 증거로 댈 수 없습니다"}, status_code=409)
 
-        card = SC.get_card(b.cardId)
+        card = None if selfmode else SC.get_card(b.cardId)
         target = SC.get_character(b.targetRoleId) or {}
         asker = SC.get_character(b.askerRoleId) or {}
-        entry = (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(b.cardId)
+        # 사람을 찌를 때는 그 배역의 «정체» 항목을 쓴다. 실토해도 한 겹만 벗겨진다.
+        entry = ((getattr(SC, "INTERROGATE_SELF", {}) or {}).get(b.targetRoleId) if selfmode
+                 else (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(b.cardId))
 
         if entry:
             if evid_id and evid_id == entry.get("rebuttal"):
@@ -1366,15 +1369,20 @@ def interrogate(b: Interrogate):
                 told_truth = random.random() < INTERROGATE_TRUTH_BASE
             outcome = "truth" if told_truth else "evasive"
             line = entry["truth"] if told_truth else entry["evasive"]
+        elif selfmode:
+            outcome, line = "evasive", "\"…무슨 말씀이신지 모르겠습니다.\""
         else:
             intro = (getattr(SC, "INTERROGATE_PLAIN", {}) or {}).get(b.targetRoleId, "")
             outcome, line = "plain", f'{intro} 「{card["title"]}」— {card["text"]}'.strip()
 
         ROOM["interrogate"]["used"] += 1
 
-        where = f'{card["locName"]} · {card["spot"]}' if card.get("spot") else card["locName"]
         badge = {"truth": "🗣️ 실토", "evasive": "🌀 얼버무림", "plain": "💬 답변"}[outcome]
-        header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · [{where}] 「{card["title"]}」'
+        if selfmode:
+            header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · 본인 추궁'
+        else:
+            where = f'{card["locName"]} · {card["spot"]}' if card.get("spot") else card["locName"]
+            header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · [{where}] 「{card["title"]}」'
         ROOM["table"].append({"kind": "interrogate", "broadcast": True,
                               "askerRoleId": b.askerRoleId, "targetRoleId": b.targetRoleId,
                               "cardId": b.cardId, "outcome": outcome, "text": header, "line": line})
