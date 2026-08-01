@@ -172,17 +172,44 @@
   .interrog.truth{border-color:#7a2c2c;background:#2a1214}.interrog.truth .ig-head{color:#ff8a8a}
   .interrog.evasive{border-color:#3a3a3a;background:#181818}.interrog.evasive .ig-head{color:var(--muted)}
   .interrog.plain{border-color:#2c465a;background:#0e1620}.interrog.plain .ig-head{color:var(--cold)}
-  /* 심층심문 패널 — 토론 페이즈 */
-  .ig-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-  .ig-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 11px;border:1px solid var(--line);border-radius:11px;background:var(--panel2)}
-  .ig-who{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;min-width:96px}
-  .ig-cards{display:flex;gap:6px;flex-wrap:wrap}
-  .ig-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:5px 12px;font-size:12px;cursor:pointer;color:inherit;font-family:inherit}
-  .ig-card:hover{border-color:var(--gold)}
-  .ig-card:disabled{opacity:.4;cursor:not-allowed}
-  .ig-evlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-  .ig-ev{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:6px 12px;font-size:12px;cursor:pointer;color:inherit;font-family:inherit;text-align:left}
-  .ig-ev.on{border-color:var(--ember);color:var(--ember-b)}
+  /* 심층심문 패널 — 토론 페이즈. 남은 횟수를 계기판처럼 크게 세운다. */
+  .ig-go{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;
+    padding:12px 14px;border:1px solid var(--ember);border-radius:13px;
+    background:linear-gradient(150deg,rgba(40,12,10,.9),rgba(20,18,17,.95))}
+  .ig-go .gauge{display:flex;flex-direction:column;line-height:1.15;min-width:64px}
+  .ig-go .gauge b{font-size:26px;color:var(--ember-b);font-variant-numeric:tabular-nums}
+  .ig-go .gauge span{font-size:10.5px;letter-spacing:.16em;color:var(--muted)}
+  .ig-go .gbtns{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+  /* 심문 팝업 — 대상 → 무엇을 → 증거, 한 창 안에서 한 걸음씩 */
+  .ig-step{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;letter-spacing:.06em}
+  .ig-step i{font-style:normal;color:var(--muted);padding:3px 9px;border-radius:12px;border:1px solid var(--line)}
+  .ig-step i.on{color:var(--ember-b);border-color:var(--ember)}
+  .ig-step i.done{color:var(--sub)}
+  .ig-step u{text-decoration:none;color:var(--muted)}
+  .ig-people{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,148px),1fr));gap:9px}
+  .ig-p{display:flex;align-items:center;gap:9px;text-align:left;padding:11px 12px;border-radius:12px;
+    border:1px solid var(--line);background:var(--panel2);color:inherit;font-family:inherit;cursor:pointer;transition:.15s}
+  .ig-p:hover:not(:disabled){border-color:var(--pc,var(--gold))}
+  .ig-p:disabled{opacity:.38;cursor:not-allowed}
+  .ig-p .av{font-size:22px;flex:0 0 auto}
+  .ig-p .nm{font-weight:700;font-size:13.5px;color:var(--pc,var(--ink));display:block}
+  .ig-p .sub{font-size:11.5px;color:var(--muted);display:block}
+  .ig-spots{display:flex;flex-direction:column;gap:7px}
+  .ig-spot{text-align:left;padding:11px 13px;border-radius:11px;border:1px solid var(--line);
+    background:var(--panel2);color:inherit;font-family:inherit;font-size:13.5px;cursor:pointer;transition:.15s}
+  .ig-spot:hover{border-color:var(--ember)}
+  .ig-spot .sw{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .ig-evlist{display:flex;flex-direction:column;gap:7px}
+  .ig-ev{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:10px 13px;
+    font-size:13px;cursor:pointer;color:inherit;font-family:inherit;text-align:left;transition:.15s}
+  .ig-ev:hover{border-color:var(--gold)}
+  .ig-ev.on{border-color:var(--ember);color:var(--ember-b);box-shadow:0 0 0 1px var(--ember) inset}
+  .ig-ev.bare{border-style:dashed}
+  .ig-ev .ew{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .ig-out{border:1px solid var(--line);border-radius:12px;padding:13px 15px;background:var(--panel2)}
+  .ig-out.truth{border-color:#7a2c2c;background:#2a1214}
+  .ig-out.plain{border-color:#2c465a;background:#0e1620}
+  .ig-out .ln{margin-top:9px;font-size:14px;line-height:1.8;white-space:pre-wrap;color:#e3e2e1}
   .composer{display:flex;gap:8px;padding:9px 12px;border-top:1px solid var(--line);background:var(--bg2);align-items:flex-end}
   .composer .melab{font-size:12px;color:var(--sub);align-self:center;white-space:nowrap;max-width:88px;overflow:hidden;text-overflow:ellipsis}
   .composer textarea{flex:1;resize:none;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:9px 12px;font-size:14px;font-family:inherit;line-height:1.5;max-height:96px}
@@ -2056,48 +2083,99 @@ function interrogPanelHTML(){
   let h=`<div class="card" style="margin-top:14px"><h2>🔦 심층심문</h2>
     <div class="panel-note">상대가 지금 손패로 쥔 카드를 지목해 답을 요구합니다. 카드 자체는 공개되지 않아요 — 대답만 듣는 거고, 민감한 비밀이면 그 대답이 진짜라는 보장도 없습니다(몰리면 거짓말·딴소리로 넘어가요).<br><br>
       <b style="color:var(--gold-b)">증거 없이 물으면</b> 어느 정도는 넘어갈 수 있어요. <b style="color:var(--ember-b)">엉뚱한 카드</b>를 증거로 대면 오히려 더 잘 둘러댈 빌미를 줘서 성공률이 더 떨어지고, <b style="color:var(--good)">정확한 카드</b>를 짚으면 반드시 실토합니다. 어떤 카드가 정확한지는 알려주지 않아요 — 그걸 알아내는 게 추리예요. (민감하지 않은 카드는 증거와 무관하게 늘 순순히 답합니다.)</div>
-    <div class="panel-note" style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">이번 토론 남은 심문 <b style="color:var(--gold-b)">${ig.remaining}</b>/${ig.total}회 ${voteBtn}</div>`;
+    <div class="ig-go">
+      <span class="gauge"><b>${ig.remaining}</b><span>남은 심문 / ${ig.total}</span></span>
+      <span class="gbtns">${voteBtn}
+        <button class="btn ember" ${(ig.remaining<=0||!targets.length)?"disabled":""} onclick="openInterrog()">🔦 심문하기</button></span>
+    </div>`;
   if(!targets.length) h+=`<div class="panel-note" style="margin-top:8px">지금은 심문할 대상이 없어요 — 다들 손패가 비어 있거나 전부 공개했습니다.</div>`;
-  else h+=`<div class="ig-list">${targets.map(({c,cards})=>`
-    <div class="ig-row">
-      <div class="ig-who"><span style="color:${c.color}">${c.avatar} ${esc(c.name)}</span></div>
-      <div class="ig-cards">${cards.map(cd=>`<button class="ig-card" ${ig.remaining<=0?"disabled":""} onclick="openInterrog('${c.id}','${cd.id}')">${esc(cd.spot||cd.locName)}</button>`).join("")}</div>
-    </div>`).join("")}</div>`;
+  else if(ig.remaining<=0) h+=`<div class="panel-note" style="margin-top:8px">이번 토론에서 쓸 수 있는 심문을 다 썼어요. 다음 토론에 다시 채워집니다.</div>`;
   return h+`</div>`;
 }
 async function interrogVote(){ const r=await post("/api/interrogate/vote",{roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); await poll(); }
-let igPick={target:null,card:null,evidence:""};
-function openInterrog(targetRoleId,cardId){
-  igPick={target:targetRoleId,card:cardId,evidence:""};
-  const c=roleById(targetRoleId)||{}; const cd=cardCat(cardId)||{};
+
+/* 심문 팝업 — 예전엔 패널에 인물×카드가 전부 늘어서 있어서, 누굴 몇 번 찔렀는지 세기도
+   어렵고 들이밀 카드를 고르기도 번거로웠다. 한 창 안에서 한 걸음씩 밟게 한다:
+   대상 → 무엇을 캐물을지 → 들이밀 카드(맨손 가능). 서버 계약은 그대로다 —
+   /api/interrogate 는 대상이 '지금 쥐고 있는 카드'를 요구하므로 그 걸음을 뺄 수 없다.
+   쥔 카드가 한 장뿐이면 그 걸음은 건너뛴다. */
+let igW={step:"who",target:null,card:null,evidence:"",result:null};
+function openInterrog(){
+  igW={step:"who",target:null,card:null,evidence:"",result:null};
+  $("interrogBox").style.setProperty("--mt","var(--ember)");
+  igRender(); openModal("interrogModal");
+}
+function igPickWho(id){
+  const cards=heldCardsOf(id);
+  igW.target=id;
+  // 쥔 게 한 장이면 고를 것이 없다 — 묻지 않고 바로 증거로 넘어간다
+  if(cards.length===1){ igW.card=cards[0].id; igW.step="ev"; } else { igW.card=null; igW.step="what"; }
+  igRender();
+}
+function igPickWhat(id){ igW.card=id; igW.step="ev"; igRender(); }
+function igPickEv(id){ igW.evidence=id; igRender(); }
+function igBack(){ igW.step=(igW.step==="ev")?(heldCardsOf(igW.target).length>1?"what":"who"):"who"; igRender(); }
+function igRender(){
   const ig=STATE.interrogate||{};
-  const evid=[...myHand,...(STATE.revealed||[])];
+  const tc=igW.target?(roleById(igW.target)||{}):null;
+  const cd=igW.card?(cardCat(igW.card)||{}):null;
+  const evCard=igW.evidence?[...myHand,...(STATE.revealed||[])].find(e=>e.id===igW.evidence):null;
+  const multi=igW.target&&heldCardsOf(igW.target).length>1;
+  const steps=[["who","대상"],...(multi?[["what","무엇을"]]:[]),["ev","증거"]];
+  const order=steps.map(s=>s[0]); const cur=order.indexOf(igW.step);
+  const bar=`<div class="ig-step">${steps.map(([k,l],i)=>
+    `${i?"<u>›</u>":""}<i class="${k===igW.step?"on":(i<cur?"done":"")}">${i+1} ${l}</i>`).join("")}</div>`;
+
+  let body,foot;
+  if(igW.result){
+    const r=igW.result;
+    const badge=r.outcome==="truth"?'<span class="pill" style="color:var(--ember-b)">🗣️ 실토</span>'
+      :(r.outcome==="evasive"?'<span class="pill">🌀 얼버무림</span>':'<span class="pill" style="color:var(--cold)">💬 답변</span>');
+    body=`<div class="ig-out ${r.outcome||"plain"}">${badge}<div class="ln">${esc(r.line||"")}</div></div>
+      <div class="panel-note" style="margin-top:12px">같은 내용이 대화창에도 남았습니다 — 모두가 보고 있어요.</div>`;
+    foot=`<span class="mf-note">남은 심문 ${ig.remaining||0}회</span>
+      <button class="btn" onclick="closeModal('interrogModal')">닫기</button>`;
+  }
+  else if(igW.step==="who"){
+    const list=SCEN.characters.filter(c=>c.id!==myRoleId).map(c=>{ const n=heldCardsOf(c.id).length;
+      return `<button class="ig-p" style="--pc:${c.color}" ${n?"":"disabled"} onclick="igPickWho('${c.id}')">
+        <span class="av">${c.avatar||"❔"}</span><span><span class="nm">${esc(c.name)}</span>
+        <span class="sub">${n?`쥔 카드 ${n}장`:"쥔 카드 없음"}</span></span></button>`; }).join("");
+    body=bar+`<div class="mlead">누구를 붙잡을지 고르세요.</div><div class="ig-people">${list}</div>`;
+    foot=`<button class="btn" onclick="closeModal('interrogModal')">취소</button>`;
+  }
+  else if(igW.step==="what"){
+    const list=heldCardsOf(igW.target).map(c=>`<button class="ig-spot" onclick="igPickWhat('${c.id}')">
+      ${esc(c.spot||c.locName)}<span class="sw">${esc(c.locName)} · R${c.round}</span></button>`).join("");
+    body=bar+`<div class="mlead"><b style="color:${tc.color}">${esc(tc.name)}</b>이(가) 쥔 것 중 무엇을 캐물을까요. 제목은 아직 안 보입니다 — 어디서 나온 것인지만 압니다.</div>
+      <div class="ig-spots">${list}</div>`;
+    foot=`<button class="btn" onclick="igBack()">‹ 뒤로</button>`;
+  }
+  else if(igW.step==="ev"){
+    const evid=[...myHand,...(STATE.revealed||[])];
+    const mine=new Set(myHand.map(c=>c.id));
+    body=bar+`<div class="mlead">들이밀 카드를 고르세요. <b>안 골라도 됩니다</b> — 다만 정확한 카드를 짚으면 반드시 실토하고, 엉뚱한 카드는 오히려 빌미가 됩니다.</div>
+      <div class="ig-evlist">
+        <button class="ig-ev bare ${igW.evidence===""?"on":""}" data-id="" onclick="igPickEv('')">카드 없이 추궁
+          <span class="ew">맨손으로 캐묻습니다</span></button>
+        ${evid.map(e=>`<button class="ig-ev ${igW.evidence===e.id?"on":""}" data-id="${e.id}" onclick="igPickEv('${e.id}')">${esc(e.title)}
+          <span class="ew">${esc(e.locName)}${e.spot?" · "+esc(e.spot):""} · ${mine.has(e.id)?"내 손패":"전체공개"}</span></button>`).join("")}
+      </div>`;
+    foot=`<button class="btn" onclick="igBack()">‹ 뒤로</button>
+      <button class="btn ember" id="igGo" onclick="submitInterrog()">${evCard?"이 카드로 추궁":"카드 없이 추궁"}</button>`;
+  }
   $("interrogBox").innerHTML=`<div class="mhead">
       <div class="mh-t"><span class="mh-eb">심층심문 · 남은 ${ig.remaining||0}회</span>
-        <h2><span style="color:${c.color||"var(--ink)"}">${c.avatar||""} ${esc(c.name||"")}</span> 심문</h2>
-        <span class="mh-sub">${esc(cd.spot||cd.locName||"")}</span></div>
+        <h2>${igW.result?"추궁 결과":(tc?`<span style="color:${tc.color}">${tc.avatar} ${esc(tc.name)}</span> 추궁`:"누구를 추궁할까")}</h2>
+        ${cd?`<span class="mh-sub">${esc(cd.spot||cd.locName||"")}</span>`:""}</div>
       <button class="mh-x" onclick="closeModal('interrogModal')" aria-label="닫기">✕</button></div>
-    <div class="mbody">
-      <div class="mlead">심문 1회를 씁니다. 증거는 선택이에요 — 아무 카드나 대는 게 능사는 아닙니다. 뭘 댈지가 곧 추리예요.</div>
-      <div class="ig-evlist">
-        <button class="ig-ev on" data-id="" onclick="igPickEv('')">증거 없이 묻기</button>
-        ${evid.map(e=>`<button class="ig-ev" data-id="${e.id}" onclick="igPickEv('${e.id}')">${esc(e.title)}</button>`).join("")}
-      </div>
-      <div id="igResult" style="margin-top:12px"></div></div>
-    <div class="mfoot">
-      <button class="btn" onclick="closeModal('interrogModal')">취소</button>
-      <button class="btn ember" onclick="submitInterrog()">추궁</button>
-    </div>`;
-  $("interrogBox").style.setProperty("--mt","var(--ember)");
-  openModal("interrogModal");
+    <div class="mbody">${body}</div><div class="mfoot">${foot}</div>`;
 }
-function igPickEv(id){ igPick.evidence=id; document.querySelectorAll("#interrogBox .ig-ev").forEach(b=>b.classList.toggle("on",b.dataset.id===id)); }
 async function submitInterrog(){
-  const r=await post("/api/interrogate",{askerRoleId:myRoleId,targetRoleId:igPick.target,cardId:igPick.card,evidenceCardId:igPick.evidence,clientId});
-  if(r&&r.error){ banner(r.error); return; }
-  const badge=r.outcome==="truth"?'<span class="pill" style="color:var(--ember-b)">🗣️ 실토</span>':(r.outcome==="evasive"?'<span class="pill">🌀 얼버무림</span>':'<span class="pill" style="color:var(--cold)">💬 답변</span>');
-  $("igResult").innerHTML=`${badge}<div class="mlead" style="margin-top:8px">${esc(r.line)}</div>`;
-  await poll();
+  const r=await post("/api/interrogate",{askerRoleId:myRoleId,targetRoleId:igW.target,cardId:igW.card,evidenceCardId:igW.evidence,clientId});
+  if(r&&r.error){ banner(r.error); igRender(); return; }
+  banner(""); igW.result=r; igRender();
+  await poll(); igRender();   // 폴이 끝나야 남은 횟수가 줄어든 값으로 바뀐다
 }
 /* ── 조사 턴 (하이브리드: 순번 강제 + 넘기기·AI 자동조사) ── */
 function turnBar(){
