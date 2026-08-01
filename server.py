@@ -1083,6 +1083,7 @@ def _ai_pick(role_id: str, n: int) -> list:
     home = set(prof.get("home", []))
     interest = prof.get("interest", {})   # cardId -> 가중치(음수면 회피)
     role_kind = prof.get("role", "normal")
+    keepset = set(((getattr(SC, "KEEP_GOALS", {}) or {}).get(role_id) or {}).get("cards", []))
     hot = _hot_locs()
     topic = _topic_boost(role_id)          # 대화가 지금 가리키는 카드들
     cur = current_round(ROOM["seq"])
@@ -1102,6 +1103,8 @@ def _ai_pick(role_id: str, n: int) -> list:
             if c["loc"] in home:
                 s += 3.0
             s += interest.get(c["id"], 0)              # 관심(+)·회피(−)
+            if c["id"] in keepset:
+                s += 6.0                                # 자기 점수가 걸린 카드는 무엇보다 먼저 집는다
             if c["round"] == cur:
                 s += 1.2                                # 이번 라운드 새 카드
             s += 0.5 * hot.get(c["loc"], 0)             # 추리 따라가기(과하면 전원이 한 구역에 몰린다)
@@ -1215,6 +1218,10 @@ def _ai_trim_hand(role_id: str) -> list:
     prof = (getattr(SC, "INVEST_AI", {}) or {}).get(role_id, {})
     interest = prof.get("interest", {})
     hide = set(prof.get("hide", []))     # 손에 들어오면 끝까지 감추는 카드
+    # 끝까지 쥐어야 점수가 되는 카드는 무슨 일이 있어도 안 내려놓는다.
+    # 이게 빠져 있어서, 목표 카드가 hide 목록에 우연히 겹치지 않은 배역은
+    # 손패가 차는 순간 자기 목표를 스스로 공개해버렸다 — 달성률이 0이었다.
+    hide |= set(((getattr(SC, "KEEP_GOALS", {}) or {}).get(role_id) or {}).get("cards", []))
     out = []
     while _over_limit(role_id) > 0:
         hand = list(ROOM["hands"].get(role_id, []))

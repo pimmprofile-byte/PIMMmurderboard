@@ -508,7 +508,7 @@
   .story p.lede{font-size:17px;line-height:1.8;color:#fff;font-weight:700}
   #sheetModal .story p{font-size:16.5px;line-height:2.0;max-width:34em}
   #sheetModal .story p.lede{font-size:18.5px}
-  /* 들키면 안 되는 것 — 판 중에 제일 급하게 다시 꺼내 보는 목록이다. 한눈에 세지게. */
+  /* 들키면 위험한 사실 — 판 중에 제일 급하게 다시 꺼내 보는 목록이다. 한눈에 세지게. */
   .bigcard.k-hide{border-color:color-mix(in srgb,var(--ember) 45%,var(--line))}
   .hidelist{margin-top:15px;display:flex;flex-direction:column;gap:2px;counter-reset:hd}
   .hideitem{position:relative;padding:11px 0 11px 30px;border-top:1px solid var(--line);
@@ -3060,7 +3060,7 @@ async function showMySheet(){
   //    이건 판 중에 제일 급하게 다시 꺼내 보는 항목이라 목록으로 남긴다.
   if((s.hide||[]).length){
     slides.push({tab:"main", html:`<div class="bigcard role k-hide" style="--rc:${s.color}">
-      <div class="bc-eyebrow">오늘 밤</div><div class="bc-title" style="font-size:18px">들키면 안 되는 것</div>
+      <div class="bc-eyebrow">오늘 밤</div><div class="bc-title" style="font-size:18px">들키면 위험한 사실</div>
       <div class="hidelist">${s.hide.map(t=>`<div class="hideitem">${esc(t)}</div>`).join("")}</div></div>`});
   }
   // 4) 떠오른 기억
