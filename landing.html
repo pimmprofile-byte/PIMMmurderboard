@@ -152,6 +152,8 @@
   .art .cap .psub{font-size:.82rem;color:var(--bone-dim);letter-spacing:.02em;line-height:1.45}
   .meta{display:flex;align-items:center;gap:8px;margin-top:12px;padding:0 3px}
   .chip{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;color:var(--bone-dim);border:1px solid var(--line2);border-radius:999px;padding:2px 8px}
+  /* 분량은 난이도(추리의 어려움)와 다른 축이다 — 결을 갈라 한눈에 구분되게 한다 */
+  .chip.tx{border-color:rgba(120,170,200,.34);color:rgba(178,210,228,.9);letter-spacing:.02em}
   .meta .sel{margin-left:auto;font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;color:var(--faint)}
   .poster.on .frame{box-shadow:0 24px 54px rgba(0,0,0,.72), inset 0 0 0 2px var(--blood), inset 0 0 26px rgba(0,0,0,.7)}
   .poster.on .meta .sel{color:var(--blood-bri)}
@@ -373,6 +375,15 @@ let admin=false;
 
 /* 실서버 연동 — 이 파일을 서버가 / 로 서빙하면 게임(/play)으로 이어진다 */
 const clientId=(()=>{ let c=localStorage.getItem("pmb.cid"); if(!c){ c="c"+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); localStorage.setItem("pmb.cid",c);} return c; })();
+/* 사건 목록의 「분량」은 서버가 원고를 세어 내려준다. 로컬 배열에 적어두면
+   원고를 고칠 때마다 손으로 맞춰야 하고, 결국 안 맞게 된다. */
+async function loadTextLoads(){
+  try{
+    const j=await (await fetch("/api/scenarios")).json();
+    (j.scenarios||[]).forEach(m=>{ const s=SCEN.find(x=>x.id===m.id); if(s&&m.text) s.text=m.text; });
+    if(scr==="scenarios") render();
+  }catch(e){}
+}
 async function apiSelect(id){
   try{
     const r=await fetch("/api/select",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({scenarioId:id,clientId,key:""})});
@@ -423,7 +434,7 @@ document.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) sfxC
 function go(name){
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));
   $("scr-"+name).classList.add("on");
-  if(name==="scenarios") refreshSeats();   // 들어올 때마다 실제 인원을 다시 읽는다
+  if(name==="scenarios"){ refreshSeats(); loadTextLoads(); }   // 들어올 때마다 인원과 분량을 다시 읽는다
   const ab=$("adminbtn"); if(ab) ab.style.display=(name==="entry"?"":"none");  // 관리자 버튼은 메인에만
   sfxTransit();
   window.scrollTo(0,0);
@@ -486,6 +497,7 @@ function render(){
         </div>
       </div>
       <div class="meta"><span class="chip">${s.diff}</span><span class="chip">${s.players}</span>
+        ${s.text?`<span class="chip tx" title="내가 읽게 되는 분량 ${s.text.chars.toLocaleString()}자">${s.text.bar} ${s.text.label} · 읽기 ${s.text.minutes}분</span>`:""}
         <span class="sel">${s.locked?"준비중":(me.pick===s.id?"● 내가 고름":"고르기")}</span></div>
     </button>`).join("");
   renderBar();

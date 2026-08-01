@@ -1568,6 +1568,45 @@ const VN_SFX={
   water (){ vnNoise(2.0,260,1500,.24); },
   rumble(){ vnTone(58,2.6,"sine",.24,34); vnNoise(2.4,320,70,.18); }
 };
+/* ── UI 효과음 ────────────────────────────────────────────────
+   같은 합성기를 쓴다. 파일을 얹지 않으니 배포가 가볍고 라이선스가 얽히지 않는다.
+   나중에 실제 음원을 쓰고 싶으면 /assets/sfx/{키}.ogg 를 올리면 그쪽이 먼저 울린다. */
+const UI_SFX={
+  tap  (){ vnTone(1180,.045,"triangle",.05,880); },                       // 일반 누름
+  go   (){ vnTone(660,.06,"triangle",.07); setTimeout(()=>vnTone(990,.07,"triangle",.06),48); },  // 확정
+  back (){ vnTone(520,.07,"sine",.05,330); },                             // 닫기·취소
+  card (){ vnNoise(.10,3400,900,.10); vnTone(430,.09,"sine",.05); },      // 카드가 뒤집힌다
+  open (){ vnTone(300,.10,"sine",.06,520); vnNoise(.07,2200,700,.05); },  // 창이 열린다
+  bad  (){ vnTone(220,.16,"square",.07,150); },                           // 막힌 동작
+  good (){ vnTone(740,.07,"triangle",.06); setTimeout(()=>vnTone(1110,.13,"triangle",.05),60); },
+};
+const _sfxFile={};                     // 같은 소리를 매번 새로 만들지 않는다
+function sfx(key){
+  if(vnMuted) return;
+  const sid=(STATE&&STATE.scenarioId)||"";
+  if(_sfxFile[key]===undefined && sid){
+    _sfxFile[key]=null;
+    findAsset(`/assets/sfx/${key}`, url=>{ if(url){ const a=new Audio(url); a.volume=.5; _sfxFile[key]=a; } });
+  }
+  const a=_sfxFile[key];
+  if(a){ try{ a.currentTime=0; a.play().catch(()=>{}); return; }catch(e){} }
+  const f=UI_SFX[key]||UI_SFX.tap; try{ f(); }catch(e){}
+}
+/* 버튼은 수십 개고 앞으로도 는다. 하나하나 onclick에 심는 대신 문서 전체에서 한 번 듣고
+   눌린 것이 무엇인지 보고 소리를 고른다 — 새로 생긴 버튼도 저절로 소리가 난다. */
+document.addEventListener("pointerdown",e=>{
+  const el=e.target.closest&&e.target.closest("button,.dk,.cchip,.swapcard,.rc-go,.shtab,.tb-chip");
+  if(!el||el.disabled) return;
+  if(el.closest("#vn")) return;                       // 오프닝은 자기 소리가 따로 있다
+  const cl=el.className||"";
+  if(el.classList.contains("dk"))            sfx("open");
+  else if(el.classList.contains("cchip"))    sfx(el.classList.contains("lock")?"bad":"card");
+  else if(el.classList.contains("swapcard")) sfx("card");
+  else if(el.classList.contains("mh-x")||/닫기|취소/.test(el.textContent||"")) sfx("back");
+  else if(el.classList.contains("gold")||el.classList.contains("ember")) sfx("go");
+  else sfx("tap");
+},{passive:true});
+
 /* 배역마다 기본 음높이를 달리 줘서, 말풍선 소리만으로도 누가 말하는지 감이 오게 한다 */
 const VN_VOICE={munjaei:520,kangyunseo:645,oserin:470,jinharam:300,yutaeo:585,handokyung:262};
 function vnBlip(who){
@@ -2758,7 +2797,7 @@ function objp(w){ if(!w) return "를"; const cd=w.charCodeAt(w.length-1);
   return (cd>=0xAC00&&cd<=0xD7A3&&(cd-0xAC00)%28)?"을":"를"; }
 /* 조사하면 구역 팝업은 할 일을 다했다 — 닫고, 방금 뽑은 카드를 그 자리에 띄운다.
    예전엔 팝업이 남아 카드를 가려서, 뭘 뽑았는지 보려면 직접 닫고 손패를 열어야 했다. */
-async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);return;} banner(""); closeModal("mapModal"); await poll(); openCard(id); }
+async function investigate(id){ const r=await post("/api/investigate",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error){banner(r.error);sfx("bad");return;} banner(""); sfx("card"); closeModal("mapModal"); await poll(); openCard(id); }
 function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const hand=myHand.find(c=>c.id===id); const c=pub||hand; if(!c)return;
   const inHand=!!hand&&!pub;
   $("cardBox").innerHTML=`<div class="mhead">
@@ -3216,7 +3255,7 @@ async function advance(){
   if(r&&r.error){ banner(r.error==="host"?"호스트만 페이즈를 넘길 수 있습니다":"진행 실패: "+r.error); return; }
   banner(""); await poll();
 }
-function banner(m){ const b=$("banner"); if(m){b.textContent=m;b.classList.add("on");}else b.classList.remove("on"); }
+function banner(m){ const b=$("banner"); if(m){ if(b.textContent!==m) sfx("bad"); b.textContent=m;b.classList.add("on");}else b.classList.remove("on"); }
 
 /* ── 스와이프 카드 캐러셀 (실물카드처럼 옆으로 넘겨보기) ── */
 function buildSwipe(slides){
