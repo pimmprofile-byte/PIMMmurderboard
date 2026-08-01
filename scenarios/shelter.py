@@ -19,6 +19,7 @@ META = {
     "players": "4인",
     "tone": "아포칼립스 · 동기 추리",
     "difficulty": "★★★☆",
+    "tagline": "우연히 모인 다섯",
 }
 
 DIFFICULTY = "중"
