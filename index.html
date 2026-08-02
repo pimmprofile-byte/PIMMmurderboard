@@ -2570,7 +2570,8 @@ function cardState(c){
   const cr=STATE.round||0;
   const allIds=new Set(STATE.revealedIds||[]);
   Object.values(STATE.checked||{}).forEach(a=>(a||[]).forEach(x=>allIds.add(x)));
-  const reqOk=!c.requires||allIds.has(c.requires), roundOk=c.round<=cr;
+  const need=c.needs||(c.requires?[c.requires]:[]);
+  const reqOk=need.every(r=>allIds.has(r)), roundOk=c.round<=cr;
   const ap=(STATE.phase||{}).ap||0, used=(STATE.usedAP||{})[myRoleId]||0;
   const apOut=myRoleValid()&&ap>0&&used>=ap;
   const turn=STATE.turn, myTurn=(!turn)||turn===myRoleId;
@@ -2785,7 +2786,10 @@ function dashCard(c){
   let why="아직 아무도 보지 않음", dim=false;
   if(sealedLoc(c.loc)){ why="물에 잠김 — 닿을 수 없음"; dim=true; }
   else if(c.round>(STATE.round||0)){ why=`조사 R${c.round}에 열림`; dim=true; }
-  else if(c.requires&&!discoveredIds().has(c.requires)){ why="먼저 밝혀질 것이 있다"; dim=true; }
+  else if((c.needs||(c.requires?[c.requires]:[])).some(r=>!discoveredIds().has(r))){
+    const d=discoveredIds(), miss=(c.needs||[c.requires]).filter(r=>!d.has(r))
+      .map(r=>((SCEN.cardCatalog||[]).find(x=>x.id===r)||{}).spot||r);
+    why=`먼저 찾아야 한다 — ${miss.join(", ")}`; dim=true; }
   return `<div class="dc none${dim?" lock":""}">
     <span class="sp">${spot}</span><span class="st">${esc(why)}</span></div>`;
 }

@@ -548,6 +548,7 @@ def scenario():
     # 조사카드 카탈로그(제목·본문 제외 — 미공개 슬롯 구조만)
     d["cardCatalog"] = [{"id": c["id"], "loc": c["loc"], "locName": c["locName"], "round": c["round"],
                          "spot": c.get("spot", ""),
+                         "needs": _card_needs(c),
                          "requires": c.get("requires"), "obligatory": c.get("reveal") == "obligatory"}
                         for c in SC.CARDS]
     return d
@@ -1067,6 +1068,18 @@ def _advance_turn() -> None:
 
 
 # ── AI 자동 조사 (API 없이 휴리스틱 · 인물답게 + 추리 따라가기) ────────────────
+def _card_needs(c: dict) -> list:
+    """이 카드를 열기 전에 먼저 나와 있어야 하는 카드들.
+
+    requires는 한 장, combo는 여러 장이다. combo는 여태 아무도 읽지 않아서,
+    「둘을 맞춰야 열리는 카드」가 실제로는 라운드만 되면 그냥 열렸다.
+    """
+    req = c.get("requires")
+    out = [req] if isinstance(req, str) and req else list(req or [])
+    out += list(c.get("combo") or [])
+    return out
+
+
 def _openable_cards(role_id: str) -> list:
     cur = current_round(ROOM["seq"])
     mine = ROOM["hands"].get(role_id, [])
@@ -1079,8 +1092,7 @@ def _openable_cards(role_id: str) -> list:
             continue
         if _holder_of(c["id"]):          # 남이 이미 가져간 카드는 후보에서 제외
             continue
-        req = c.get("requires")
-        if req and req not in seen:
+        if any(r not in seen for r in _card_needs(c)):
             continue
         out.append(c)
     return out
@@ -1321,6 +1333,16 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
     cur = current_round(ROOM["seq"])
     if c["round"] > cur:
         return f"아직 조사할 수 없습니다 (조사 R{c['round']}에 열림)"
+    # 선행 카드 검사. 여태 _openable_cards(=화면 표시와 AI 선택)에만 있었고 실제 조사 요청에는
+    # 없었다. 그래서 화면이 잠가둔 카드도 요청만 보내면 그냥 열렸다.
+    if card_id not in ROOM["hands"].get(role_id, []):
+        seen = set(ROOM["revealed"])
+        for cids in ROOM["hands"].values():
+            seen.update(cids)
+        miss = [r for r in _card_needs(c) if r not in seen]
+        if miss:
+            names = ", ".join((SC.get_card(m) or {}).get("spot") or m for m in miss)
+            return f"먼저 밝혀져야 할 것이 있습니다 — {names}"
     if c.get("loc") in (ROOM.get("sealed") or []) and card_id not in ROOM["hands"].get(role_id, []):
         return f"{c.get('locName', '그 구역')}은 잠겼습니다 — 물이 차서 들어갈 수 없어요"
     ap = _ap_for(ROOM["seq"])
