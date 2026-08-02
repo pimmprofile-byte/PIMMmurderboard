@@ -798,6 +798,7 @@ def state(clientId: str = "", gm: int = 0):
             _d = ROOM.get("decision") or {}
             st["myDecision"] = (_d.get("picks") or {}).get(st["myRole"])
             st["overBelong"] = _over_belong(st["myRole"])
+            st["impression"] = dict((getattr(SC, "IMPRESSION", {}) or {}).get(st["myRole"], {}))
             st["myDecisionVotes"] = {seat: v.get(st["myRole"])
                                      for seat, v in (_d.get("votes") or {}).items()
                                      if v.get(st["myRole"])}
@@ -843,7 +844,7 @@ def _seed_alibi() -> None:
         c = SC.get_character(a.get("who", "")) or {}
         ROOM["table"].append({"kind": "alibi", "roleId": a.get("who", ""),
                               "speaker": c.get("name", a.get("who", "")),
-                              "at": a.get("t", ""), "text": a.get("line", "")})
+                              "at": a.get("t", ""), "text": a.get("line") or a.get("say", "")})
     note = getattr(SC, "ALIBI_NOTE", "")
     if note:
         ROOM["table"].append({"kind": "system", "text": note})

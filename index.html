@@ -559,8 +559,24 @@
   @media(max-width:330px){ .viccard{grid-template-columns:1fr}
     .viccard .vic-rc{max-width:210px} }
   .casebox .case-h{font-size:11px;letter-spacing:.2em;color:var(--cold);font-weight:700;
-    margin:2px 0 9px;text-transform:uppercase}
-  .casebox .case-h+.case-h,.casebox .vic+.case-h,.casebox .case-intro+.case-foot{margin-top:22px}
+    margin:0 0 11px;text-transform:uppercase;display:flex;align-items:center;gap:9px}
+  .casebox .case-h::after{content:"";flex:1 1 auto;height:1px;background:var(--line)}
+  /* 덩이마다 테를 둘러 가른다 — 여태 지문과 피해자가 붙어 있어 한 덩이로 읽혔다 */
+  .casebox .case-sec{padding:14px 14px 15px;border:1px solid var(--line);border-radius:12px;
+    background:rgba(255,255,255,.016);margin-bottom:13px}
+  .casebox .case-sec:last-child{margin-bottom:0}
+  .casebox .case-intro p:last-child{margin-bottom:0}
+  .alb-head{font-size:12.5px;color:var(--sub);line-height:1.75;margin-bottom:11px}
+  .alb-list{display:flex;flex-direction:column;gap:10px}
+  .alb-r{display:flex;gap:9px;align-items:flex-start}
+  .alb-av{flex:0 0 auto}
+  .alb-c{flex:1 1 auto;min-width:0}
+  .alb-n{font-size:12.5px;font-weight:700;display:flex;align-items:baseline;gap:7px}
+  .alb-w{font-size:11px;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+  .alb-s{margin-top:4px;padding:8px 11px;border-radius:3px 11px 11px 11px;font-size:13px;line-height:1.8;
+    color:#dcdad7;background:rgba(255,255,255,.045);border:1px solid var(--line);word-break:keep-all}
+  .alb-note{margin-top:12px;padding-top:11px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--muted);line-height:1.7}
   .casebox .case-intro p{font-size:14.5px;line-height:1.95;color:#dcdad7;margin:0 0 12px;word-break:keep-all}
   .casebox .case-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:20px;
     padding-top:14px;border-top:1px solid var(--line)}
@@ -1246,6 +1262,11 @@
   .wknown{margin-top:6px;padding:7px 10px;border-radius:4px;font-size:12px;line-height:1.65;
     color:var(--sub);background:rgba(255,255,255,.03);border-left:2px solid #2c465a;word-break:keep-all}
   .wknown .k{display:block;font-size:10px;letter-spacing:.14em;color:var(--cold);margin-bottom:2px}
+  /* 한 달을 같이 산 사람의 눈 — 밖에서 온 말(.wknown)과 색을 달리 둔다 */
+  .wimp{margin-top:6px;padding:7px 10px;border-radius:4px;font-size:12px;line-height:1.65;
+    color:var(--sub);background:rgba(255,255,255,.03);
+    border-left:2px solid color-mix(in srgb,var(--me,var(--gold)) 60%,transparent);word-break:keep-all}
+  .wimp .k{display:block;font-size:10px;letter-spacing:.14em;color:var(--me,var(--gold-b));margin-bottom:2px}
   .dc-go{align-self:flex-end;margin-top:-16px;font-size:11px;font-weight:700;color:var(--gold-b);white-space:nowrap}
   .dc.none.lock .dc-go{display:none}
   /* 누가 쥐고 있다 — 그 사람의 키컬러가 카드 옆구리에 선다 */
@@ -3872,15 +3893,50 @@ function victimCardHTML(){
 /* 사건 현장과 피해자 — 오프닝에서 한 번 스치고 마는 게 아니라 언제든 돌아와 본다. */
 function whoCaseHTML(){
   return `<div class="casebox">
-      <div class="case-h">피해자</div>
-      ${victimCardHTML()}
-      <div class="case-h">사건 · 공통지문</div>
-      <div class="case-intro">${String(SCEN.intro||"").split("\n").filter(x=>x.trim())
-        .map(x=>`<p>${esc(x)}</p>`).join("")}</div>
-      <div class="case-foot">
-        <button class="btn sm" onclick="replayVN()">${ICO.play} 오프닝 다시 보기</button>
-        <span class="mf-note">사건 당시 <b>알리바이 대화록</b>은 대화창 맨 위에 남아 있습니다.</span>
+      <section class="case-sec">
+        <div class="case-h">사건 · 공통지문</div>
+        <div class="case-intro">${String(SCEN.intro||"").split("\n").filter(x=>x.trim())
+          .map(x=>`<p>${esc(x)}</p>`).join("")}</div>
+        <div class="case-foot">
+          <button class="btn sm" onclick="replayVN()">${ICO.play} 오프닝 다시 보기</button>
+        </div>
+      </section>
+      <section class="case-sec">
+        <div class="case-h">피해자</div>
+        ${victimCardHTML()}
+      </section>
+      ${alibiSecHTML()}
+    </div>`;
+}
+/* 알리바이 — 대화창 맨 위에도 같은 것이 깔리지만, 대조가 필요한 건 늘 나중이다.
+   그때 대화를 500줄 거슬러 올라가라고 하는 건 안내가 아니다. 여기 한 벌 더 둔다. */
+function alibiSecHTML(){
+  const log=(SCEN&&SCEN.alibiLog)||[];
+  if(!log.length) return "";
+  const rows=log.map(a=>{
+    const c=roleById(a.who)||{};
+    return `<div class="alb-r">
+      <div class="alb-av">${avaHTML(c,"sm")}</div>
+      <div class="alb-c">
+        <div class="alb-n" style="color:${c.color||"#999"}">${esc(c.name||a.who)}
+          <span class="alb-w">${esc(a.t||"")}</span></div>
+        <div class="alb-s">${esc(a.line||a.say||"")}</div>
       </div></div>`;
+  }).join("");
+  return `<section class="case-sec">
+      <div class="case-h">사건 당시 · 알리바이</div>
+      ${SCEN.alibiHead?`<div class="alb-head">${esc(SCEN.alibiHead)}</div>`:""}
+      <div class="alb-list">${rows}</div>
+      ${SCEN.alibiNote?`<div class="alb-note">${esc(SCEN.alibiNote)}</div>`:""}
+    </section>`;
+}
+/* 내 배역이 저 사람을 어떻게 보는가. 나 자신에 대한 칸은 없다 —
+   남이 나를 어떻게 보는지는 내가 판단할 몫이 아니다. */
+function impressionHTML(rid){
+  if(!myRoleValid()||rid===myRoleId) return "";
+  const t=((STATE&&STATE.impression)||{})[rid];
+  if(!t) return "";
+  return `<div class="wimp"><span class="k">내가 본 이 사람</span>${esc(t)}</div>`;
 }
 function showWho(keepTab){
   const lim=handLimit();
@@ -3901,8 +3957,9 @@ function showWho(keepTab){
     return `<div class="whorow">${avaHTML(c,"sm")}
       <div class="wi">
         <div class="wn" style="color:${c.color}">${esc(c.name)}<span class="sub">${esc(c.age)}·${esc(c.job)}</span>${seat}</div>
-        <div class="wt">${esc(c.tagline||"")}</div>
-        ${c.known?`<div class="wknown"><span class="k">여기 사람들이 아는 것</span>${esc(c.known)}</div>`:""}
+        ${c.id===myRoleId?"":`<div class="wt">${esc(c.tagline||"")}</div>`}
+        ${(c.id!==myRoleId&&c.known)?`<div class="wknown"><span class="k">여기 사람들이 아는 것</span>${esc(c.known)}</div>`:""}
+        ${impressionHTML(c.id)}
         ${ids.length?`<div class="wcards">${cards}</div>`:`<div class="wnone">지금 쥐고 있는 카드가 없습니다.</div>`}
       </div></div>`;
   }).join("");
