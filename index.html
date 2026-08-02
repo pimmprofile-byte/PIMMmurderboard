@@ -567,6 +567,9 @@
   .lead.clip1{margin:5px 0 0;font-size:12.5px;line-height:1.6;color:var(--sub);
     display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
   .lead.clip1::after{content:" 눌러서 전문 보기";color:var(--muted);font-size:11.5px}
+  /* 카드 그림 — 본문 위에 눕는다. 눌러서 크게 본다. */
+  .cardart{margin:0 0 13px;border-radius:5px;overflow:hidden;border:1px solid var(--line);cursor:pointer}
+  .cardart img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
   .pchips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .pchips .pc-note{font-size:11.5px;color:var(--muted)}
   .pill.pair{display:inline-flex;align-items:center;gap:3px;padding-left:4px}
@@ -3034,6 +3037,18 @@ function oneLine(t){
   const cut=first.split(/(?<=[.!?」])\s/)[0]||first;
   return cut.length>62?cut.slice(0,60)+"…":cut;
 }
+/* 카드 그림 — 있으면 본문 앞에 끼운다. 긴 카드는 글 벽이 되어서, 그림 한 장이
+   읽는 호흡을 끊어준다. 규약은 /assets/{시나리오}_card_{카드ID}. 없으면 글만 뜬다. */
+function paintCardArt(id){
+  const sid=STATE.scenarioId||""; if(!sid) return;
+  findAsset(`/assets/${sid}_card_${id}`, url=>{
+    const t=$("cardText"); if(!url||!t||t.dataset.art) return;
+    t.dataset.art="1";
+    t.insertAdjacentHTML("beforebegin",
+      `<div class="cardart" onclick="showPic('${url}','${esc(($("cardBox").querySelector("h2")||{}).textContent||"")}')">
+         <img src="${url}" alt="" decoding="async"></div>`);
+  });
+}
 function pairOf(id){ return (SCEN.pairKeys||[]).find(k=>k.cards.includes(id))||null; }
 /* 한 장이 여러 조합의 반쪽일 수 있다 — A1은 흉기 둘 다에, A3는 장부와 값 양쪽에 걸린다.
    그래서 카드마다 「속한 조합 수」만큼 조각이 붙는다. */
@@ -3120,9 +3135,10 @@ function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const 
     <div class="mbody">${pairsOf(c.id).length?`<div class="pchips">${pairsOf(c.id).map(k=>
         `<button class="pill pair" onclick="showPairHint('${c.id}',${k.i})">${pairChip(k,c.id)}조각</button>`).join("")}
         <span class="pc-note">같은 조각을 단 카드와 맞물립니다</span></div>`:""}
-      <div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>${mynote(c.id)}${cnote(c)}</div>
+      <div class="sec"><div class="b" style="font-size:15px" id="cardText">${esc(c.text)}</div></div>${mynote(c.id)}${cnote(c)}</div>
     <div class="mfoot"><span class="mf-note">${inHand?"알리려면 대화로 말하세요 — 저절로 새어 나가지 않습니다.":"이미 모두가 보고 있는 단서입니다."}</span>
       <button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
+  paintCardArt(c.id);
   const box=$("cardBox");
   box.style.setProperty("--mt",pub?"var(--cold)":"var(--gold)");
   box.classList.remove("reveal","shock","bait","clue");
