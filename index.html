@@ -482,6 +482,34 @@
   .mhead .mh-x:hover{border-color:var(--mt);color:var(--ink)}
   /* 본문 — 창 안에서 구르는 곳은 여기 하나뿐이다 */
   .mbody{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:16px 18px}
+  /* 방 안 — 그림 위에 핀이 선다. 핀은 「무엇을 뒤지는가」까지만 말하고 내용은 말하지 않는다. */
+  .room{position:relative;border-radius:4px;overflow:hidden;border:1px solid var(--line);background:#07080a}
+  .room>img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
+  .pin{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;
+    background:rgba(8,10,13,.82);border:1px solid var(--cold);border-radius:20px;padding:3px 9px 3px 5px;
+    color:var(--ink);font-size:11px;cursor:pointer;backdrop-filter:blur(3px);white-space:nowrap;
+    max-width:46%;transition:border-color .15s,background .15s}
+  .pin i{flex:0 0 9px;height:9px;border-radius:50%;background:var(--cold);
+    box-shadow:0 0 0 3px rgba(90,166,205,.22)}
+  .pin span{overflow:hidden;text-overflow:ellipsis}
+  .pin:hover{background:rgba(14,20,26,.95);border-color:var(--gold-b)}
+  .pin.seen{border-color:var(--line);color:var(--muted)}
+  .pin.seen i{background:var(--muted);box-shadow:none}
+  .pin.lock{opacity:.55}
+  /* 가로로 보기 — 화면을 통째로 덮고 90도 돌린다. 폰을 눕히면 방이 꽉 찬다. */
+  .roomfs{position:fixed;inset:0;z-index:80;background:#05060a;overflow:hidden}
+  /* 돌린 뒤에도 화면 한가운데 있어야 한다. grid 가운데정렬은 자식이 화면보다 넓으면
+     시작점부터 흘러넘쳐서, 회전축이 화면 밖으로 밀려난다. */
+  .roomfs .rfs-rot{position:absolute;left:50%;top:50%;transform-origin:center center}
+  .roomfs .room{width:100%;height:100%;border:0;border-radius:0}
+  .roomfs .room>img{width:100%;height:100%;aspect-ratio:auto;object-fit:contain}
+  .roomfs .pin{font-size:13px;padding:5px 12px 5px 7px;max-width:38%}
+  .roomfs .pin i{flex-basis:11px;height:11px}
+  .rfs-bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:9px;
+    padding:9px 14px;background:linear-gradient(0deg,rgba(5,6,10,.92),transparent);color:var(--ink)}
+  .rfs-bar b{flex:1;font-size:14px}
+  .pin.door{border-color:var(--gold);color:var(--gold-b)}
+  .pin.door i{background:var(--gold);box-shadow:0 0 0 3px rgba(201,162,74,.22)}
   .mbody::-webkit-scrollbar{width:5px}
   .mbody::-webkit-scrollbar-thumb{background:#4a4844;border-radius:3px}
   .mbody::-webkit-scrollbar-track{background:transparent}
@@ -1859,7 +1887,135 @@ function miniSVG(txt){
 }
 
 /* 구역 안으로 들어간다 — 그 자리에서 볼 수 있는 곳들이 나온다 */
+/* ── 구역 안의 장면 ────────────────────────────────────────────────
+   지도에서 구역을 누르면 그 방을 본다. 카드는 그림 위의 핀이고, 핀을 눌러야
+   「무엇을 뒤지는가」가 나오고 거기서 조사가 시작된다. 내용은 여전히 조사한 사람만 본다.
+   방 그림이 없으면 예전 목록으로 그대로 되돌아간다 — 에셋이 없어도 게임은 돈다. */
+let roomAt=null;                     // 지금 서 있는 방의 key
+function roomsAll(){ return (SCEN.rooms||[]); }
+function roomByKey(k){ return roomsAll().find(r=>r.key===k)||null; }
+function roomHome(loc){ return roomsAll().find(r=>r.loc===loc&&!r.from)||null; }
+function roomSubs(key){ return roomsAll().filter(r=>r.from===key); }
+/* 이 방에 서는 카드. 하위 방에 적힌 카드는 상위 방에서 빠진다. */
+function roomCards(room){
+  const claimed=new Set(); roomsAll().forEach(r=>(r.cards||[]).forEach(id=>claimed.add(id)));
+  const all=zoneCards(room.loc);
+  return (room.cards&&room.cards.length)
+    ? all.filter(c=>room.cards.indexOf(c.id)>=0)
+    : all.filter(c=>!claimed.has(c.id));
+}
+/* 핀 자리. 시나리오가 좌표를 주면 그걸 쓰고, 없으면 카드 id로 흩어놓는다 —
+   아무 데나 겹쳐 놓이지 않게 결정적으로 계산한다(같은 카드는 늘 같은 자리). */
+function pinAt(id, i, n){
+  const h=[...id].reduce((a,c)=>((a*31+c.charCodeAt(0))>>>0),7);
+  const col=n<=4?2:3, row=Math.floor(i/col), colN=i%col;
+  const x=12+(colN+.5)*(76/col)+((h%9)-4);
+  const y=24+row*17+((h>>4)%5);
+  // 아래 띠는 문 핀 자리다. 카드가 거기까지 내려오면 서로 겹친다.
+  return [Math.max(8,Math.min(92,x)), Math.max(18,Math.min(70,y))];
+}
+function openRoom(key){
+  const room=roomByKey(key); if(!room) return;
+  roomAt=key;
+  findAsset(`/assets/${STATE.scenarioId}_room_${room.art}`, url=>{
+    if(!url){ openZoneList(room.loc); return; }     // 그림이 없으면 목록으로
+    paintRoom(room, url);
+  });
+}
+function paintRoom(room, url){
+  const cards=roomCards(room);
+  const done=cards.filter(c=>{ const k=cardState(c).k; return k!=="open"&&k!=="lock"; }).length;
+  const pins=cards.map((c,i)=>{
+    const st=cardState(c), p=pinAt(c.id,i,cards.length);
+    const seen=(st.k!=="open"&&st.k!=="lock");
+    return `<button class="pin ${st.k} ${seen?"seen":""}" style="left:${p[0]}%;top:${p[1]}%"
+      onclick="event.stopPropagation();showSpot('${c.id}')" title="${esc(c.spot||"")}">
+      <i></i><span>${esc(c.spot||room.name)}</span></button>`; }).join("");
+  const doors=roomSubs(room.key).filter(r=>!r.needPod||STATE.podOpen).map(r=>{
+    const at=(r.at&&r.at.length)?r.at:[88,64];
+    return `<button class="pin door" style="left:${at[0]}%;top:${at[1]}%"
+      onclick="event.stopPropagation();openRoom('${r.key}')"><i></i><span>${esc(r.name)} ›</span></button>`;
+  }).join("");
+  const back=room.from?`<button class="btn sm" onclick="openRoom('${room.from}')">‹ ${esc((roomByKey(room.from)||{}).name||"")}</button>`:"";
+  $("mapBox").innerHTML=`<div class="mhead">
+      <div class="mh-t"><span class="mh-eb">구역 안</span>
+        <h2>${esc(room.name)}</h2>
+        <span class="mh-sub">볼 곳 ${cards.length} · 확인 ${done}${room.note?" · "+esc(room.note):""}</span></div>
+      <button class="mh-x" onclick="closeModal('mapModal')" aria-label="닫기">✕</button></div>
+    <div class="mbody rb"><div class="room"><img src="${url}" alt="" decoding="async">${pins}${doors}</div>
+      <div class="panel-note" style="margin-top:9px">그림 위의 표시를 누르면 그 자리를 살펴봅니다.</div></div>
+    <div class="mfoot">${back}<button class="btn" onclick="roomWide('${room.key}')">⤢ 가로로</button>
+      <button class="btn" onclick="openZoneList('${room.loc}')">목록으로</button></div>`;
+  $("mapBox").style.setProperty("--mt","var(--cold)");
+  openModal("mapModal");
+}
+/* 가로로 보기 — 16:9 방을 세로 폰에 그대로 얹으면 손바닥만 해진다. 화면 회전은 강제할 수
+   없으니 우리가 돌린다. 폰을 옆으로 눕히면 그대로 꽉 찬 방이 된다. */
+function roomWide(key){
+  const room=roomByKey(key); if(!room) return;
+  findAsset(`/assets/${STATE.scenarioId}_room_${room.art}`, url=>{
+    if(!url) return;
+    const cards=roomCards(room);
+    const pins=cards.map((c,i)=>{ const st=cardState(c), p=pinAt(c.id,i,cards.length);
+      const seen=(st.k!=="open"&&st.k!=="lock");
+      return `<button class="pin ${st.k} ${seen?"seen":""}" style="left:${p[0]}%;top:${p[1]}%"
+        onclick="showSpot('${c.id}')"><i></i><span>${esc(c.spot||room.name)}</span></button>`; }).join("");
+    const doors=roomSubs(room.key).filter(r=>!r.needPod||STATE.podOpen).map(r=>{
+      const at=(r.at&&r.at.length)?r.at:[88,84];
+      return `<button class="pin door" style="left:${at[0]}%;top:${at[1]}%"
+        onclick="closeWide();openRoom('${r.key}');roomWide('${r.key}')"><i></i><span>${esc(r.name)} ›</span></button>`;
+    }).join("");
+    const w=document.createElement("div");
+    w.className="roomfs"; w.id="roomFS";
+    w.innerHTML=`<div class="rfs-rot"><div class="room">${`<img src="${url}" alt="">`}${pins}${doors}
+        <div class="rfs-bar"><b>${esc(room.name)}</b>
+          ${room.from?`<button class="btn sm" onclick="closeWide();openRoom('${room.from}');roomWide('${room.from}')">‹ 나가기</button>`:""}
+          <button class="btn sm" onclick="closeWide()">✕ 세로로</button></div></div></div>`;
+    document.body.appendChild(w);
+    sizeWide();
+  });
+}
+function closeWide(){ const w=$("roomFS"); if(w) w.remove(); }
+function sizeWide(){
+  const w=$("roomFS"); if(!w) return;
+  const r=w.querySelector(".rfs-rot"); if(!r) return;
+  // 세로로 들고 있으면 돌려서 채우고, 이미 가로면 그대로 둔다.
+  const portrait=innerHeight>innerWidth;
+  r.style.width=(portrait?innerHeight:innerWidth)+"px";
+  r.style.height=(portrait?innerWidth:innerHeight)+"px";
+  r.style.transform="translate(-50%,-50%)"+(portrait?" rotate(90deg)":"");
+}
+addEventListener("resize",sizeWide);
+addEventListener("orientationchange",()=>setTimeout(sizeWide,120));
+
+/* 핀 하나 — 카드의 뒷면이다. 무엇을 뒤지는지와 상태만 보이고, 내용은 조사해야 열린다. */
+function showSpot(id){
+  const c=(SCEN.cardCatalog||[]).find(x=>x.id===id); if(!c) return;
+  const st=cardState(c), full=cardOpen(c.id);
+  const body=full
+    ? `<b style="color:var(--gold-b)">${esc(full.title)}</b>
+       <div class="lead" style="margin-top:6px">${esc(full.text)}</div>`
+    : `<div class="zc-q">아직 아무도 들여다보지 않았습니다.</div>`;
+  const m=document.createElement("div");
+  m.className="modal on"; m.onclick=e=>{ if(e.target===m) m.remove(); };
+  m.innerHTML=`<div class="box" onclick="event.stopPropagation()">
+    <div class="mhead"><div class="mh-t"><span class="mh-eb">${esc(c.locName||"")}</span>
+      <h2>${esc(c.spot||"이 자리")}</h2>
+      <span class="mh-sub">조사 R${c.round}${st.who?" · "+esc(st.who.name)+" 소지":""}</span></div>
+      <button class="mh-x" onclick="this.closest('.modal').remove()">✕</button></div>
+    <div class="mbody">${body}</div>
+    <div class="mfoot">${st.act
+      ? `<button class="btn ${st.k==="open"?"primary":"quiet"}" onclick="this.closest('.modal').remove();${st.act}">${esc(st.label)}</button>`
+      : `<span class="mf-note">${esc(st.label)}</span>`}
+      <button class="btn" onclick="this.closest('.modal').remove()">닫기</button></div></div>`;
+  document.body.appendChild(m);
+}
 function openZone(loc){
+  const home=roomHome(loc);
+  if(home&&STATE.scenarioId){ openRoom(home.key); return; }
+  openZoneList(loc);
+}
+function openZoneList(loc){
   const z=((SCEN.map)||[]).find(x=>x.loc===loc)||{loc,name:loc};
   const cards=zoneCards(loc);
   const done=cards.filter(c=>{ const k=cardState(c).k; return k!=="open"&&k!=="lock"; }).length;

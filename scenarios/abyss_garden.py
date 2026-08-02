@@ -1203,6 +1203,10 @@ def public_scenario() -> dict:
         "openingCuts": OPENING_CUTS,
         "finalQuestions": FINAL_QUESTIONS,
         "interludes": {str(k): v for k, v in INTERLUDES.items()},
+        "rooms": [{"key": r["key"], "loc": r["loc"], "name": r["name"], "art": r["art"],
+                   "from": r.get("from", ""), "at": list(r.get("at", ()) or []),
+                   "cards": list(r.get("cards", []) or []), "note": r.get("note", ""),
+                   "needPod": bool(r.get("needPod"))} for r in ROOMS],
         "paLabel": PA_LABEL,
         "fragLabel": FRAGMENT_LABEL, "fragEyebrow": FRAGMENT_EYEBROW, "fragNotice": FRAGMENT_NOTICE,
     }
@@ -1358,6 +1362,30 @@ def phase_by_seq(seq: int) -> dict:
 
 # 배치도는 전원이 갖는다. 다만 탈출 포드가 그려진 판본은 이 둘뿐이다 —
 # 남의 화면을 곁눈질해도 자기 지도와 다르다는 걸 알아채면 그 자체가 단서가 된다.
+# ── 구역 안의 장면 ────────────────────────────────────────────────
+# 지도에서 구역을 누르면 목록이 아니라 그 방을 본다. 카드는 그림 위의 핀으로 서 있고,
+# 핀을 눌러야 「무엇을 뒤지는지」가 나오고, 거기서 조사가 시작된다.
+#
+# art  : /assets/submarine_room_{art}.{webp|png}. 파일이 없으면 예전 목록으로 되돌아간다.
+# from : 이 방으로 들어가는 문이 걸린 상위 방. 상위 방에 문 핀이 하나 선다.
+# cards: 이 방에 있는 카드. 안 적힌 카드는 자기 loc의 대표 방에 선다.
+# at   : 문 핀 위치(그림 폭·높이의 %). 핀 좌표를 안 주면 화면이 알아서 흩어놓는다.
+ROOMS = [
+    {"key": "A", "loc": "A", "name": "함교", "art": "bridge"},
+    {"key": "A_duty", "loc": "A", "name": "숙직실", "art": "duty", "from": "A",
+     "at": (13, 84), "cards": ["A3", "A4"],
+     "note": "함교 안쪽에 딸린 좁은 방. 벽 하나 너머에서 사건이 났다."},
+    {"key": "B", "loc": "B", "name": "기관실", "art": "engine"},
+    {"key": "C", "loc": "C", "name": "화물실", "art": "cargo"},
+    {"key": "D", "loc": "D", "name": "의무실", "art": "medbay"},
+    {"key": "E", "loc": "E", "name": "통신실", "art": "radio"},
+    {"key": "F", "loc": "F", "name": "선실", "art": "quarters"},
+    # 아는 사람의 지도에만 있던 그 자리. 해치를 찾아야 문이 열린다.
+    {"key": "F_pod", "loc": "F", "name": "세일 구획 · 탈출 포드", "art": "pod", "from": "F",
+     "at": (87, 84), "cards": [], "needPod": True,
+     "note": "선실 끝 해치 위로 이어지는 좁은 통로. 끝에 포드가 있다."},
+]
+
 POD_KNOWERS = ["jinharam", "handokyung", "munjaei"]
 
 # 말수 — 페르소나 그대로다. 강윤서는 조급해서 말이 많고, 진하람은 좀처럼 입을 안 연다.
