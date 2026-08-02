@@ -539,6 +539,8 @@
     margin-bottom:4px;display:block;word-break:keep-all}
   .mhead h2{font-size:19px;line-height:1.3;word-break:keep-all}
   .mhead .mh-sub{display:block;font-size:12.5px;color:var(--muted);margin-top:4px;word-break:keep-all}
+  /* 하단바에서 여는 창은 탭이다 — ✕가 없다. 머리띠가 화면 폭을 다 쓴다. */
+  .modal.overdock .mhead .mh-t{flex:1 1 auto;min-width:0}
   .mhead .mh-x{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--panel2);
     border:1px solid var(--line);color:var(--sub);font-size:15px;line-height:1;display:grid;
     place-items:center;cursor:pointer;transition:.15s}
@@ -648,8 +650,8 @@
   .sw-slide{flex:0 0 100%;scroll-snap-align:center;min-width:0;padding:2px}
   /* 화살표는 카드 옆구리에 붙는다 — 아래 컨트롤 줄에 두니 화면이 짧은 기기에서 잘려 나갔다. */
   .sw-rail{position:sticky;top:45%;height:0;z-index:4;pointer-events:none}
-  .sw-nav{position:absolute;top:-28px;pointer-events:auto;z-index:4;
-    width:38px;height:56px;border-radius:11px;padding:0;
+  .sw-nav{position:absolute;top:-26px;pointer-events:auto;z-index:4;
+    width:30px;height:52px;border-radius:9px;padding:0;
     background:rgba(10,9,8,.72);border:1px solid var(--line);backdrop-filter:blur(5px);
     color:var(--ink);font-size:22px;line-height:1;display:grid;place-items:center;cursor:pointer;
     transition:opacity .15s,border-color .15s,background .15s}
@@ -758,7 +760,7 @@
   /* 내 정보(배역 시트)는 한 번에 읽을 분량이 많다 — 팝업을 넓히고 본문을 키운다.
      본문 줄길이는 measure로 잡아, 넓어져도 한 줄이 지나치게 길어지지 않게 한다. */
   #sheetModal .box{max-width:760px;max-height:92vh;max-height:94svh}
-  #sheetModal .mbody{padding:18px 22px 20px}
+  #sheetModal .mbody{padding:16px 12px 18px}
   #sheetModal h2{font-size:22px}
   #sheetModal .mlead{font-size:13.5px;margin-bottom:16px}
   /* 카드 하나가 화면보다 길어질 수 있다. 모달 전체를 굴리면 좌우 넘김 컨트롤이 위로 사라지므로
@@ -767,9 +769,9 @@
      내려도 마지막 줄이 흐린 채 남아 '잘렸다'로 읽혔고, 아이폰에서는 마스크가 스크롤
      레이어를 먹어 손가락이 안 먹히기도 한다. 그래서 흐림은 카드 밖(슬라이드)에 얹고,
      더 굴릴 게 없으면 JS 가 꺼버린다. 높이는 주소창이 오르내려도 안 잘리게 svh 로 잡는다. */
-  #sheetModal .bigcard{min-height:300px;padding:24px 26px 30px}
+  #sheetModal .bigcard{min-height:300px;padding:22px 20px 26px}
   /* 화살표가 글을 가리지 않게 카드 양옆을 비워 둔다. */
-  #sheetModal .sw-slide,#handModal .sw-slide{padding:2px 34px}
+  #sheetModal .sw-slide,#handModal .sw-slide{padding:2px 20px}
   #sheetModal .sw-nav,#handModal .sw-nav{left:auto;right:auto}
   #sheetModal .sw-nav.prev,#handModal .sw-nav.prev{left:0}
   #sheetModal .sw-nav.next,#handModal .sw-nav.next{right:0}
@@ -2253,9 +2255,8 @@ function openLook(){
   $("lookBox").innerHTML=`<div class="mhead">
       <div class="mh-t"><span class="mh-eb">열람</span><h2>${ICO.map} 조사 화면</h2>
         <span class="mh-sub">카드를 여는 건 조사 페이즈에만 됩니다</span></div>
-      <button class="mh-x" onclick="closeLook()" aria-label="닫기">${ICO.close}</button></div>
-    <div class="mbody"><div id="lookMap"></div></div>
-    <div class="mfoot"><button class="btn" onclick="closeLook()">‹ 돌아가기</button></div>`;
+      </div>
+    <div class="mbody"><div id="lookMap"></div></div>`;
   $("lookBox").style.setProperty("--mt","var(--cold)");
   renderMap($("lookMap"));
   openModal("lookModal");
@@ -3411,7 +3412,7 @@ function showChatFull(){
   $("chatFullBox").innerHTML=`<div class="mhead">
       <div class="mh-t"><span class="mh-eb">지금까지 오간 말</span><h2>${ICO.chat} 대화</h2>
         <span class="mh-sub" id="chatFullSub"></span></div>
-      <button class="mh-x" onclick="closeModal('chatModal')" aria-label="닫기">${ICO.close}</button></div>
+      </div>
     <div class="chat" id="chatFull"></div>
     <div class="composer">
       <span class="who" id="chatFullWho"></span>
@@ -3465,11 +3466,10 @@ function showWho(){
   $("whoBox").innerHTML=`<div class="mhead">
       <div class="mh-t"><span class="mh-eb">이 배에 탄 사람들</span><h2>${ICO.people} 인물정보</h2>
         <span class="mh-sub">손패는 ${lim}장까지 — 자리만 보이고 내용은 잠깁니다</span></div>
-      <button class="mh-x" onclick="closeModal('whoModal')" aria-label="닫기">${ICO.close}</button></div>
+      </div>
     <div class="mbody">
       <div class="mlead">누가 어디를 뒤졌는지는 테이블이 다 압니다. <b>무엇을 찾았는지는 본인만</b> 알아요 — ${ICO.lock}는 자리만 아는 카드입니다.</div>
-      ${rows}</div>
-    <div class="mfoot"><button class="btn" onclick="closeModal('whoModal')">확인</button></div>`;
+      ${rows}</div>`;
   $("whoBox").style.setProperty("--mt","var(--cold)");
   openModal("whoModal");
 }
@@ -4061,7 +4061,6 @@ function renderSheetTabs(){
       <div class="mh-t"><span class="mh-eb">내 정보</span>
         <h2 style="color:${s.color}">${avaHTML(s,"xs")} ${esc(s.name)}</h2>
         <span class="mh-sub">${esc(meta)} · 옆으로 넘겨 확인하세요</span></div>
-      <button class="mh-x" onclick="closeModal('sheetModal')" aria-label="닫기">${ICO.close}</button>
       <div class="shtabs">${tabs}</div></div>
     <div class="mbody">${buildSwipe(cur)}</div>`;
   wireSwipe($("sheetBox"));
@@ -4076,7 +4075,7 @@ function showMyHand(){
   let h=`<div class="mhead">
       <div class="mh-t"><span class="mh-eb">내가 쥔 것</span><h2>${ICO.card} 내 단서</h2>
         <span class="mh-sub">손패 ${myHand.length}장 (비공개)${pub.length?` · 전체공개 ${pub.length}장`:""}</span></div>
-      <button class="mh-x" onclick="closeModal('handModal')" aria-label="닫기">${ICO.close}</button></div>
+      </div>
     <div class="mbody">
     <div class="mlead">내가 조사한 단서와, 테이블에 <b>전체공개된 카드</b>를 함께 봅니다. 손패는 알릴지 감출지 자유예요.</div>`;
   if(!cards.length){ h+=`<div class="panel-note">아직 조사한 단서가 없어요. 조사 페이즈에 카드를 열면 여기에 계속 쌓입니다.</div>`; }
@@ -4090,11 +4089,10 @@ function showMyHand(){
       <div class="bc-body">${esc(c.text)}</div>${mynote(c.id)}${cnote(c)}
       ${c.unlocks&&!isPub?`<div class="unlocknote">${ICO.unlock} 이 카드를 <b>전체공개</b>하면 무언가 밝혀질 수 있습니다.</div>`:""}</div>`; });
     h+=buildSwipe(slides); }
-  const pubN=(STATE.revealed||[]).length;
-  h+=`</div><div class="mfoot">
-    ${(myRoleValid()&&myHand.length)?`<button class="btn" onclick="showShare()">${ICO.chat} 대화에 올리기</button>`:""}
-    ${(myRoleValid()&&myHand.length&&pubN)?`<button class="btn" onclick="showSwap()">${ICO.swap} 되가져오기</button>`:""}
-    <button class="btn" onclick="closeModal('handModal')">확인</button></div>`;
+  const pubN=(STATE.revealed||[]).length, canAct=myRoleValid()&&myHand.length;
+  h+=`</div>${canAct?`<div class="mfoot">
+    <button class="btn" onclick="showShare()">${ICO.chat} 대화에 올리기</button>
+    ${pubN?`<button class="btn" onclick="showSwap()">${ICO.swap} 되가져오기</button>`:""}</div>`:""}`;
   $("handBox").innerHTML=h;
   $("handBox").style.setProperty("--mt","var(--gold)");
   openModal("handModal"); wireSwipe($("handBox"));
