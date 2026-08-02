@@ -663,13 +663,20 @@
   .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif}
   /* ── 스와이프 카드 캐러셀 (롤카드·손패 넘겨보기) ── */
   .swipe{position:relative;margin:6px 0 2px}
-  /* 세로로 구르는 곳은 바깥(.mbody) 하나뿐이다. 트랙은 굴리지 않는다 —
-     가로 스크롤 위치로 「몇 번째 장인가」를 되짚으면 화면 높이가 바뀔 때마다 어긋났다. */
-  .sw-track{position:relative;touch-action:pan-y}
-  .sw-slide{display:none;min-width:0}
-  .sw-slide.on{display:block}
-  .swipe.slid .sw-slide.on{animation:swIn .2s ease}
-  @keyframes swIn{from{opacity:.3;transform:translateX(6px)}to{opacity:1;transform:none}}
+  /* 세로로 구르는 곳은 바깥(.mbody) 하나뿐이다. 트랙은 굴리지 않고 밀린다 —
+     가로 스크롤 위치로 「몇 번째 장인가」를 되짚으면 화면 높이가 바뀔 때마다 어긋났다.
+     지금은 변수 하나가 쥐고, 손가락은 그 위를 끌 뿐이다. */
+  .sw-vp{overflow:hidden;transition:height .24s cubic-bezier(.22,.9,.24,1)}
+  .sw-track{display:flex;align-items:flex-start;touch-action:pan-y;will-change:transform;
+    transition:transform .3s cubic-bezier(.22,.9,.24,1)}
+  .swipe.dragging .sw-track{transition:none}
+  .swipe.dragging .sw-vp{transition:none}
+  .sw-slide{flex:0 0 100%;min-width:0;opacity:.42;transition:opacity .3s ease}
+  .sw-slide.on{opacity:1}
+  .swipe.dragging .sw-slide{opacity:1}
+  @media (prefers-reduced-motion:reduce){
+    .sw-vp,.sw-track,.sw-slide{transition:none}
+  }
   /* 화살표는 창 한가운데에 고정한다 — 글 길이나 스크롤 위치에 흔들리지 않는다. */
   .sw-nav{position:fixed;top:calc(50% + var(--headh,60px)/2 - var(--dockh,64px)/2);transform:translateY(-50%);z-index:6;
     width:30px;height:56px;padding:0;
@@ -3978,59 +3985,93 @@ function banner(m){ const b=$("banner");
 
 /* ── 스와이프 카드 캐러셀 (실물카드처럼 옆으로 넘겨보기) ── */
 function buildSwipe(slides){
-  const track=slides.map((x,i)=>`<div class="sw-slide${i?"":" on"}">${x}</div>`).join("");
-  if(slides.length<2) return `<div class="swipe"><div class="sw-track">${track}</div></div>`;
+  const track=slides.map(x=>`<div class="sw-slide">${x}</div>`).join("");
+  if(slides.length<2) return `<div class="swipe"><div class="sw-vp"><div class="sw-track">${track}</div></div></div>`;
   const dots=slides.map((_,i)=>`<span class="sw-dot${i===0?" on":""}" data-i="${i}"></span>`).join("");
   return `<div class="swipe">
     <button class="sw-nav prev" aria-label="이전">‹</button>
     <button class="sw-nav next" aria-label="다음">›</button>
-    <div class="sw-track">${track}</div>
+    <div class="sw-vp"><div class="sw-track">${track}</div></div>
     <div class="sw-ctrl"><div class="sw-dots">${dots}</div>
       <span class="sw-count"><b class="sw-cur">1</b> / ${slides.length}</span></div></div>`;
 }
-/* 예전에는 가로로 구르는 트랙에 장을 늘어놓고, 지금 몇 번째인지를 scrollLeft 로 되짚고,
-   트랙 높이를 그 장에 맞춰 JS 가 매번 다시 재었다. 폰에서는 스크롤할 때 주소창이 접히며
-   화면 높이가 바뀐다 — 그때마다 다시 재는데 scrollLeft 는 따라오지 않아서, 엉뚱한 장의
-   높이가 들어가고 보던 자리를 잃었다. 그래서 재는 걸 아예 그만뒀다.
-   지금 장만 내놓고(display), 몇 번째인지는 변수로 들고 있는다. 넘기는 건 손가락 방향만 본다. */
+/* 손가락을 따라 끌리다가 놓으면 붙는다. 문턱만 재서 툭 갈아치우면 넘긴 것이 아니라
+   화면이 바뀐 것으로 읽힌다.
+   몇 번째 장인지는 변수 하나가 쥔다 — 예전처럼 스크롤 위치에서 되짚지 않는다.
+   폰에서 주소창이 접히며 화면이 바뀌면 그 되짚기가 어긋나 보던 자리를 잃었다. */
 function wireSwipe(box){
   const sw=box.querySelector(".swipe"); if(!sw)return;
-  const track=sw.querySelector(".sw-track");
+  const vp=sw.querySelector(".sw-vp"), track=sw.querySelector(".sw-track");
   const slides=[...sw.querySelectorAll(".sw-slide")];
-  if(slides.length<2) return;
+  if(!vp||!track||!slides.length) return;
   const dots=[...sw.querySelectorAll(".sw-dot")];
   const prev=sw.querySelector(".sw-nav.prev"), next=sw.querySelector(".sw-nav.next");
   const cnt=sw.querySelector(".sw-cur");
   const scroller=sw.closest(".mbody")||sw.parentElement;
+  const N=slides.length;
   let i=0;
-  const show=(k,keepTop)=>{
-    k=Math.max(0,Math.min(slides.length-1,k)); if(k===i&&slides[i].classList.contains("on")) return;
-    slides[i].classList.remove("on"); i=k; slides[i].classList.add("on");
-    dots.forEach((d,j)=>d.classList.toggle("on",j===i));
+
+  const fit=()=>{ const h=slides[i]&&slides[i].offsetHeight; if(h) vp.style.height=h+"px"; };
+  const place=px=>{ track.style.transform=`translate3d(calc(${-i*100}% + ${px||0}px),0,0)`; };
+  const paint=()=>{
+    dots.forEach((d,k)=>d.classList.toggle("on",k===i));
     if(cnt) cnt.textContent=i+1;
     if(prev) prev.disabled=i<=0;
-    if(next) next.disabled=i>=slides.length-1;
-    // 장을 넘기면 새 글이다 — 앞 장에서 내려와 있던 자리를 물려받지 않는다.
-    if(!keepTop&&scroller) scroller.scrollTop=0;
-    sw.classList.remove("slid"); void sw.offsetWidth; sw.classList.add("slid");
+    if(next) next.disabled=i>=N-1;
+    slides.forEach((sl,k)=>sl.classList.toggle("on",k===i));
   };
-  if(prev) prev.onclick=()=>show(i-1);
-  if(next) next.onclick=()=>show(i+1);
-  dots.forEach(d=>d.onclick=()=>show(+d.dataset.i));
-  // 손가락 — 가로로 확실히 끈 때만 넘긴다. 세로는 건드리지 않아 본문이 그대로 굴러간다.
-  let sx=0, sy=0, act=false;
-  track.addEventListener("touchstart",e=>{ if(e.touches.length!==1){act=false;return;}
-    sx=e.touches[0].clientX; sy=e.touches[0].clientY; act=true; },{passive:true});
-  track.addEventListener("touchmove",e=>{ if(!act) return;
-    const dx=e.touches[0].clientX-sx, dy=e.touches[0].clientY-sy;
-    if(Math.abs(dy)>Math.abs(dx)){ act=false; return; }      // 세로로 읽는 중이다
-    if(Math.abs(dx)<46) return;
-    act=false; show(dx<0?i+1:i-1);
+  const go=(k,keepTop)=>{
+    k=Math.max(0,Math.min(N-1,k));
+    const moved=k!==i; i=k;
+    place(0); paint(); fit();
+    // 장을 넘기면 새 글이다 — 앞 장에서 내려와 있던 자리를 물려받지 않는다.
+    if(moved&&!keepTop&&scroller) scroller.scrollTop=0;
+  };
+  if(prev) prev.onclick=()=>go(i-1);
+  if(next) next.onclick=()=>go(i+1);
+  dots.forEach(d=>d.onclick=()=>go(+d.dataset.i));
+
+  // ── 끌기 ──────────────────────────────────────────────────────
+  let sx=0, sy=0, dx=0, axis=0, t0=0;   // axis: 0 미정 · 1 가로 · -1 세로
+  const W=()=>vp.clientWidth||1;
+  track.addEventListener("touchstart",e=>{
+    if(e.touches.length!==1){ axis=-1; return; }
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY; dx=0; axis=0; t0=e.timeStamp;
   },{passive:true});
-  track.addEventListener("touchend",()=>{act=false;},{passive:true});
-  show(0,true);
-  if(prev) prev.disabled=true;
-  if(next) next.disabled=slides.length<2;
+  track.addEventListener("touchmove",e=>{
+    if(axis<0||e.touches.length!==1) return;
+    const mx=e.touches[0].clientX-sx, my=e.touches[0].clientY-sy;
+    if(!axis){
+      if(Math.abs(mx)<7&&Math.abs(my)<7) return;
+      axis=Math.abs(mx)>Math.abs(my)?1:-1;
+      if(axis>0){ sw.classList.add("dragging"); vp.style.height=slides[i].offsetHeight+"px"; }
+      else return;
+    }
+    e.preventDefault();               // 가로로 정했으면 세로 스크롤은 넘기지 않는다
+    dx=mx;
+    // 양 끝에서는 덜 끌린다 — 더 갈 데가 없다는 걸 손으로 알려준다.
+    if((i===0&&dx>0)||(i===N-1&&dx<0)) dx*=0.32;
+    place(dx);
+  },{passive:false});
+  const drop=e=>{
+    if(axis<=0){ axis=0; return; }
+    sw.classList.remove("dragging");
+    const w=W(), dt=Math.max(1,(e&&e.timeStamp||0)-t0), v=Math.abs(dx)/dt;
+    // 짧고 빠르게 튕겨도 넘어간다. 천천히 끌면 3분의 1은 와야 한다.
+    const pass=Math.abs(dx)>w*0.32 || (v>0.45&&Math.abs(dx)>28);
+    go(pass ? i+(dx<0?1:-1) : i, !pass);
+    axis=0; dx=0;
+  };
+  track.addEventListener("touchend",drop,{passive:true});
+  track.addEventListener("touchcancel",drop,{passive:true});
+
+  // 웹폰트·사진이 늦게 오면 높이가 나중에 잡힌다 — 지금 장의 높이만 다시 맞춘다.
+  if(window.ResizeObserver){ const ro=new ResizeObserver(()=>{ if(!sw.classList.contains("dragging")) fit(); });
+    slides.forEach(sl=>ro.observe(sl)); }
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(fit).catch(()=>{});
+  sw.querySelectorAll("img").forEach(im=>{ if(!im.complete) im.addEventListener("load",fit,{once:true}); });
+  go(0,true);
+  requestAnimationFrame(()=>{ place(0); fit(); });   // 폭이 잡힌 뒤 한 번 더
 }
 
 /* 내 정보(배역 시트) — 실물카드처럼 스와이프로 넘겨보기(큰 글씨) */
