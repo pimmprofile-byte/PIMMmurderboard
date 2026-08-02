@@ -578,6 +578,32 @@
   .vic-s img{flex:0 0 96px;display:block;width:96px;aspect-ratio:16/9;object-fit:cover;border-radius:3px}
   .vic-s .cap{flex:1 1 auto;min-width:0;font-size:12px;line-height:1.6;color:var(--sub)}
   .vic-s .cap b{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+  /* 결재 결정문 */
+  .dc-barred{margin-top:11px;padding:9px 11px;border-radius:9px;font-size:13px;line-height:1.75;
+    color:var(--ember-b);background:color-mix(in srgb,var(--ember) 11%,transparent);
+    border:1px solid color-mix(in srgb,var(--ember) 34%,transparent)}
+  .dseat .ds-h{display:flex;align-items:center;gap:10px}
+  .dseat .ds-n{flex:0 0 auto;width:23px;height:23px;border-radius:50%;background:var(--gold);color:#12100e;
+    font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .dseat .ds-who{font-size:12px;color:var(--sub);margin-top:2px}
+  .dseat .ds-h .pill{margin-left:auto}
+  .dseat .ds-h .pill.ok{color:var(--gold-b);border-color:color-mix(in srgb,var(--gold) 46%,var(--line))}
+  .dseat .ds-q{margin-top:10px;font-size:13.5px;color:var(--gold-b);line-height:1.7}
+  .dseat .ds-opts{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+  .dseat .ds-o{width:100%;text-align:left;background:var(--bg);border:1px solid var(--line);
+    border-radius:9px;padding:10px 12px;color:var(--ink);cursor:pointer;transition:.14s}
+  .dseat .ds-o:active{transform:scale(.985)}
+  .dseat .ds-o.on{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 10%,var(--bg))}
+  .dseat .ds-ol{font-size:13.5px;line-height:1.7}
+  .dseat .ds-on{margin-top:5px;font-size:12.5px;color:var(--sub);line-height:1.7}
+  .dseat.sealed{border-color:color-mix(in srgb,var(--gold) 30%,var(--line))}
+  .dseat .ds-line{margin-top:10px;padding:10px 12px;border-radius:9px;font-size:13.5px;line-height:1.8;
+    background:color-mix(in srgb,var(--gold) 7%,var(--bg));border:1px solid color-mix(in srgb,var(--gold) 22%,var(--line))}
+  .ds-paper{padding:13px 14px;border-radius:9px;background:#17150f;border:1px solid color-mix(in srgb,var(--gold) 26%,var(--line))}
+  .ds-pl{font-size:13.5px;line-height:1.9;padding:5px 0;border-bottom:1px dashed color-mix(in srgb,var(--gold) 18%,var(--line))}
+  .ds-pl:last-child{border-bottom:none}
+  .ds-note{margin-top:9px;font-size:12.5px;color:var(--sub);line-height:1.75}
+  .ds-note.flip{color:var(--ember-b)}
   .q-block{margin-bottom:13px}.q-block .q{font-size:14px;color:var(--gold-b);margin-bottom:6px;font-weight:600}
   .q-block textarea{width:100%;min-height:62px;resize:vertical;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:9px 11px;font-size:13.5px;font-family:inherit;line-height:1.55}
   .q-block textarea:focus{outline:none;border-color:var(--gold)}
@@ -1777,7 +1803,7 @@ function applyState(){
 function openHMenu(){
   const ph=(STATE&&STATE.phase)||{};
   const it=[];
-  if(ph.key==="talk"||ph.key==="final"||ph.key==="reveal")
+  if(ph.key==="talk"||ph.key==="final"||ph.key==="decision"||ph.key==="reveal")
     it.push([ICO.map,"조사 화면","지금까지 열린 카드와 배치도","openLook()"]);
   const notLast=(SCEN.phases||[]).some(x=>x.seq===((STATE&&STATE.seq)||0)+1);
   if(notLast&&(!STATE||STATE.isHost||STATE.hasHost===false))
@@ -2692,6 +2718,20 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
       `각자 자기 기기에서 서술로 답합니다. 답은 이 진행석으로 모입니다.
        <div class="gm-ans" id="gmAnswers"><div class="gm-note">답안을 불러오는 중…</div></div>`);
   }
+  if(k==="decision"){
+    const d=STATE.decision||{};
+    const rows=(d.seats||[]).map((seat,i)=>{
+      const done=d.picks&&d.picks[seat.roleId];
+      const opt=(seat.options||[]).find(o=>o.id===done);
+      const bar=(seat.roleId===d.barred);
+      return `${i+1}. ${seat.seat}란 · ${nameOf(seat.roleId)}${bar?" (결재권 상실 — 표로 채움)":""}\n   ${done?opt.line:"— 대기 중"}`;
+    }).join("\n");
+    return gmCinematic("결재 · 노인정리국 결정문", rows || (SCEN.decisionIntro||""),
+      d.barred?`결재권을 잃은 사람 — ${nameOf(d.barred)}`:"결재권을 잃은 사람 없음 (표가 갈렸습니다)",
+      d.done&&d.report
+        ? `<b>완성됐습니다.</b> ${d.report.note}<div style="margin-top:8px">이 종이를 낭독한 뒤 <b>다음 페이즈 ›</b>로 진상을 여세요.</div>`
+        : "각자 자기 칸에 서명합니다. 잃은 칸은 남은 사람들이 표로 채웁니다. 네 칸이 다 차야 종이가 완성됩니다.");
+  }
   if(k==="reveal") return gmCinematic("진상 공개", (STATE.ending?STATE.ending.desc:"채점이 끝나면 엔딩이 열립니다."), (STATE.ending?("— "+STATE.ending.name):""),
     "이 세션이 진상과 엔딩을 전해주면, 낭독으로 밤을 닫으세요.");
   // invest / talk → 공용 카드 한 벌. 같은 카드가 인물 수만큼 반복되던 매트릭스를 걷어냈다 —
@@ -2897,6 +2937,7 @@ function renderPanel(ph){
       }).join("")}<div class="lead clip1">${esc(oneLine(c.text))}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
     +interrogPanelHTML()+nextPhaseBlock(); }
   else if(k==="final"){ renderFinal(p); }
+  else if(k==="decision"){ renderDecision(p); }
   else if(k==="reveal"){ renderReveal(p); }
   else p.innerHTML="";
 }
@@ -4125,6 +4166,92 @@ function timelineHTML(){
     <div class="panel-note" style="margin-bottom:10px">조사카드는 전부 이 표에 맞춰져 있었습니다. 굵은 줄이 사건의 마디입니다.</div>
     <div class="rv-tl">${body}</div></div>`;
 }
+/* 결재 결정문 — 네 칸을 순서대로 채운다. 지목당한 사람은 결재권을 잃고,
+   그 칸은 남은 사람들이 표로 채운다. 대리 서명은 무효라 칸을 비울 수는 없다.
+
+   행선지와 달리 «가리지» 않는다. 결재란은 원래 앞사람 도장을 보고 찍는 자리고,
+   마지막 전략란은 앞의 셋을 보고 따를지 뒤집을지 정하는 자리라 순서가 곧 규칙이다. */
+function renderDecision(p){
+  const d=STATE.decision;
+  if(!d){ p.innerHTML=`<div class="card"><h2>결재</h2><div class="panel-note">이 사건에는 결재가 없습니다.</div></div>`; return; }
+  const mine=myRoleValid()?myRoleId:"";
+  const myPick=STATE.myDecision||"";
+  const myVotes=STATE.myDecisionVotes||{};
+  let h=`<div class="card"><h2>노인정리국 결재</h2>
+    <div class="mlead" style="white-space:pre-wrap">${esc(d.intro||"")}</div>`;
+  if(d.barred){
+    h+=`<div class="dc-barred">${ICO.lock} <b>${esc(nameOf(d.barred))}</b>는 범인으로 지목돼 결재권을 잃었습니다.
+      그 칸은 남은 사람들이 표로 채웁니다 — 대리 서명은 무효라 비워둘 수 없어요.</div>`;
+  }
+  h+=`</div>`;
+
+  (d.seats||[]).forEach((seat,i)=>{
+    const rid=seat.roleId, done=d.picks&&d.picks[rid];
+    const isBarred=(rid===d.barred);
+    const isMine=(rid===mine&&!isBarred);
+    const canVote=(isBarred&&mine&&mine!==d.barred);
+    const chosen=isBarred?(myVotes[rid]||""):(isMine?myPick:"");
+    const nvote=(d.votes&&d.votes[rid])||0;
+    h+=`<div class="card dseat${done?" sealed":""}">
+      <div class="ds-h"><span class="ds-n">${i+1}</span>
+        <div><h2 style="margin:0">${esc(seat.seat)}란</h2>
+        <div class="ds-who">${esc(nameOf(rid))}${isBarred?" · 결재권 상실":(isMine?" · 내 칸":"")}</div></div>
+        ${done?`<span class="pill ok">서명됨</span>`:(isBarred?`<span class="pill">${nvote}/${d.voters} 표</span>`:`<span class="pill">대기</span>`)}
+      </div>
+      <div class="ds-q">${esc(seat.prompt||"")}</div>`;
+    if(done){
+      const opt=(seat.options||[]).find(o=>o.id===done);
+      h+=`<div class="ds-line">${esc(opt?opt.line:"")}</div>`;
+    } else if(isMine||canVote){
+      h+=`<div class="ds-opts">`+(seat.options||[]).map(o=>
+        `<button class="ds-o${chosen===o.id?" on":""}" onclick="sendDecision('${rid}','${o.id}')">
+           <div class="ds-ol">${esc(o.line)}</div>
+           ${o.note&&isMine?`<div class="ds-on">${esc(o.note)}</div>`:""}</button>`).join("")+`</div>`;
+      h+=`<div class="panel-note" style="margin-top:8px">${
+        canVote?(chosen?"표를 던졌습니다. 전원이 던지면 칸이 찹니다.":"이 칸은 표로 채웁니다.")
+               :(chosen?"고쳐 쓸 수 있습니다. 다 차면 그대로 상신됩니다.":"이 칸은 당신 자리입니다.")}</div>`;
+    } else {
+      h+=`<div class="panel-note">${isBarred?"남은 사람들이 표로 채우는 중입니다.":esc(nameOf(rid))+"가 쓰는 칸입니다."}</div>`;
+    }
+    h+=`</div>`;
+  });
+
+  // 종이와 상관없는 한 사람의 선택
+  const ex=d.extraSpec;
+  if(ex&&mine===ex.roleId){
+    const cur=d.extra||"";
+    h+=`<div class="card dseat extra${cur?" sealed":""}">
+      <div class="ds-h"><span class="ds-n" style="background:var(--ember-b)">＊</span>
+        <div><h2 style="margin:0">${esc(ex.title||"")}</h2><div class="ds-who">당신에게만 열린 칸</div></div>
+        ${cur?`<span class="pill ok">정함</span>`:`<span class="pill">대기</span>`}</div>
+      <div class="ds-q">${esc(ex.prompt||"")}</div>
+      <div class="ds-opts">`+(ex.options||[]).map(o=>
+        `<button class="ds-o${cur===o.id?" on":""}" onclick="sendDecisionExtra('${o.id}')">
+           <div class="ds-ol">${esc(o.label)}</div><div class="ds-on">${esc(o.desc||"")}</div></button>`).join("")
+      +`</div></div>`;
+  }
+
+  if(d.done&&d.report){
+    const r=d.report;
+    h+=`<div class="card"><h2>완성된 결정문</h2>
+      <div class="ds-paper">${(r.lines||[]).map(l=>`<div class="ds-pl">${esc(l)}</div>`).join("")}</div>
+      <div class="ds-note${r.flipped?" flip":""}">${esc(r.note||"")}</div>
+      <div class="panel-note" style="margin-top:10px">이 종이가 그대로 나갑니다. 다음 막에서 무엇이 됐는지 봅니다.</div>
+    </div>`;
+  } else {
+    h+=`<div class="card"><div class="panel-note">아직 채워지지 않은 칸이 있습니다. 다 차야 종이가 완성됩니다.</div></div>`;
+  }
+  p.innerHTML=h+nextPhaseBlock();
+}
+async function sendDecision(seatId,optId){
+  const r=await post("/api/decision",{roleId:myRoleId,clientId,targetRoleId:seatId+":"+optId});
+  if(r&&r.error) banner(r.error); else { banner(""); poll(); }
+}
+async function sendDecisionExtra(optId){
+  const r=await post("/api/decision/extra",{roleId:myRoleId,clientId,targetRoleId:optId});
+  if(r&&r.error) banner(r.error); else { banner(""); poll(); }
+}
+
 function renderReveal(p){
   const e=STATE.ending;
   // 채점이 붙지 않는 방이 대부분이다. 엔딩이 없다고 이 화면을 비워두면 밤이 그냥 끝나버린다.

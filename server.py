@@ -173,6 +173,9 @@ def fresh_room() -> dict:
         "podVotes": {},           # roleId -> 태울 사람. 최종 토론에서 사람이 던진 표만 담는다
         "accuse": {},             # roleId -> 지목한 사람. 종막의 범인 지목, 사람 표만
         "dest": {},               # roleId -> 향한 곳. 종막에서 각자 정하고, 다 정해야 열린다
+        # 결재 결정문 — 자리마다 한 문장씩 고른다. 범인으로 지목된 사람은 결재권을 잃고
+        # 그 칸은 남은 사람들의 투표로 찬다. picks 는 최종값, votes 는 잃은 칸의 표다.
+        "decision": {"picks": {}, "votes": {}, "extra": ""},
         "typing": None,
         "events": [],            # 진행 세션이 따라 읽는 사건 기록
         "podOpen": False,        # 특정 카드가 전체공개되면 지도에 탈출 포드가 드러난다
@@ -386,8 +389,9 @@ def public_state() -> dict:
             "handLimit": _hand_limit(),
             "pod": _pod_state(),
             # seq 8은 잠수정 기준의 매직넘버였다. 사건마다 막 수가 달라서 페이즈 키로 본다.
-            "arrest": (_arrest_state() if ph.get("key") in ("final", "reveal") else None),
-            "dest": (_dest_state() if ph.get("key") in ("final", "reveal") else None),
+            "arrest": (_arrest_state() if ph.get("key") in ("final", "decision", "reveal") else None),
+            "dest": (_dest_state() if ph.get("key") in ("final", "decision", "reveal") else None),
+            "decision": (_decision_state() if ph.get("key") in ("decision", "reveal") else None),
             # 남의 차례일 때 화면이 멈춘 것처럼 보이지 않게, 다음 차례까지 남은 시간을 내려보낸다.
             "turnWait": (round(max(0.0, AUTO_TURN["delay"] - (time.monotonic() - AUTO_TURN["since"])), 1)
                          if (AUTO_TURN["on"] and ROOM.get("turn")
@@ -781,6 +785,11 @@ def state(clientId: str = "", gm: int = 0):
                 st["pod"]["mine"] = ROOM["podVotes"].get(st["myRole"])
             st["myAccuse"] = ROOM["accuse"].get(st["myRole"])
             st["myDest"] = ROOM.get("dest", {}).get(st["myRole"])
+            _d = ROOM.get("decision") or {}
+            st["myDecision"] = (_d.get("picks") or {}).get(st["myRole"])
+            st["myDecisionVotes"] = {seat: v.get(st["myRole"])
+                                     for seat, v in (_d.get("votes") or {}).items()
+                                     if v.get(st["myRole"])}
         # 내가 볼 수 있는 카드(전체공개 + 내 손패)에 대해서만, 나에게만 붙는 메모를 얹는다.
         if st["myRole"]:
             seen = list(ROOM["revealed"]) + list(ROOM["hands"].get(st["myRole"], []))
@@ -1955,6 +1964,151 @@ def _dest_state():
         if hasattr(SC, "ending_for"):
             st["ending"] = SC.ending_for(st["result"], arrested)
     return st
+
+
+def _decision_barred() -> str:
+    """결재권을 잃는 사람 — 종막에서 표가 제일 많이 몰린 배역.
+
+    동률이면 아무도 잃지 않는다. 「누군가는 반드시 잃는다」로 만들면 표가 갈렸을 때
+    임의로 한 명을 골라야 하는데, 그건 판정이 아니라 주사위다.
+    """
+    tally = {}
+    for t in ROOM.get("accuse", {}).values():
+        if t:
+            tally[t] = tally.get(t, 0) + 1
+    if not tally:
+        return ""
+    top = max(tally.values())
+    lead = [r for r, n in tally.items() if n == top]
+    return lead[0] if len(lead) == 1 else ""
+
+
+def _decision_state():
+    """결재 결정문. 이 기믹이 있는 사건에서만 내려간다(지금은 쉘터).
+
+    행선지와 달리 «가리지» 않는다 — 결재란은 원래 앞사람 도장을 보고 찍는 자리고,
+    마지막 전략란은 앞의 셋을 보고 따를지 뒤집을지 정하는 자리라서 순서가 곧 규칙이다.
+    """
+    seats = getattr(SC, "DECISION", None)
+    if not seats:
+        return None
+    d = ROOM.setdefault("decision", {"picks": {}, "votes": {}, "extra": ""})
+    barred = _decision_barred()
+    humans = _human_roles()
+    ai_def = dict(getattr(SC, "DECISION_AI", {}) or {})
+
+    picks = {}
+    pending = []          # 아직 안 채워진 칸
+    for seat in seats:
+        rid = seat["roleId"]
+        if rid == barred:
+            # 잃은 칸 — 남은 사람들의 표로 찬다. 최다득표, 동률이면 아직 미정.
+            v = (d.get("votes") or {}).get(rid, {})
+            tally = {}
+            for opt in v.values():
+                tally[opt] = tally.get(opt, 0) + 1
+            voters = [r for r in humans if r != barred]
+            if not voters:                       # 사람이 없으면 AI 기본값으로
+                picks[rid] = ai_def.get(rid, seat["options"][0]["id"])
+                continue
+            if len(v) < len(voters):
+                pending.append(rid); continue
+            top = max(tally.values()) if tally else 0
+            lead = [o for o, n in tally.items() if n == top]
+            if len(lead) == 1:
+                picks[rid] = lead[0]
+            else:
+                pending.append(rid)
+        elif rid in humans:
+            if d["picks"].get(rid):
+                picks[rid] = d["picks"][rid]
+            else:
+                pending.append(rid)
+        else:
+            picks[rid] = ai_def.get(rid, seat["options"][0]["id"])
+
+    ex = getattr(SC, "DECISION_EXTRA", None)
+    extra = d.get("extra") or ""
+    if ex:
+        if ex["roleId"] in humans:
+            if not extra:
+                pending.append("__extra__")
+        elif not extra:
+            extra = getattr(SC, "DECISION_EXTRA_AI", "none")
+
+    st = {"intro": getattr(SC, "DECISION_INTRO", ""), "seats": seats, "extraSpec": ex,
+          "barred": barred, "picks": picks, "extra": extra,
+          "votes": {k: len(v) for k, v in (d.get("votes") or {}).items()},
+          "voters": len([r for r in humans if r != barred]),
+          "pending": pending, "done": not pending}
+    if st["done"]:
+        st["report"] = SC.decision_report(picks, extra or "none", barred)
+    return st
+
+
+@app.post("/api/decision")
+def decision_pick(b: VoteReq):
+    """b.targetRoleId 에 «자리의 배역 id:선택지 id» 를 담아 보낸다.
+
+    자기 자리면 자기가 고르고, 결재권을 잃은 자리면 표를 던지는 것이다 —
+    두 동작이 같은 화면의 같은 버튼이라 엔드포인트도 하나로 둔다.
+    """
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "그 배역으로 결재할 수 없습니다"}, status_code=403)
+        if not getattr(SC, "DECISION", None):
+            return JSONResponse({"error": "이 사건에는 결재가 없습니다"}, status_code=409)
+        if SC.phase_by_seq(ROOM["seq"]).get("key") != "decision":
+            return JSONResponse({"error": "결재는 결재 페이즈에서만 할 수 있습니다"}, status_code=409)
+        seat_id, _, opt_id = (b.targetRoleId or "").partition(":")
+        seat = next((x for x in SC.DECISION if x["roleId"] == seat_id), None)
+        if not seat or opt_id not in [o["id"] for o in seat["options"]]:
+            return JSONResponse({"error": "없는 칸이거나 없는 선택지"}, status_code=404)
+        barred = _decision_barred()
+        d = ROOM.setdefault("decision", {"picks": {}, "votes": {}, "extra": ""})
+        nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
+        if seat_id == barred:
+            if b.roleId == barred:
+                return JSONResponse({"error": "결재권을 잃었습니다 — 이 칸은 남은 사람들이 채웁니다"},
+                                    status_code=409)
+            first = b.roleId not in d.setdefault("votes", {}).setdefault(seat_id, {})
+            d["votes"][seat_id][b.roleId] = opt_id
+            if first:
+                ROOM["table"].append({"kind": "system", "broadcast": True,
+                                      "text": f'{nm}{_subj(nm)} 「{seat["seat"]}란」에 표를 던졌습니다.'})
+        else:
+            if seat_id != b.roleId:
+                return JSONResponse({"error": "남의 칸에는 서명할 수 없습니다 — 대리 서명은 무효입니다"},
+                                    status_code=403)
+            first = not d["picks"].get(seat_id)
+            d["picks"][seat_id] = opt_id
+            if first:
+                ROOM["table"].append({"kind": "system", "broadcast": True,
+                                      "text": f'{nm}{_subj(nm)} 「{seat["seat"]}란」에 서명했습니다.'})
+        bump()
+    return {"ok": True, "decision": _decision_state()}
+
+
+@app.post("/api/decision/extra")
+def decision_extra(b: VoteReq):
+    """결정문과 별개로 한 사람에게만 열리는 선택(쉘터에서는 분화구행)."""
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "권한 없음"}, status_code=403)
+        ex = getattr(SC, "DECISION_EXTRA", None)
+        if not ex:
+            return JSONResponse({"error": "이 사건에는 없는 선택입니다"}, status_code=409)
+        if b.roleId != ex["roleId"]:
+            return JSONResponse({"error": "당신에게 열린 선택이 아닙니다"}, status_code=403)
+        if SC.phase_by_seq(ROOM["seq"]).get("key") != "decision":
+            return JSONResponse({"error": "결재 페이즈에서만 정할 수 있습니다"}, status_code=409)
+        if b.targetRoleId not in [o["id"] for o in ex["options"]]:
+            return JSONResponse({"error": "없는 선택지"}, status_code=404)
+        ROOM.setdefault("decision", {"picks": {}, "votes": {}, "extra": ""})["extra"] = b.targetRoleId
+        bump()
+    return {"ok": True, "decision": _decision_state()}
 
 
 @app.post("/api/destination")
