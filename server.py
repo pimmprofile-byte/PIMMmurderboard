@@ -60,8 +60,8 @@ INTERROGATE_TRUTH_BASE = 0.60
 INTERROGATE_TRUTH_WRONG_EVIDENCE = 0.20
 # 같은 곳을 다시 찌를 때마다 붙는 가산. 얼버무림은 막다른 골목이 아니라 한 걸음이어야 한다.
 INTERROGATE_PRESS_STEP = 0.30
-# 이만큼 찔리면 결국 분다. 운이 나쁘다고 정보가 영영 닫혀서는 안 된다.
-INTERROGATE_PRESS_BREAK = 3
+# 이만큼 찔리면 결국 분다. 심문 횟수가 넉넉하지 않아서, 한 번 얼버무리면 그 다음은 무조건이다.
+INTERROGATE_PRESS_BREAK = 1
 
 try:
     import anthropic
@@ -1073,6 +1073,26 @@ def _advance_turn() -> None:
 
 
 # ── AI 자동 조사 (API 없이 휴리스틱 · 인물답게 + 추리 따라가기) ────────────────
+def _evidence_bites(card_id: str, evid_id: str) -> bool:
+    """들이민 카드가 지금 묻는 카드의 「짝」인가.
+
+    예전에는 시나리오가 지정한 rebuttal 한 장만 통했고, 그 외에는 무엇을 대든
+    확률이 오히려 떨어졌다. 제대로 맞물리는 카드를 찾아내고도 다른 짝을 골랐다는
+    이유로 더 불리해지는 건, 추리를 벌주는 규칙이다.
+    """
+    if not card_id or not evid_id:
+        return False
+    for p in getattr(SC, "CARD_PAIRS", []) or []:
+        cs = p.get("cards") or []
+        if card_id in cs and evid_id in cs:
+            return True
+    for c in getattr(SC, "CARDS", []) or []:
+        cs = c.get("combo") or []
+        if card_id in cs and evid_id in cs:
+            return True
+    return False
+
+
 def _card_needs(c: dict) -> list:
     """이 카드를 열기 전에 먼저 나와 있어야 하는 카드들.
 
@@ -1770,8 +1790,8 @@ def interrogate(b: Interrogate):
         pressed = ROOM.setdefault("press", {}).get(pk, 0)
 
         if entry:
-            if evid_id and evid_id == entry.get("rebuttal"):
-                told_truth = True
+            if evid_id and (evid_id == entry.get("rebuttal") or _evidence_bites(b.cardId, evid_id)):
+                told_truth = True                      # 맞는 것을 들이밀면 그 자리에서 분다
             elif pressed >= INTERROGATE_PRESS_BREAK:
                 told_truth = True                      # 더는 못 버틴다
             else:

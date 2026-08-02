@@ -181,6 +181,18 @@
   /* 아직 공개되지 않은 카드 — 무엇이 언급됐는지만 알리고 내용은 잠근다 */
   .cchip.lock{background:rgba(255,255,255,.04);border-color:var(--line);color:var(--sub)}
   /* 하단 독 — 판 중에 제일 자주 여는 다섯 곳. 머리띠까지 손을 올릴 일을 없앤다. */
+  /* 막 진행표 — 지금 어디쯤인지, 앞으로 몇 막이 남았는지. 하단바 바로 위에 얇게 눕는다. */
+  .tline{display:flex;align-items:center;gap:0;padding:6px 10px 5px;background:var(--bg2);
+    border-top:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+  .tline::-webkit-scrollbar{display:none}
+  .tline .tl{flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:2px 7px;border-radius:20px;
+    font-size:10.5px;font-weight:700;color:var(--muted);white-space:nowrap}
+  .tline .tl i{width:6px;height:6px;border-radius:50%;background:var(--line);flex:0 0 auto}
+  .tline .tl.done{color:var(--sub)}
+  .tline .tl.done i{background:var(--sub)}
+  .tline .tl.now{color:#141110;background:var(--gold)}
+  .tline .tl.now i{background:#141110}
+  .tline .sep{flex:0 0 auto;width:9px;height:1px;background:var(--line);margin:0 1px}
   .dock{display:flex;gap:2px;border-top:1px solid var(--line);background:linear-gradient(180deg,rgba(17,16,15,.9),rgba(12,11,10,.98));
     padding:5px 4px calc(5px + env(safe-area-inset-bottom))}
   .dock .dk{position:relative;flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:3px;
@@ -549,6 +561,15 @@
   .rfs-bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:9px;
     padding:9px 14px;background:linear-gradient(0deg,rgba(5,6,10,.92),transparent);color:var(--ink)}
   .rfs-bar b{flex:1;font-size:14px}
+  /* 조합 조각 — 카드 이름표에 붙는 반쪽. 같은 색·같은 표시끼리 맞는다. */
+  .pchip{width:23px;height:19px;display:block;flex:0 0 auto;margin-right:1px}
+  /* 목록에서는 한 줄만. 전문을 늘어놓으면 무엇이 중요한지가 묻힌다 — 눌러서 본다. */
+  .lead.clip1{margin:5px 0 0;font-size:12.5px;line-height:1.6;color:var(--sub);
+    display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+  .lead.clip1::after{content:" 눌러서 전문 보기";color:var(--muted);font-size:11.5px}
+  .pchips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .pchips .pc-note{font-size:11.5px;color:var(--muted)}
+  .pill.pair{display:inline-flex;align-items:center;gap:3px;padding-left:4px}
   .pin.door{border-color:var(--gold);color:var(--gold-b)}
   .pin.door i{background:var(--gold);box-shadow:0 0 0 3px rgba(201,162,74,.22)}
   .mbody::-webkit-scrollbar{width:5px}
@@ -1260,6 +1281,7 @@
     <textarea id="input" rows="1" placeholder="배역을 골라야 말할 수 있어요"></textarea>
     <button class="btn gold" id="sendBtn" onclick="humanSay()">전송</button>
   </div>
+  <div class="tline" id="tline"></div>
   <nav class="dock" id="dock">
     <button class="dk" onclick="openLook()">
       <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.4v13.2L9 17.2l6 2.4 6-2.4V4l-6 2.4L9 4Z"/><path d="M9 4v13.2M15 6.4v13.2"/></svg>
@@ -1491,6 +1513,7 @@ function applyState(){
     if($("chatModal").classList.contains("on")) renderChat("chatFull");
     const hb=$("dkHand"); hb.textContent=myHand.length; hb.classList.toggle("on",myHand.length>0);
     $("dkSheet").classList.toggle("on",sheetSeenSeq!=null&&STATE.seq>sheetSeenSeq);
+    paintTimeline();
     paintCoach();
     applyChatFold();
     // 다음 페이즈·조사 화면·진행석은 ☰ 서랍이 페이즈를 보고 스스로 넣고 뺀다.
@@ -2551,7 +2574,7 @@ function renderPanel(ph){
     const pubc=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
     const hcards=(myRoleValid()?myHand:[]).map(c=>({...c,_pub:false})).concat(pubc.map(c=>({...c,_pub:true})));
     p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span>${pubc.length?`<span class="pill" style="color:var(--cold)">전체공개 ${pubc.length}</span>`:""}</div><div class="panel-note">아래 대화창에서 서로를 취조하세요. <b>내 손패</b>는 알릴지 감출지 자유고, <b>전체공개</b> 카드는 이미 모두가 보고 있습니다.</div>
-    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"#5a4a2c"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,#221c14,#151413)"};cursor:pointer" onclick="showMyHand()"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span><div class="lead" style="margin:4px 0 0;font-size:12.5px">${esc(c.text)}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"#5a4a2c"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,#221c14,#151413)"};cursor:pointer" onclick="openCard('${c.id}')"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span><div class="lead clip1">${esc(oneLine(c.text))}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
     +interrogPanelHTML(); }
   else if(k==="final"){ renderFinal(p); }
   else if(k==="reveal"){ renderReveal(p); }
@@ -3005,15 +3028,53 @@ async function aiInvestigateNow(rid){ const r=await post("/api/ai-investigate",{
 
 /* 이 카드가 짝을 이루는가. 어떤 카드와 짝인지는 절대 알려주지 않는다 —
    그걸 알려주면 추리가 아니라 심부름이 된다. 「혼자서는 반쪽」이라는 것까지만. */
+/* 카드 본문의 첫 문장. 목록에 전문을 그대로 붙이면 화면이 글로 덮인다. */
+function oneLine(t){
+  const first=String(t||"").split("\n").find(x=>x.trim())||"";
+  const cut=first.split(/(?<=[.!?」])\s/)[0]||first;
+  return cut.length>62?cut.slice(0,60)+"…":cut;
+}
 function pairOf(id){ return (SCEN.pairKeys||[]).find(k=>k.cards.includes(id))||null; }
-function showPairHint(id){
+/* 한 장이 여러 조합의 반쪽일 수 있다 — A1은 흉기 둘 다에, A3는 장부와 값 양쪽에 걸린다.
+   그래서 카드마다 「속한 조합 수」만큼 조각이 붙는다. */
+function pairsOf(id){ return (SCEN.pairKeys||[]).filter(k=>k.cards.includes(id)); }
+
+/* 조각의 생김새 — 색 셋 × 글리프 다섯. 같은 색·같은 글리프끼리만 맞는다.
+   인물색은 일부러 쓰지 않는다. 조합에 인물색을 얹으면 「이 짝은 누구를 가리킨다」가
+   맞춰보기도 전에 새 나간다. */
+/* 조합마다 색이 다 달라야 한 눈에 갈린다. 세 색을 돌려쓰니 A1의 두 조각이 똑같아 보였다.
+   전부 이 판의 어두운 바탕에서 뜨는 채도로 맞춰뒀다. */
+const PAIR_COL=["#d4a544","#e08a4c","#d2685a","#c9556f","#b4589c",
+                "#8f6bc4","#6d7ed4","#4d9ad2","#3fa9b8","#43ad8e",
+                "#6fb056","#9cb046","#c2a83c","#a8845c","#8e9aa8"];
+const PAIR_GLYPH=[
+  '<circle cx="0" cy="0" r="2.6"/>',
+  '<rect x="-2.4" y="-2.4" width="4.8" height="4.8" rx="1"/>',
+  '<path d="M0 -3 L2.8 2 H-2.8 Z"/>',
+  '<path d="M0 -3.1 L3.1 0 L0 3.1 L-3.1 0 Z"/>',
+  '<path d="M0 -3.2 L1 -1 L3.2 -0.8 L1.5 .7 L2 3 L0 1.8 L-2 3 L-1.5 .7 L-3.2 -.8 L-1 -1 Z"/>',
+];
+/* 왼쪽 조각은 혹이 튀어나오고, 오른쪽 조각은 그 자리가 파여 있다. 눈으로 맞물린다. */
+function pairChip(k, id){
+  const i=k.i||0, col=PAIR_COL[i%PAIR_COL.length];
+  const gly=PAIR_GLYPH[i%PAIR_GLYPH.length];
+  const left=k.cards[0]===id;
+  const d=left ? "M3 2 h9 v3.4 a3.1 3.1 0 1 1 0 7.2 V16 H3 Z"
+               : "M19 2 h-9 v3.4 a3.1 3.1 0 1 0 0 7.2 V16 h9 Z";
+  const cx=left?7.2:14.8;
+  return `<svg class="pchip" viewBox="0 0 22 18" aria-hidden="true">
+    <path d="${d}" fill="${col}" fill-opacity=".22" stroke="${col}" stroke-width="1.2"/>
+    <g transform="translate(${cx} 9)" fill="${col}">${gly}</g></svg>`;
+}
+function showPairHint(id, pi){
   const c=[...myHand,...(STATE.revealed||[])].find(x=>x.id===id)||cardCat(id)||{};
-  const k=pairOf(id); if(!k) return;
+  const ks=pairsOf(id); if(!ks.length) return;
+  const k=(pi!=null?ks.find(x=>x.i===pi):null)||ks[0];
   const known=new Set([...myHand.map(x=>x.id),...(STATE.revealed||[]).map(x=>x.id)]);
   const other=k.cards.filter(x=>x!==id);
   const got=other.filter(x=>known.has(x));
   $("cardBox").innerHTML=`<div class="mhead">
-      <div class="mh-t"><span class="mh-eb">조합 카드</span><h2>🧩 이건 반쪽입니다</h2>
+      <div class="mh-t"><span class="mh-eb">조합 카드</span><h2>${pairChip(k,id)} 이건 반쪽입니다</h2>
         <span class="mh-sub">${esc(c.title||"")}</span></div>
       <button class="mh-x" onclick="closeModal('cardModal')" aria-label="닫기">✕</button></div>
     <div class="mbody">
@@ -3025,6 +3086,10 @@ function showPairHint(id){
           ? "<b style='color:var(--good)'>이미 테이블에 나와 있습니다.</b> 맞춰보세요."
           : "아직 아무도 못 찾았거나, 누군가 손에 쥐고 있습니다."}</span></div>
       </div>
+      <div class="pb-r" style="border:0;padding-top:0"><span class="k">맞물릴 조각</span>
+        <span class="v">${pairChip(k,k.cards.find(x=>x!==id)||id)} <b>같은 색·같은 표시</b>를 단 카드입니다.
+          혹과 홈이 맞물리는 쪽이 짝이에요.</span></div>
+      ${ks.length>1?`<div class="panel-note" style="margin-top:10px">이 카드는 <b>${ks.length}개의 조합</b>에 걸쳐 있습니다 — 조각이 그만큼 붙어 있어요.</div>`:""}
       <div class="panel-note" style="margin-top:12px">어느 카드가 짝인지는 알려주지 않습니다. 그걸 찾아내는 게 이 판의 일이에요.</div>
     </div>`;
   $("cardBox").style.setProperty("--mt","var(--cold)");
@@ -3052,7 +3117,10 @@ function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const 
         <h2>${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
         <span class="mh-sub">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""} · R${c.round}</span></div>
       <button class="mh-x" onclick="closeModal('cardModal')" aria-label="닫기">✕</button></div>
-    <div class="mbody"><div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>${mynote(c.id)}${cnote(c)}</div>
+    <div class="mbody">${pairsOf(c.id).length?`<div class="pchips">${pairsOf(c.id).map(k=>
+        `<button class="pill pair" onclick="showPairHint('${c.id}',${k.i})">${pairChip(k,c.id)}조각</button>`).join("")}
+        <span class="pc-note">같은 조각을 단 카드와 맞물립니다</span></div>`:""}
+      <div class="sec"><div class="b" style="font-size:15px">${esc(c.text)}</div></div>${mynote(c.id)}${cnote(c)}</div>
     <div class="mfoot"><span class="mf-note">${inHand?"알리려면 대화로 말하세요 — 저절로 새어 나가지 않습니다.":"이미 모두가 보고 있는 단서입니다."}</span>
       <button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
   const box=$("cardBox");
@@ -3832,7 +3900,7 @@ function showMyHand(){
       return `<div class="bigcard clue${isPub?" pubclue":""}">
       <div class="bc-eyebrow">${isPub?"전체공개 · 모두가 봅니다":"손패 · 비공개"}</div>
       <div class="bc-title" style="color:${isPub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</div>
-      <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${pairOf(c.id)?`<button class="pill pair" onclick="event.stopPropagation();showPairHint('${c.id}')">🧩 조합 카드</button>`:''}</div>
+      <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${pairsOf(c.id).map(k=>`<button class="pill pair" title="같은 조각을 단 카드와 맞춰보세요" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id)}조각</button>`).join("")}</div>
       <div class="bc-body">${esc(c.text)}</div>${mynote(c.id)}${cnote(c)}
       ${c.unlocks&&!isPub?`<div class="unlocknote">🔓 이 카드를 <b>전체공개</b>하면 무언가 밝혀질 수 있습니다.</div>`:""}</div>`; });
     h+=buildSwipe(slides); }
@@ -3875,9 +3943,27 @@ function paintCoach(){
          tip.style.top=(r.top-42)+"px"; }
 }
 
+/* 막 진행표. 지금 막은 금색으로 채우고, 지나온 막은 흐리게 둔다.
+   길어지면 가로로 흐르되 현재 막이 늘 보이게 끌어온다. */
+function paintTimeline(){
+  const el=$("tline"), ph=(SCEN.phases||[]); if(!el||!ph.length) return;
+  const cur=STATE.seq||0;
+  const sig=cur+":"+ph.length;
+  if(el.dataset.sig===sig) return;
+  el.dataset.sig=sig;
+  el.innerHTML=ph.map((p,i)=>{
+    const k=p.seq<cur?"done":(p.seq===cur?"now":"");
+    return `${i?'<span class="sep"></span>':""}<span class="tl ${k}"><i></i>${esc(p.name)}</span>`;
+  }).join("");
+  const now=el.querySelector(".tl.now");
+  if(now) now.scrollIntoView({inline:"center",block:"nearest"});
+}
+
 function measureDock(){
   const d=$("dock"); if(!d) return;
-  document.documentElement.style.setProperty("--dockh", d.offsetHeight+"px");
+  const t=$("tline");
+  document.documentElement.style.setProperty("--dockh",
+    (d.offsetHeight + (t&&t.offsetParent?t.offsetHeight:0)) + "px");
 }
 addEventListener("resize",measureDock);
 /* 하단바에서 연 창은 그 칸을 켜 둔다 — 지금 어느 화면에 있는지가 보여야 한다. */

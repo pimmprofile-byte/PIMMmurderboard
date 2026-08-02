@@ -1199,7 +1199,13 @@ def public_scenario() -> dict:
                         "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],
                         "look": c.get("look", c["tagline"])} for c in CHARACTERS],
         # 짝이 있다는 사실만. 어느 카드와 짝인지는 내보내지 않는다 — 그걸 주면 추리가 심부름이 된다.
-        "pairKeys": [{"cards": list(p["cards"])} for p in CARD_PAIRS],
+        # i는 조각의 생김새를 정하는 번호다. 어느 카드끼리 짝인지는 여전히 안 알려준다 —
+        # 같은 조각을 단 카드끼리 맞는다는 것만 눈으로 보이면 된다.
+        # 점수가 붙는 조합(CARD_PAIRS)에, 「둘을 맞춰야 새 카드가 열리는」 조합(combo)까지 더한다.
+        # 후자도 플레이어에게는 똑같이 「반쪽 두 장」이라, 조각이 안 붙으면 있는 줄도 모른다.
+        "pairKeys": ([{"cards": list(p["cards"]), "i": i} for i, p in enumerate(CARD_PAIRS)]
+                     + [{"cards": list(c["combo"]), "i": len(CARD_PAIRS) + j, "opens": c["id"]}
+                        for j, c in enumerate(x for x in CARDS if x.get("combo"))]),
         "openingCuts": OPENING_CUTS,
         "finalQuestions": FINAL_QUESTIONS,
         "interludes": {str(k): v for k, v in INTERLUDES.items()},
