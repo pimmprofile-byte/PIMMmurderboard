@@ -27,6 +27,22 @@
 1. 위 버튼 → GitHub 연결 → 이 repo 선택 (`render.yaml` 자동 인식)
 2. **`ANTHROPIC_API_KEY`** 에 본인 키 입력(비공개) → Create
 3. 몇 분 뒤 `https://<이름>.onrender.com` 발급 → **참가자 전원 이 URL만 열면 끝** (설치 0)
+
+### 배포가 자동으로 안 돌 때
+
+Render의 Auto-Deploy는 GitHub 웹훅에 기댄다. 저장소 이름을 바꾸면 그 훅이 옛 이름에
+걸린 채로 남아, 커밋은 올라가는데 배포가 안 도는 상태가 된다(`git push`는 리다이렉트를
+타지만 웹훅은 안 탄다).
+
+`.github/workflows/render-deploy.yml`이 그 훅을 건너뛰고 Render를 직접 찌른다.
+한 번만 준비하면 된다 —
+
+1. Render → 서비스 → **Settings → Deploy Hook** 의 URL 복사
+2. GitHub → 저장소 → **Settings → Secrets and variables → Actions**
+   → `New repository secret` → 이름 **`RENDER_DEPLOY_HOOK`**, 값은 그 URL
+
+이후 `main`에 올릴 때마다 저절로 배포된다. 문서만 고친 커밋은 건너뛰고
+(무료 플랜 빌드 시간을 아낀다), 급하면 Actions 탭에서 손으로 돌릴 수 있다.
    - 각자 **배역 선택/랜덤** → 자기 큐카드·공개정보, 조사·투표 실시간 동기화
 
 > 무료 티어는 유휴 시 슬립 → 첫 접속이 느릴 수 있음. 키는 서버 env에만(코드/URL에 노출 금지).
