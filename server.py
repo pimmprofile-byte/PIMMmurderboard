@@ -57,7 +57,6 @@ AGENT_KEY = os.getenv("AGENT_KEY", "")  # 에이전트(코드 세션) 원격 조
 # 심층심문 — 어떤 카드를 증거로 대는지가 추리다. 증거 없이 60%, 엉뚱한 카드면 오히려 20%로
 # 떨어지고(허를 찔러 얼버무릴 여지를 준다), 정확한 카드(시나리오의 rebuttal)면 100% 실토.
 INTERROGATE_TRUTH_BASE = 0.60
-INTERROGATE_TRUTH_WRONG_EVIDENCE = 0.20
 # 같은 곳을 다시 찌를 때마다 붙는 가산. 얼버무림은 막다른 골목이 아니라 한 걸음이어야 한다.
 INTERROGATE_PRESS_STEP = 0.30
 # 이만큼 찔리면 결국 분다. 심문 횟수가 넉넉하지 않아서, 한 번 얼버무리면 그 다음은 무조건이다.
@@ -1849,21 +1848,25 @@ def interrogate(b: Interrogate):
         pressed = ROOM.setdefault("press", {}).get(pk, 0)
 
         if entry:
-            if evid_id and (evid_id == entry.get("rebuttal") or _evidence_bites(b.cardId, evid_id)):
-                told_truth = True                      # 맞는 것을 들이밀면 그 자리에서 분다
+            # 증거를 들이밀었으면 그 자리에서 분다. 판마다 심문은 두어 번뿐인데
+            # 「짝으로 지정된 카드」만 통하게 두니, 아픈 데를 정확히 찔러놓고도
+            # 다시 한 번 찌르라고 턴을 더 요구하는 꼴이 됐다. 그건 추리를 벌주는 규칙이다.
+            if evid_id:
+                told_truth = True
             elif pressed >= INTERROGATE_PRESS_BREAK:
-                told_truth = True                      # 더는 못 버틴다
+                told_truth = True                      # 맨손으로도 두 번째면 무너진다
             else:
-                base = INTERROGATE_TRUTH_WRONG_EVIDENCE if evid_id else INTERROGATE_TRUTH_BASE
-                told_truth = random.random() < base + pressed * INTERROGATE_PRESS_STEP
+                told_truth = random.random() < INTERROGATE_TRUTH_BASE + pressed * INTERROGATE_PRESS_STEP
             outcome = "truth" if told_truth else "evasive"
+            ev = entry["evasive"]
+            first = ev[0] if isinstance(ev, (list, tuple)) else ev
             if told_truth:
                 ROOM["press"].pop(pk, None)
-                line = entry["truth"]
+                # 증거 앞에서는 한 번 얼버무렸다가 이내 무너진다 — 그걸 한 턴 안에 다 보여준다.
+                line = f'{first}\n\n…{entry["truth"]}' if evid_id else entry["truth"]
             else:
                 ROOM["press"][pk] = pressed + 1
                 # evasive가 여러 줄이면 찔린 횟수만큼 말이 흔들리게 고른다.
-                ev = entry["evasive"]
                 line = ev[min(pressed, len(ev) - 1)] if isinstance(ev, (list, tuple)) else ev
         elif selfmode:
             outcome, line = "evasive", "\"…무슨 말씀이신지 모르겠습니다.\""
@@ -2163,6 +2166,29 @@ def advance(b: HostReq):
     return _advance()
 
 
+def _seed_phase_lines(seq: int) -> None:
+    """이 막에서 각자가 꺼내기로 한 말을 대화창에 그대로 올린다.
+    예전에는 «내 정보 · 지금 할 말»에 조용히 붙어 있었다 — 열어보지 않으면 그 밤이
+    그냥 지나갔다. 말은 말이 오가는 자리에 있어야 한다."""
+    if not hasattr(SC, "memory_up_to"):
+        return
+    ph = SC.phase_by_seq(seq)
+    when = ph.get("name", "")
+    solved = (ROOM.get("crisis") or {}).get("solved")
+    for c in SC.CHARACTERS:
+        rid = c["id"]
+        if (ROOM["roles"].get(rid) or {}).get("mode") not in ("human", "ai"):
+            continue
+        try:
+            frags = SC.memory_up_to(rid, seq, solved) if solved is not None else SC.memory_up_to(rid, seq)
+        except TypeError:
+            frags = SC.memory_up_to(rid, seq)
+        for f in frags:
+            if f.get("when") == when and f.get("text"):
+                ROOM["table"].append({"kind": "ai", "roleId": rid, "speaker": c["name"],
+                                      "text": f["text"], "auto": True, "seq": seq})
+
+
 def _advance():
     _ev("phase_leaving", name=SC.phase_by_seq(ROOM["seq"])["name"])
     with LOCK:
@@ -2179,6 +2205,7 @@ def _advance():
             # 놓친 사람이 다시 볼 데가 없었다 — 기록이 남는 자리는 여기뿐이다.
             if ph.get("gm"):
                 ROOM["table"].append({"kind": "gm", "broadcast": True, "text": ph["gm"]})
+            _seed_phase_lines(seq)
             _ev("phase", name=ph["name"], key=ph.get("key", ""), min=ph.get("min", 0),
                 ap=int(ph.get("ap", 0) or 0), gm=ph.get("gm", ""), interlude=il or "")
             _reset_turn_for_seq(seq)   # 조사 페이즈면 순번 초기화

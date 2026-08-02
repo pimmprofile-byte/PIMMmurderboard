@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <title>졸업사진 卒業寫眞 — PIMMmurderboard</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230b0a0d' stroke='%23c9a24a' stroke-width='2'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='Georgia,serif' font-size='17' font-weight='700' fill='%23c9a24a'%3EP%3C/text%3E%3C/svg%3E">
 
@@ -28,7 +28,10 @@
     --good:#7ee0a8;--bad:#ff8f8f;--warn:#ffd479;--shadow:0 18px 50px rgba(0,0,0,.6);
   }
   *{box-sizing:border-box}html,body{margin:0;height:100%}
-  html,body{overflow-x:hidden;max-width:100%}
+  /* 두 손가락 확대·두 번 눌러 확대를 막는다 — 카드를 넘기다 화면이 커져 버렸다.
+     그림을 크게 보는 자리는 따로 있다(카드 크게 보기·배치도 확대). */
+  html,body{overflow-x:hidden;max-width:100%;touch-action:manipulation;overscroll-behavior:none}
+  html{-webkit-text-size-adjust:100%}
   body{background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;
     font-family:"PIMM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo",sans-serif}
   .serif{font-family:"PIMM Myeongjo","Nanum Myeongjo","AppleMyungjo",serif}
@@ -194,18 +197,29 @@
   .cchip.lock{background:rgba(255,255,255,.04);border-color:var(--line);color:var(--sub)}
   /* 하단 독 — 판 중에 제일 자주 여는 다섯 곳. 머리띠까지 손을 올릴 일을 없앤다. */
   /* 막 진행표 — 지금 어디쯤인지, 앞으로 몇 막이 남았는지. 하단바 바로 위에 얇게 눕는다. */
-  /* 진행 순서 — 머리띠에 붙는다. 어느 탭에 있든 지금 몇 막인지가 보여야 한다. */
-  .tline{display:flex;align-items:center;gap:0;padding:5px 10px;background:var(--bg2);
-    border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
-  .tline::-webkit-scrollbar{display:none}
-  .tline .tl{flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:2px 7px;border-radius:20px;
-    font-size:10.5px;font-weight:700;color:var(--muted);white-space:nowrap}
-  .tline .tl i{width:6px;height:6px;border-radius:50%;background:var(--line);flex:0 0 auto}
-  .tline .tl.done{color:var(--sub)}
+  /* 진행 순서 — 지금 막이 늘 한가운데 선다. 손으로 굴리는 게 아니라 막이 넘어갈 때
+     레일이 한 칸씩 왼쪽으로 밀린다. 좌표계 눈금이 지나가는 것처럼. */
+  .tline{position:relative;overflow:hidden;background:var(--bg2);border-bottom:1px solid var(--line);
+    padding:6px 0;touch-action:none;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 16%,#000 84%,transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 16%,#000 84%,transparent)}
+  .tline .tl-rail{display:flex;align-items:center;gap:0;width:max-content;
+    transition:transform .42s cubic-bezier(.22,.9,.24,1);will-change:transform}
+  .tline .tl{flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;
+    font-size:10.5px;font-weight:700;color:var(--muted);white-space:nowrap;
+    transition:color .3s ease,opacity .3s ease}
+  .tline .tl i{width:5px;height:5px;border-radius:50%;background:var(--line);flex:0 0 auto;transition:.3s}
+  .tline .tl.done{color:var(--sub);opacity:.62}
   .tline .tl.done i{background:var(--sub)}
-  .tline .tl.now{color:#141110;background:var(--gold)}
-  .tline .tl.now i{background:#141110}
-  .tline .sep{flex:0 0 auto;width:9px;height:1px;background:var(--line);margin:0 1px}
+  .tline .tl.todo{opacity:.42}
+  /* 지금 막 — 채우지 않고 테두리와 발광으로 짚는다. 글자는 늘 밝게 남는다. */
+  .tline .tl.now{color:#fff;
+    background:linear-gradient(180deg,rgba(201,162,74,.22),rgba(201,162,74,.07));
+    border:1px solid rgba(201,162,74,.62);padding:2px 10px;
+    box-shadow:0 0 14px -4px var(--gold),inset 0 1px 0 rgba(255,255,255,.07)}
+  .tline .tl.now i{background:var(--gold);box-shadow:0 0 6px var(--gold)}
+  .tline .sep{flex:0 0 auto;width:10px;height:1px;background:var(--line);margin:0 1px;opacity:.6}
+  @media (prefers-reduced-motion:reduce){ .tline .tl-rail{transition:none} }
   /* 자판이 올라와 있는 동안 하단바는 비켜 준다(--dockh 가 0이 되어 창이 바닥까지 내려온다) */
   html.kbd .dock{display:none}
   html.kbd .tline{display:none}
@@ -621,6 +635,12 @@
     fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
   .hm-i .k .ic,.mh-t .ic{width:1.15em;height:1.15em}
   .pchip{width:23px;height:19px;display:block;flex:0 0 auto;margin-right:1px}
+  /* 조합으로 나온 카드 — 반쪽이 아니라 온전한 한 조각이다 */
+  .combobadge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;
+    color:var(--good);background:rgba(80,180,130,.12);border:1px solid rgba(80,180,130,.44);
+    border-radius:999px;padding:3px 9px 3px 5px;white-space:nowrap;vertical-align:middle;
+    box-shadow:0 0 12px -4px rgba(80,180,130,.75)}
+  .combobadge .pchip{width:19px;height:15px;margin:0}
   /* 목록에서는 한 줄만. 전문을 늘어놓으면 무엇이 중요한지가 묻힌다 — 눌러서 본다. */
   .lead.clip1{margin:5px 0 0;font-size:12.5px;line-height:1.6;color:var(--sub);
     display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
@@ -701,16 +721,14 @@
     background:rgba(10,9,8,.5);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(4px);
     color:var(--ink);font-size:22px;line-height:1;display:grid;place-items:center;cursor:pointer;
     transition:opacity .18s,border-color .15s,background .15s}
-  /* 손가락으로 넘기는 기기 — 평소엔 아예 안 보이고, 끄는 동안에만 살짝 비친다. */
-  @media (hover:none){
-    .sw-nav{opacity:0;pointer-events:none}
-    .swipe.dragging .sw-nav{opacity:.3}
-  }
+  /* 기본은 손가락 기기 — 평소엔 아예 안 보이고, 끄는 동안에만 살짝 비친다.
+     hover 미디어는 터치 겸용 노트북과 에뮬레이터에서 제멋대로라 믿지 않는다.
+     커서가 실제로 움직인 걸 본 뒤에야 html.cursor 가 붙는다. */
+  .sw-nav{opacity:0;pointer-events:none}
+  .swipe.dragging .sw-nav{opacity:.3}
   /* 커서가 있는 기기 — 가까워질수록 진해진다. */
-  @media (hover:hover){
-    .sw-nav{opacity:calc(.1 + .72 * var(--p,0))}
-    .swipe.dragging .sw-nav{opacity:.16}
-  }
+  html.cursor .sw-nav{opacity:calc(.1 + .72 * var(--p,0));pointer-events:auto}
+  html.cursor .swipe.dragging .sw-nav{opacity:.16}
   .sw-nav.prev{left:0;border-left:0;border-radius:0 10px 10px 0}
   .sw-nav.next{right:0;border-right:0;border-radius:10px 0 0 10px}
   .sw-nav:hover:not(:disabled),.sw-nav:active:not(:disabled){opacity:1 !important;border-color:var(--gold);color:#fff;background:rgba(10,9,8,.9)}
@@ -751,11 +769,18 @@
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .shtabs{flex-basis:100%;display:flex;gap:6px;margin-top:10px}
   .shtab{flex:1;font-family:inherit;font-size:12.5px;font-weight:700;padding:8px 6px;border-radius:9px;
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012));
     background:var(--panel2);border:1px solid var(--line);color:var(--sub);cursor:pointer;transition:.15s;
     display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
   .shtab:hover{color:var(--ink)}
-  .shtab.on{background:var(--mt,var(--gold));border-color:var(--mt,var(--gold));color:#12100c}
+  /* 고른 탭 — 배역 색으로 채우면 색마다 글자가 묻힌다. 바탕은 모노톤으로 두고
+     그 색은 테두리와 발광으로만 쓴다. 글자는 언제나 흰색이다. */
+  .shtab.on{color:#fff;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--mt,var(--gold)) 20%,#1c1b1a),#141312);
+    border-color:color-mix(in srgb,var(--mt,var(--gold)) 58%,var(--line));
+    box-shadow:0 0 15px -5px var(--mt,var(--gold)),inset 0 1px 0 rgba(255,255,255,.07)}
   .shtab .n{font-size:10.5px;opacity:.7;font-variant-numeric:tabular-nums}
+  .shtab.on .n{opacity:1;color:var(--mt,var(--gold-b))}
   /* 아직 안 열어본 탭 — 한 번 보면 표시가 사라진다 */
   .shtab.unseen{position:relative;border-color:#6b5730;color:var(--gold-b)}
   .shtab.unseen::after{content:"";position:absolute;top:5px;right:6px;width:6px;height:6px;
@@ -866,18 +891,23 @@
   @media (prefers-reduced-motion:reduce){.tb-tick i{animation:none;opacity:.8}}
   .tb-wait .btn.sm{margin-left:8px}
   .turnbar{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:9px 11px;margin-bottom:10px}
-  /* 순서를 줄바꿈하면 두 줄이 되고, 그 위에 이름줄이 또 붙어 셋이 됐다.
-     지금 차례인 사람은 칩 자체가 말해준다 — 머리줄은 없앴다. */
-  .tb-order{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
-    margin:0 -11px;padding:1px 11px}
-  .tb-order::-webkit-scrollbar{display:none}
+  /* 진행바와 같은 좌표계 — 지금 차례가 늘 한가운데 서고 레일이 밀린다.
+     옆으로 굴리게 두니 여섯 명 중 끝사람이 잘려 안 보였다. */
+  .tb-order{position:relative;overflow:hidden;margin:0 -11px;padding:1px 0;touch-action:none;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)}
+  .tb-rail{display:flex;gap:6px;width:max-content;
+    transition:transform .42s cubic-bezier(.22,.9,.24,1);will-change:transform}
   .tb-chip{display:flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px 4px 8px;border-radius:999px;
     white-space:nowrap;flex:0 0 auto;
     border:1px solid var(--line);background:var(--bg);color:var(--sub);opacity:.55;transition:.2s}
   .tb-chip .tg{font-family:"SF Mono",Consolas,monospace;font-size:9px;letter-spacing:.1em;
     text-transform:uppercase;color:var(--gold-b);margin-left:1px}
   .tb-chip .d{width:8px;height:8px;border-radius:50%;background:var(--tc,#888);flex:0 0 auto}
-  .tb-chip.on{opacity:1;border-color:var(--tc,var(--gold));color:#fff;box-shadow:0 0 12px -3px var(--tc,var(--gold))}
+  /* 지금 차례 — 채우지 않고 테두리·발광으로만 짚는다. 글자는 흰색을 지킨다. */
+  .tb-chip.on{opacity:1;color:#fff;border-color:color-mix(in srgb,var(--tc,var(--gold)) 62%,var(--line));
+    background:linear-gradient(180deg,color-mix(in srgb,var(--tc,var(--gold)) 17%,#1b1a19),#141312);
+    box-shadow:0 0 14px -4px var(--tc,var(--gold)),inset 0 1px 0 rgba(255,255,255,.07)}
   .tb-chip.done{opacity:.4;text-decoration:line-through}
   .turnbar .tb-act{margin-top:9px;display:flex;gap:8px;flex-wrap:wrap}
   .turnbar .tb-act .btn{flex:1;min-width:120px;text-align:center}
@@ -1666,6 +1696,8 @@ function applyState(){
     hb.textContent=overLimit()>0?"!":"";
     $("dkSheet").classList.toggle("on",(sheetSeenSeq!=null&&STATE.seq>sheetSeenSeq)||hasUnseenTab());
     paintTimeline();
+    centerTurnRail();
+    popMyLine();
     paintCoach();
     paintChatBadge();
     // 다음 페이즈·조사 화면·진행석은 ☰ 서랍이 페이즈를 보고 스스로 넣고 뺀다.
@@ -1726,9 +1758,7 @@ function maybePhaseFx(ph){
   if(fxSeq===STATE.seq) return;
   fxSeq=STATE.seq;
   playPhaseFx(ph);
-  // 토론 페이즈: 새 기억 파편 안내(자기 배역이 있을 때)
-  if(ph.key==="talk"&&TALK_SEQ[STATE.seq]&&myRoleValid())
-    banner((SCEN&&SCEN.fragNotice)||"기억의 파편이 떠올랐다 — 상단 ‘내 정보’를 확인하세요.");
+  // 이 막에서 꺼낼 말은 이제 대화창에 그대로 올라가고 팝업이 알려준다(popMyLine).
 }
 function playPhaseFx(ph){
   if(!ph||!ph.key) return;
@@ -2262,10 +2292,20 @@ addEventListener("orientationchange",()=>setTimeout(sizeWide,120));
 function showSpot(id){
   const c=(SCEN.cardCatalog||[]).find(x=>x.id===id); if(!c) return;
   const st=cardState(c), full=cardOpen(c.id);
-  const body=full
-    ? `<b style="color:var(--gold-b)">${esc(full.title)}</b>
-       <div class="lead" style="margin-top:6px">${esc(full.text)}</div>`
-    : `<div class="zc-q">아직 아무도 들여다보지 않았습니다.</div>`;
+  let body;
+  if(full){
+    body=`<b style="color:${st.k==="pub"?"var(--cold)":"var(--me,var(--gold-b))"}">${esc(full.title)}</b>
+       <div class="lead" style="margin-top:6px">${esc(full.text)}</div>`;
+  }else if(st.k==="taken"){
+    const w=st.who||{};
+    body=`<div class="zc-q" style="color:${w.color||"var(--sub)"}"><b>${esc(w.name||"누군가")}</b>님이 이미 조사한 곳입니다.</div>
+      <div class="panel-note" style="margin-top:6px">무엇을 찾았는지는 본인만 압니다 — 물어보거나 심문해야 나옵니다.</div>`;
+  }else if(st.k==="lock"){
+    body=`<div class="zc-q">아직 아무도 들여다보지 않았습니다.</div>
+      <div class="panel-note" style="margin-top:6px">${esc(st.label||"")}</div>`;
+  }else{
+    body=`<div class="zc-q">아직 아무도 들여다보지 않았습니다.</div>`;
+  }
   const m=document.createElement("div");
   m.className="modal on"; m.onclick=e=>{ if(e.target===m) m.remove(); };
   m.innerHTML=`<div class="box" onclick="event.stopPropagation()">
@@ -2767,7 +2807,7 @@ function renderPanel(ph){
     const pubc=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
     const hcards=(myRoleValid()?myHand:[]).map(c=>({...c,_pub:false})).concat(pubc.map(c=>({...c,_pub:true})));
     p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--me,var(--gold-b))">내 손패 ${myHand.length}</span>${pubc.length?`<span class="pill" style="color:var(--cold)">전체공개 ${pubc.length}</span>`:""}<span class="mspace"></span><button class="mrule" onclick="showTalkRule()" aria-label="토론 규칙">?</button></div>
-    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"color-mix(in srgb,var(--me,var(--gold)) 42%,var(--line))"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,color-mix(in srgb,var(--me,var(--gold)) 12%,#151413),#151413)"};cursor:pointer" onclick="openCard('${c.id}')"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--me,var(--gold-b))"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--me,var(--gold-b))"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span>${pairsOf(c.id).map(k=>{
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"color-mix(in srgb,var(--me,var(--gold)) 42%,var(--line))"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,color-mix(in srgb,var(--me,var(--gold)) 12%,#151413),#151413)"};cursor:pointer" onclick="openCard('${c.id}')"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--me,var(--gold-b))"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--me,var(--gold-b))"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span>${comboBadge(c.id)}${pairsOf(c.id).map(k=>{
         const rd=pairReady(k,c.id);
         return `<button class="pill pair${rd?" rdy":""}" title="${rd?"짝이 지금 나와 있습니다 — 눌러서 맞춰보세요":"같은 조각을 단 카드를 찾으세요"}" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id,rd)}${rd?"맞물림":"조각"}</button>`;
       }).join("")}<div class="lead clip1">${esc(oneLine(c.text))}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
@@ -2967,9 +3007,9 @@ function showInterrogRule(){
   say({title:"심층심문", body:
      "상대가 지금 손패로 쥔 카드를 지목해 답을 요구합니다. 카드 자체는 공개되지 않아요 — "
     +"대답만 듣는 거고, 민감한 비밀이면 그 대답이 진짜라는 보장도 없습니다.\n\n"
-    +"증거 없이 물으면 어느 정도는 넘어갈 수 있어요. 엉뚱한 카드를 증거로 대면 오히려 "
-    +"더 잘 둘러댈 빌미를 줘서 성공률이 떨어지고, 정확한 카드를 짚으면 반드시 실토합니다.\n\n"
-    +"어떤 카드가 정확한지는 알려주지 않아요 — 그걸 알아내는 게 추리예요."});
+    +"맨손으로 물으면 한 번은 넘어갈 수 있어요. 다만 얼버무린 자리를 다시 찌르면 결국 붑니다.\n\n"
+    +"증거를 함께 들이밀면 그 자리에서 무너집니다 — 한 번 얼버무리고, 이내 실토해요. "
+    +"무엇을 들이밀지가 곧 추리입니다."});
 }
 function showInvestRule(){
   const ap=(STATE&&STATE.phase&&STATE.phase.ap)||0;
@@ -3023,11 +3063,11 @@ function dashCard(c){
   const st=cardState(c), full=cardOpen(c.id);
   const spot=esc(c.spot||c.locName||"");
   if(st.k==="pub") return `<button class="dc pub act" onclick="openCard('${c.id}')">
-    <span class="sp">${spot}</span><span class="ti">${esc((full&&full.title)||"")}</span>
+    <span class="sp">${spot}</span><span class="ti">${esc((full&&full.title)||"")}${comboBadge(c.id)}</span>
     ${full&&full.text?`<span class="tx clip1">${esc(oneLine(full.text))}</span>`:""}
     <span class="st">전체공개</span></button>`;
   if(st.k==="hand") return `<button class="dc mine act" onclick="openCard('${c.id}')">
-    <span class="sp">${spot}</span><span class="ti">${esc((full&&full.title)||"")}</span>
+    <span class="sp">${spot}</span><span class="ti">${esc((full&&full.title)||"")}${comboBadge(c.id)}</span>
     <span class="wh"><i>${ICO.card}</i>내 손패 · 비공개</span></button>`;
   if(st.k==="taken"){ const w=st.who||{};
     // 남이 쥔 카드는 임자만 말한다 — 제목이 새면 그 사람이 감출 것이 없어진다
@@ -3149,7 +3189,7 @@ function igRender(){
   else if(igW.step==="ev"){
     const evid=[...myHand,...(STATE.revealed||[])];
     const mine=new Set(myHand.map(c=>c.id));
-    body=bar+`<div class="mlead">들이밀 카드를 고르세요. <b>안 골라도 됩니다</b> — 다만 정확한 카드를 짚으면 반드시 실토하고, 엉뚱한 카드는 오히려 빌미가 됩니다.</div>
+    body=bar+`<div class="mlead">들이밀 카드를 고르세요. <b>안 골라도 됩니다</b> — 다만 무엇이든 들이밀면 그 자리에서 실토합니다. 맨손이면 한 번은 넘어갈 수 있어요.</div>
       <div class="ig-evlist">
         <button class="ig-ev bare ${igW.evidence===""?"on":""}" data-id="" onclick="igPickEv('')">카드 없이 추궁
           <span class="ew">맨손으로 캐묻습니다</span></button>
@@ -3202,8 +3242,10 @@ function turnBar(){
   const turn=STATE.turn, order=STATE.turnOrder||[];
   if(!turn||!order.length) return "";
   const ap=(STATE.phase||{}).ap||0; const now=roleById(turn)||{}; const mine=turn===myRoleId;
-  const chips=order.map(id=>{ const c=roleById(id)||{}; const used=(STATE.usedAP||{})[id]||0; const done=ap>0&&used>=ap;
-    return `<span class="tb-chip ${id===turn?'on':''} ${done?'done':''}" style="--tc:${c.color||'#888'}"><span class="d"></span>${esc(c.name||id)}${id===turn?`<span class="tg">${mine?'MY TURN':'조사 중'}</span>`:''}</span>`; }).join("");
+  // 칩도 세 벌 — 여섯 명이든 넷이든 양옆이 끊기지 않고 이어진다.
+  const chip=(id,cp)=>{ const ch=roleById(id)||{}; const used=(STATE.usedAP||{})[id]||0; const done=ap>0&&used>=ap;
+    return `<span class="tb-chip ${id===turn?'on':''} ${done?'done':''}" data-c="${cp}" style="--tc:${ch.color||'#888'}"><span class="d"></span>${esc(ch.name||id)}${id===turn?`<span class="tg">${mine?'MY TURN':'조사 중'}</span>`:''}</span>`; };
+  const chips=[0,1,2].map(cp=>order.map(id=>chip(id,cp)).join("")).join("");
 
   // 전원이 조사를 마쳤으면 차례 안내 대신 다음 페이즈로 넘어가는 자리를 이 칸에 띄운다.
   // 손패가 넘치는 사람이 있으면 넘길 수 없다 — 넘기는 순간 그 카드는 정리할 기회를 잃는다.
@@ -3224,7 +3266,7 @@ function turnBar(){
     }else{
       body=`<div class="tb-why">모두 조사를 마쳤습니다 — 진행석에서 다음 페이즈로 넘겨줍니다.</div>`;
     }
-    return `<div class="turnbar done"><div class="tb-order">${chips}</div>
+    return `<div class="turnbar done"><div class="tb-order"><div class="tb-rail">${chips}</div></div>
       <div class="tb-act col">${body}</div></div>`;
   }
 
@@ -3238,14 +3280,15 @@ function turnBar(){
     const skip=(STATE.isHost||gmOn)?`<button class="btn sm" onclick="turnNext()">건너뛰기 ›</button>`:"";
     act=`<div class="tb-wait">지금은 <b style="color:${now.color}">${esc(now.name||'')}</b> 차례예요 — 대화로 조사를 이끌어 주세요.${tick}${skip}</div>`;
   }
-  return `<div class="turnbar"><div class="tb-order">${chips}</div>${act}</div>`;
+  return `<div class="turnbar"><div class="tb-order"><div class="tb-rail">${chips}</div></div>${act}</div>`;
 }
 function gmTurnBar(){
   const turn=STATE.turn, order=STATE.turnOrder||[]; if(!turn||!order.length) return "";
   const ap=(STATE.phase||{}).ap||0; const now=roleById(turn)||{}; const isAI=(STATE.roles[turn]||{}).mode==="ai";
-  const chips=order.map(id=>{ const c=roleById(id)||{}; const used=(STATE.usedAP||{})[id]||0; const done=ap>0&&used>=ap;
-    return `<span class="tb-chip ${id===turn?'on':''} ${done?'done':''}" style="--tc:${c.color||'#888'}"><span class="d"></span>${esc(c.name||id)}${id===turn?`<span class="tg">${isAI?'AI':'사람'}</span>`:''}</span>`; }).join("");
-  return `<div class="turnbar"><div class="tb-order">${chips}</div>
+  const chip=(id,cp)=>{ const ch=roleById(id)||{}; const used=(STATE.usedAP||{})[id]||0; const done=ap>0&&used>=ap;
+    return `<span class="tb-chip ${id===turn?'on':''} ${done?'done':''}" data-c="${cp}" style="--tc:${ch.color||'#888'}"><span class="d"></span>${esc(ch.name||id)}${id===turn?`<span class="tg">${isAI?'AI':'사람'}</span>`:''}</span>`; };
+  const chips=[0,1,2].map(cp=>order.map(id=>chip(id,cp)).join("")).join("");
+  return `<div class="turnbar"><div class="tb-order"><div class="tb-rail">${chips}</div></div>
     <div class="tb-act">${isAI?`<button class="btn gold" onclick="aiInvestigateNow('${turn}')">${ICO.bot} ${esc(now.name)} 자동 조사</button>`:''}<button class="btn" onclick="turnNext()">다음 차례 ›</button></div></div>`;
 }
 async function turnNext(){ const bn=(scr==="gm")?gmBanner:banner; const r=await post("/api/turn/next",{clientId,roleId:myRoleId,key:gmKey}); if(r&&r.error)bn(r.error); await poll(); }
@@ -3310,6 +3353,21 @@ function pairChip(k, id, ready){
     <path d="${d}" fill="${col}" fill-opacity="${ready?".82":".22"}" stroke="${col}" stroke-width="1.2"/>
     <g transform="translate(${cx} 9)" fill="${ready?"#0d0b0c":col}">${gly}</g></svg>`;
 }
+/* 이 카드가 두 조각을 맞춰 나온 것인가. pairKeys 의 opens 가 그 사실을 나른다. */
+function comboOf(id){ return (SCEN.pairKeys||[]).find(k=>k.opens===id)||null; }
+/* 온전히 맞물린 조각 — 반쪽 둘이 붙어 하나가 된 모양. 혹도 홈도 없다. */
+function wholeChip(k){
+  const i=k.i||0, col=PAIR_COL[i%PAIR_COL.length], gly=PAIR_GLYPH[i%PAIR_GLYPH.length];
+  return `<svg class="pchip whole" viewBox="0 0 22 18" aria-hidden="true">
+    <path d="M2.6 2 h16.8 v14 H2.6 Z" rx="2" fill="${col}" fill-opacity=".85" stroke="${col}" stroke-width="1.2"/>
+    <path d="M11 2.6 v12.8" stroke="#0d0b0c" stroke-width=".9" stroke-opacity=".38"/>
+    <g transform="translate(11 9)" fill="#0d0b0c">${gly}</g></svg>`;
+}
+/* 조합으로 나온 카드에 붙는 뱃지. 테이블에서도 손패에서도 같은 모양이다. */
+function comboBadge(id){
+  const k=comboOf(id); if(!k) return "";
+  return `<span class="combobadge" title="두 조각이 맞물려 나온 카드입니다">${wholeChip(k)}조합됨</span>`;
+}
 function showPairHint(id, pi){
   const c=[...myHand,...(STATE.revealed||[])].find(x=>x.id===id)||cardCat(id)||{};
   const ks=pairsOf(id); if(!ks.length) return;
@@ -3361,7 +3419,7 @@ function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const 
   const inHand=!!hand&&!pub;
   $("cardBox").innerHTML=`<div class="mhead">
       <div class="mh-t"><span class="mh-eb">${pub?"전체공개 단서":"손패 · 비공개"}</span>
-        <h2>${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>
+        <h2>${esc(c.title)}${c.bait?' <span class="pill">※미끼?</span>':''}</h2>${comboOf(c.id)?`<div style="margin-top:6px">${comboBadge(c.id)}</div>`:""}
         <span class="mh-sub">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""} · R${c.round}</span></div>
       <button class="mh-x" onclick="closeModal('cardModal')" aria-label="닫기">${ICO.close}</button></div>
     <div class="mbody">${pairsOf(c.id).length?`<div class="pchips">${pairsOf(c.id).map(k=>
@@ -3525,6 +3583,23 @@ async function humanSayFrom(id){
   keepTyping(inp);
 }
 /* 폰에서 자판을 붙잡아 둔다. 초점이 살아 있는 동안은 자판이 접히지 않는다. */
+/* 커서가 실제로 움직여야 「마우스 있는 기기」로 본다. hover 미디어 질의는
+   터치 겸용 노트북과 에뮬레이터에서 어긋나서, 폰인데 화살표가 떠 있곤 했다. */
+(function(){
+  const on=()=>document.documentElement.classList.add("cursor");
+  const off=()=>document.documentElement.classList.remove("cursor");
+  addEventListener("pointermove", e=>{ if(e.pointerType==="mouse") on(); }, {passive:true});
+  addEventListener("pointerdown", e=>{ if(e.pointerType==="touch") off(); }, {passive:true, capture:true});
+  addEventListener("touchstart", off, {passive:true, capture:true});
+})();
+/* 아이폰 사파리는 user-scalable=no 를 무시한다 — 확대 제스처를 직접 막는다.
+   배치도 확대는 자체 구현이라 이걸로 막히지 않는다. */
+["gesturestart","gesturechange","gestureend"].forEach(ev=>
+  document.addEventListener(ev, e=>e.preventDefault(), {passive:false}));
+document.addEventListener("dblclick", e=>{
+  if(e.target.closest && e.target.closest(".mzoom")) return;   // 배치도는 예외
+  e.preventDefault();
+}, {passive:false});
 function keepTyping(inp){ if(inp&&!inp.disabled&&document.activeElement!==inp) inp.focus({preventScroll:true}); }
 
 /* 인물정보 — 누가 무엇을 쥐고 있는지까지는 테이블이 다 안다(조사 마킹이 이미 공개다).
@@ -4133,7 +4208,7 @@ function wireSwipe(box){
 
   // 커서가 있는 기기에서만 — 화살표에 가까워질수록 진해진다. 손가락 기기는 CSS가 감춰둔다.
   // 시트를 다시 그릴 때마다 wireSwipe 가 불리므로, 리스너는 언제나 하나만 살려둔다.
-  if(window.matchMedia && matchMedia("(hover:hover)").matches && [prev,next].filter(Boolean).length){
+  if([prev,next].filter(Boolean).length){
     if(wireSwipe._offNear) wireSwipe._offNear();
     const navs=[prev,next].filter(Boolean);
     const NEAR=190;                        // 이만큼 안으로 들어오면 보이기 시작한다
@@ -4323,7 +4398,7 @@ function showMyHand(){
       return `<div class="bigcard clue">
       <div class="bc-eyebrow">손패 · 비공개</div>
       <div class="bc-title" style="color:var(--me,var(--gold-b))">${esc(c.title)}</div>
-      <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${pairsOf(c.id).map(k=>{const rd=pairReady(k,c.id);
+      <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${comboBadge(c.id)}${pairsOf(c.id).map(k=>{const rd=pairReady(k,c.id);
         return `<button class="pill pair${rd?" rdy":""}" title="${rd?"짝이 지금 나와 있습니다":"같은 조각을 단 카드와 맞춰보세요"}" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id,rd)}${rd?"맞물림":"조각"}</button>`;}).join("")}</div>
       <div class="bc-body">${esc(c.text)}</div>${mynote(c.id)}${cnote(c)}
       ${c.unlocks&&!isPub?`<div class="unlocknote">${ICO.unlock} 이 카드를 <b>전체공개</b>하면 무언가 밝혀질 수 있습니다.</div>`:""}</div>`; });
@@ -4368,19 +4443,58 @@ function paintCoach(){
 
 /* 막 진행표. 지금 막은 금색으로 채우고, 지나온 막은 흐리게 둔다.
    길어지면 가로로 흐르되 현재 막이 늘 보이게 끌어온다. */
+/* 이 막에서 내가 꺼내기로 한 말이 대화창에 올라갔다면 한 번만 띄워준다.
+   예전에는 «내 정보»에 조용히 붙고 배너 한 줄이 전부였다 — 그냥 지나가는 사람이 많았다. */
+let myLineSeen=-1;
+function popMyLine(){
+  if(!myRoleValid()) return;
+  const seq=STATE.seq||0;
+  if(myLineSeen>=seq) return;
+  const mine=(STATE.table||[]).filter(m=>m.auto&&m.roleId===myRoleId&&m.seq===seq);
+  if(!mine.length) return;
+  myLineSeen=seq;
+  const ph=(STATE.phase||{}).name||"";
+  say({title:`${ph} — 내가 꺼낸 말`,
+       body:mine.map(m=>`「${m.text}」`).join("\n\n")+"\n\n대화창에 그대로 올라갔습니다. 여기서부터 이어서 말하세요."});
+}
 function paintTimeline(){
   const el=$("tline"), ph=(SCEN.phases||[]); if(!el||!ph.length) return;
   const cur=STATE.seq||0;
   const sig=cur+":"+ph.length;
-  if(el.dataset.sig===sig) return;
-  el.dataset.sig=sig;
-  el.innerHTML=ph.map((p,i)=>{
-    const k=p.seq<cur?"done":(p.seq===cur?"now":"");
-    return `${i?'<span class="sep"></span>':""}<span class="tl ${k}"><i></i>${esc(p.name)}</span>`;
-  }).join("");
-  const now=el.querySelector(".tl.now");
-  if(now) now.scrollIntoView({inline:"center",block:"nearest"});
+  if(el.dataset.sig!==sig){
+    el.dataset.sig=sig;
+    // 눈금은 끊기지 않는다 — 같은 줄을 세 벌 이어 붙이고 가운데 벌을 기준으로 민다.
+    // 그래서 첫 막에서도 왼쪽에 마지막 막들이 이어져 보인다.
+    const one=c=>ph.map((p,i)=>{
+      const k=p.seq<cur?"done":(p.seq===cur?"now":"todo");
+      return `${i?'<span class="sep"></span>':""}`
+        +`<span class="tl ${k}" data-c="${c}"><i></i>${esc(p.name)}</span>`;
+    }).join("");
+    el.innerHTML=`<div class="tl-rail">`
+      +[0,1,2].map(one).join('<span class="sep"></span>')+`</div>`;
+  }
+  centerTimeline();
 }
+/* 지금 차례를 한가운데로. 진행바와 같은 방식이다. */
+function centerTurnRail(){
+  document.querySelectorAll(".tb-order").forEach(box=>{
+    const rail=box.querySelector(".tb-rail");
+    const now=box.querySelector('.tb-chip.on[data-c="1"]')||box.querySelector(".tb-chip.on");
+    if(!rail||!now) return;
+    const w=box.clientWidth; if(!w) return;
+    rail.style.transform=`translateX(${Math.round(w/2 - (now.offsetLeft + now.offsetWidth/2))}px)`;
+  });
+}
+/* 지금 막을 한가운데로 — 레일을 통째로 민다. 손으로 굴릴 수 없게 스크롤은 아예 없앴다. */
+function centerTimeline(){
+  const el=$("tline"); if(!el) return;
+  const rail=el.querySelector(".tl-rail");
+  const now=el.querySelector('.tl.now[data-c="1"]')||el.querySelector(".tl.now");
+  if(!rail||!now) return;
+  const w=el.clientWidth; if(!w) { requestAnimationFrame(centerTimeline); return; }
+  rail.style.transform=`translateX(${Math.round(w/2 - (now.offsetLeft + now.offsetWidth/2))}px)`;
+}
+addEventListener("resize",()=>{ if($("tline")) centerTimeline(); centerTurnRail(); });
 
 function measureDock(){
   const d=$("dock"); if(!d) return;
