@@ -758,7 +758,8 @@
   .sw-nav:hover:not(:disabled),.sw-nav:active:not(:disabled){opacity:1 !important;border-color:var(--gold);color:#fff;background:rgba(10,9,8,.9)}
   .sw-nav:disabled{opacity:0;pointer-events:none}
   /* 카드가 화면보다 길면 아래 끝은 아무도 못 본다 — 네비는 바닥에 붙어 따라온다. */
-  .sw-top{display:flex;justify-content:center;padding:1px 0 9px}
+  .sw-top{position:absolute;top:17px;left:0;right:0;z-index:2;display:flex;justify-content:center;pointer-events:none}
+  .sw-top .sw-dots{pointer-events:auto}
   .sw-dots{display:flex;gap:7px;justify-content:center;align-items:center;flex-wrap:wrap}
   .sw-dot{width:6px;height:6px;border-radius:50%;background:#3a3734;transition:.22s;cursor:pointer}
   .sw-dot.on{background:var(--gold);box-shadow:0 0 8px -1px var(--gold)}
@@ -1191,6 +1192,10 @@
   .dc.none{background:var(--bg2);border-style:dashed}
   .dc.none .sp{color:var(--sub);font-weight:400}
   /* 여기서 바로 조사할 수 있다는 표시 — 잠긴 자리에는 붙이지 않는다 */
+  /* 전원이 아는 소문 — 시트가 아니라 인물정보에 붙는다. 여기 적힌 건 전부 밖에서 온 말이다. */
+  .wknown{margin-top:6px;padding:7px 10px;border-radius:4px;font-size:12px;line-height:1.65;
+    color:var(--sub);background:rgba(255,255,255,.03);border-left:2px solid #2c465a;word-break:keep-all}
+  .wknown .k{display:block;font-size:10px;letter-spacing:.14em;color:var(--cold);margin-bottom:2px}
   .dc-go{align-self:flex-end;margin-top:-16px;font-size:11px;font-weight:700;color:var(--gold-b);white-space:nowrap}
   .dc.none.lock .dc-go{display:none}
   /* 누가 쥐고 있다 — 그 사람의 키컬러가 카드 옆구리에 선다 */
@@ -3780,6 +3785,7 @@ function showWho(keepTab){
       <div class="wi">
         <div class="wn" style="color:${c.color}">${esc(c.name)}<span class="sub">${esc(c.age)}·${esc(c.job)}</span>${seat}</div>
         <div class="wt">${esc(c.tagline||"")}</div>
+        ${c.known?`<div class="wknown"><span class="k">세간에 알려진 것</span>${esc(c.known)}</div>`:""}
         ${ids.length?`<div class="wcards">${cards}</div>`:`<div class="wnone">지금 쥐고 있는 카드가 없습니다.</div>`}
       </div></div>`;
   }).join("");
