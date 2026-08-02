@@ -262,7 +262,8 @@
   .whorow .wcards{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
   .whorow .wc{display:inline-flex;align-items:center;gap:4px;border-radius:7px;padding:4px 8px;
     font-size:11.5px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--sub)}
-  .whorow .wc.mine{border-color:rgba(214,176,96,.4);background:rgba(214,176,96,.1);color:var(--gold-b);cursor:pointer}
+  .whorow .wc.mine{border-color:color-mix(in srgb,var(--me,var(--gold)) 42%,transparent);
+    background:color-mix(in srgb,var(--me,var(--gold)) 11%,transparent);color:var(--me,var(--gold-b));cursor:pointer}
   .whorow .wc.pub{border-color:rgba(120,190,220,.34);background:rgba(120,190,220,.1);color:#bfe0ee;cursor:pointer}
   .whorow .wnone{font-size:11.5px;color:var(--muted);margin-top:7px}
   /* 조사가 다 끝난 턴바 — 차례 안내가 있던 자리에 다음 페이즈가 들어선다 */
@@ -1115,7 +1116,10 @@
   .dc.none .sp{color:var(--sub);font-weight:400}
   /* 누가 쥐고 있다 — 그 사람의 키컬러가 카드 옆구리에 선다 */
   .dc.held{background:var(--panel2)}
-  .dc.mine{--wc:var(--gold);background:linear-gradient(160deg,#221c14,#151413)}
+  /* 내가 쥔 카드 — 금색이 아니라 내 배역의 색이다(--me) */
+  .dc.mine{--wc:var(--me,var(--gold));border-color:color-mix(in srgb,var(--me,var(--gold)) 44%,var(--line));
+    background:linear-gradient(160deg,color-mix(in srgb,var(--me,var(--gold)) 13%,#151413),#151413)}
+  .dc.mine .ti{color:var(--me,var(--gold-b))}
   /* 전체공개 — 제목도 본문도 나온다. 여기만 읽을 것이 있다. */
   .dc.pub{--wc:var(--cold);background:linear-gradient(160deg,#111a22,#0e1620)}
   .dc.pub .ti{color:var(--cold)}
@@ -2719,8 +2723,8 @@ function renderPanel(ph){
     const mineIds=new Set(myHand.map(c=>c.id));
     const pubc=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
     const hcards=(myRoleValid()?myHand:[]).map(c=>({...c,_pub:false})).concat(pubc.map(c=>({...c,_pub:true})));
-    p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span>${pubc.length?`<span class="pill" style="color:var(--cold)">전체공개 ${pubc.length}</span>`:""}<span class="mspace"></span><button class="mrule" onclick="showTalkRule()" aria-label="토론 규칙">?</button></div>
-    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"#5a4a2c"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,#221c14,#151413)"};cursor:pointer" onclick="openCard('${c.id}')"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span>${pairsOf(c.id).map(k=>{
+    p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--me,var(--gold-b))">내 손패 ${myHand.length}</span>${pubc.length?`<span class="pill" style="color:var(--cold)">전체공개 ${pubc.length}</span>`:""}<span class="mspace"></span><button class="mrule" onclick="showTalkRule()" aria-label="토론 규칙">?</button></div>
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"color-mix(in srgb,var(--me,var(--gold)) 42%,var(--line))"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,color-mix(in srgb,var(--me,var(--gold)) 12%,#151413),#151413)"};cursor:pointer" onclick="openCard('${c.id}')"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--me,var(--gold-b))"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--me,var(--gold-b))"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span>${pairsOf(c.id).map(k=>{
         const rd=pairReady(k,c.id);
         return `<button class="pill pair${rd?" rdy":""}" title="${rd?"짝이 지금 나와 있습니다 — 눌러서 맞춰보세요":"같은 조각을 단 카드를 찾으세요"}" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id,rd)}${rd?"맞물림":"조각"}</button>`;
       }).join("")}<div class="lead clip1">${esc(oneLine(c.text))}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
@@ -2905,7 +2909,7 @@ function MAP_LABEL(){ return (SCEN&&SCEN.mapLabel)||"현장"; }
 /* 지도 머리줄이 나르는 수치. 조사 중에만 뜻이 있다. */
 function mapPills(){
   const ph=STATE&&STATE.phase||{}; const ap=ph.ap||0;
-  const hand=`<span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span>`;
+  const hand=`<span class="pill" style="color:var(--me,var(--gold-b))">내 손패 ${myHand.length}</span>`;
   if(ph.key!=="invest"||!myRoleValid()) return hand;
   const u=(STATE.usedAP||{})[myRoleId]||0, left=Math.max(0,ap-u);
   return `<span class="pill" style="color:${left>0?'var(--good)':'var(--ember-b)'}">이번 턴 조사 ${u}/${ap}</span>`+hand;
@@ -3908,6 +3912,8 @@ function renderChat(boxId){
 /* 머리띠의 이름 한 줄과 하단바의 손패 표시 — 폴링마다 여기서 맞춘다. */
 function paintSeat(){
   const ok=myRoleValid(), c=ok?roleById(myRoleId):null;
+  // 「내 것」 표시에 금색을 쓰면 금색이 키컬러인 배역과 섞인다 — 내 배역의 색으로 칠한다.
+  document.documentElement.style.setProperty("--me", (ok&&c.color)||"var(--gold-b)");
   const me=$("pMe");
   if(me){ me.textContent=ok?c.name:"관전 중";
           me.style.setProperty("--mec", ok?c.color:"var(--muted)"); }
@@ -4227,22 +4233,20 @@ function renderSheetTabs(){
 /* 내 단서(손패) — 어느 페이즈에서든 다시 확인. 조사한 카드는 사라지지 않는다. 큼지막하게 스와이프. */
 function showMyHand(){
   if(!myRoleValid()){ banner("배역을 맡아야 단서가 있어요"); return; }
-  const mineIds=new Set(myHand.map(c=>c.id));
-  // 전체공개된 카드는 모두의 것이다 — 내 손패 뒤에 이어 붙여 한자리에서 다 보이게 한다.
-  const pub=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
-  const cards=myHand.concat(pub);
-  let h=`<div class="mhead">
-      <div class="mh-t"><span class="mh-eb">내가 쥔 것</span><h2>${ICO.card} 내 단서</h2>
-        <span class="mh-sub">손패 ${myHand.length}장 (비공개)${pub.length?` · 전체공개 ${pub.length}장`:""}</span></div>
+  // 전체공개 카드는 조사 현황과 토론 화면에 이미 다 나와 있다 —
+  // 여기는 「내가 쥔 것」만 보는 자리다.
+  const cards=myHand;
+  let h=`<div class="mhead sheeth">
+      <div class="sh-id"><span class="sh-nm" style="color:var(--me,var(--gold-b))">${ICO.card} 내 단서</span>
+        <span class="sh-meta">${myHand.length}/${handLimit()}장 · 나만 봅니다</span></div>
       </div>
-    <div class="mbody">
-    <div class="mlead">내가 조사한 단서와, 테이블에 <b>전체공개된 카드</b>를 함께 봅니다. 손패는 알릴지 감출지 자유예요.</div>`;
+    <div class="mbody">`;
   if(!cards.length){ h+=`<div class="panel-note">아직 조사한 단서가 없어요. 조사 페이즈에 카드를 열면 여기에 계속 쌓입니다.</div>`; }
   else{ const slides=cards.map(c=>{
-      const isPub=!mineIds.has(c.id);
-      return `<div class="bigcard clue${isPub?" pubclue":""}">
-      <div class="bc-eyebrow">${isPub?"전체공개 · 모두가 봅니다":"손패 · 비공개"}</div>
-      <div class="bc-title" style="color:${isPub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</div>
+      const isPub=false;
+      return `<div class="bigcard clue">
+      <div class="bc-eyebrow">손패 · 비공개</div>
+      <div class="bc-title" style="color:var(--me,var(--gold-b))">${esc(c.title)}</div>
       <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${pairsOf(c.id).map(k=>{const rd=pairReady(k,c.id);
         return `<button class="pill pair${rd?" rdy":""}" title="${rd?"짝이 지금 나와 있습니다":"같은 조각을 단 카드와 맞춰보세요"}" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id,rd)}${rd?"맞물림":"조각"}</button>`;}).join("")}</div>
       <div class="bc-body">${esc(c.text)}</div>${mynote(c.id)}${cnote(c)}
@@ -4253,7 +4257,7 @@ function showMyHand(){
     <button class="btn" onclick="showShare()">${ICO.chat} 대화에 올리기</button>
     ${pubN?`<button class="btn" onclick="showSwap()">${ICO.swap} 되가져오기</button>`:""}</div>`:""}`;
   $("handBox").innerHTML=h;
-  $("handBox").style.setProperty("--mt","var(--gold)");
+  $("handBox").style.setProperty("--mt","var(--me,var(--gold))");
   openModal("handModal"); wireSwipe($("handBox"));
 }
 
