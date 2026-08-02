@@ -17,6 +17,9 @@
     font-weight:400;font-style:normal;font-display:swap}
   @font-face{font-family:"PIMM Sans";src:url("/assets/fonts/NotoSansKR-700.woff2") format("woff2");
     font-weight:700;font-style:normal;font-display:swap}
+  /* 머리띠의 이름 한 줄에만 쓴다. 명조는 본문에서 쓰는 결이라 띠 위에서는 장식으로 읽혔다. */
+  @font-face{font-family:"PIMM Pretendard";src:url("/assets/fonts/Pretendard-700.woff2") format("woff2");
+    font-weight:700;font-style:normal;font-display:swap}
   /* 바탕은 무채색이다 — 다크그레이와 블랙만 쓴다.
      예전 팔레트는 --bg 부터 --line 까지 전부 보라 기미(초록이 가장 낮은 값)를 깔고 있어서
      진행 화면 전체에 보랏빛이 돌았다. 색은 인물 키컬러 여섯과 금색·불꽃색만 낸다.
@@ -144,8 +147,13 @@
     padding:8px 12px calc(8px + env(safe-area-inset-top));border-bottom:1px solid var(--line);
     background:linear-gradient(180deg,rgba(17,16,15,.97),rgba(17,16,15,.85));flex-wrap:nowrap;overflow:hidden}
   .chead .ch-id{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
-  .chead .ch-me{font-family:"PIMM Myeongjo","Nanum Myeongjo",serif;font-size:15.5px;font-weight:800;
-    line-height:1.25;color:var(--mec,var(--ink));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chead .ch-me{font-family:"PIMM Pretendard","PIMM Sans",sans-serif;font-size:15.5px;font-weight:700;
+    line-height:1.3;letter-spacing:-.01em;color:#fff;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+  /* 이름이 흰색이 됐으니 키컬러는 점 하나로만 남는다 — 판 전체에서 나를 가리키는 색이다. */
+  .chead .ch-me::before{content:"";flex:0 0 auto;width:6px;height:6px;border-radius:50%;
+    background:var(--mec,var(--sub));box-shadow:0 0 7px -1px var(--mec,transparent)}
+  .chead .ch-me.nodot::before{display:none}
   .chead .ch-scen{display:flex;align-items:center;gap:5px;min-width:0;
     font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden}
   .chead .ch-scen>span:first-child{overflow:hidden;text-overflow:ellipsis}
@@ -199,25 +207,25 @@
   /* 막 진행표 — 지금 어디쯤인지, 앞으로 몇 막이 남았는지. 하단바 바로 위에 얇게 눕는다. */
   /* 진행 순서 — 지금 막이 늘 한가운데 선다. 손으로 굴리는 게 아니라 막이 넘어갈 때
      레일이 한 칸씩 왼쪽으로 밀린다. 좌표계 눈금이 지나가는 것처럼. */
-  .tline{position:relative;overflow:hidden;background:var(--bg2);border-bottom:1px solid var(--line);
-    padding:6px 0;touch-action:none;
+  .tline{position:relative;flex:0 0 auto;overflow:hidden;background:var(--bg2);
+    border-bottom:1px solid var(--line);padding:6px 0;touch-action:none;
     -webkit-mask-image:linear-gradient(90deg,transparent,#000 16%,#000 84%,transparent);
     mask-image:linear-gradient(90deg,transparent,#000 16%,#000 84%,transparent)}
   .tline .tl-rail{display:flex;align-items:center;gap:0;width:max-content;
     transition:transform .42s cubic-bezier(.22,.9,.24,1);will-change:transform}
-  .tline .tl{flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;
+  .tline .phz{flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;
     font-size:10.5px;font-weight:700;color:var(--muted);white-space:nowrap;
     transition:color .3s ease,opacity .3s ease}
-  .tline .tl i{width:5px;height:5px;border-radius:50%;background:var(--line);flex:0 0 auto;transition:.3s}
-  .tline .tl.done{color:var(--sub);opacity:.62}
-  .tline .tl.done i{background:var(--sub)}
-  .tline .tl.todo{opacity:.42}
+  .tline .phz i{width:5px;height:5px;border-radius:50%;background:var(--line);flex:0 0 auto;transition:.3s}
+  .tline .phz.done{color:var(--sub);opacity:.62}
+  .tline .phz.done i{background:var(--sub)}
+  .tline .phz.todo{opacity:.42}
   /* 지금 막 — 채우지 않고 테두리와 발광으로 짚는다. 글자는 늘 밝게 남는다. */
-  .tline .tl.now{color:#fff;
+  .tline .phz.now{color:#fff;
     background:linear-gradient(180deg,rgba(201,162,74,.22),rgba(201,162,74,.07));
     border:1px solid rgba(201,162,74,.62);padding:2px 10px;
     box-shadow:0 0 14px -4px var(--gold),inset 0 1px 0 rgba(255,255,255,.07)}
-  .tline .tl.now i{background:var(--gold);box-shadow:0 0 6px var(--gold)}
+  .tline .phz.now i{background:var(--gold);box-shadow:0 0 6px var(--gold)}
   .tline .sep{flex:0 0 auto;width:10px;height:1px;background:var(--line);margin:0 1px;opacity:.6}
   @media (prefers-reduced-motion:reduce){ .tline .tl-rail{transition:none} }
   /* 자판이 올라와 있는 동안 하단바는 비켜 준다(--dockh 가 0이 되어 창이 바닥까지 내려온다) */
@@ -4220,6 +4228,8 @@ function paintSeat(){
   document.documentElement.style.setProperty("--me", (ok&&c.color)||"var(--gold-b)");
   const me=$("pMe");
   if(me){ me.textContent=ok?c.name:"관전 중";
+          // 관전 중일 때는 가리킬 색이 없다 — 점도 같이 없앤다.
+          me.classList.toggle("nodot", !ok);
           me.style.setProperty("--mec", ok?c.color:"var(--muted)"); }
   const dk=($("dock")||{}).children||[];
   if(dk[1]) dk[1].classList.toggle("over", ok&&overLimit()>0);
@@ -4683,7 +4693,7 @@ function paintTimeline(){
     const one=c=>ph.map((p,i)=>{
       const k=p.seq<cur?"done":(p.seq===cur?"now":"todo");
       return `${i?'<span class="sep"></span>':""}`
-        +`<span class="tl ${k}" data-c="${c}"><i></i>${esc(p.name)}</span>`;
+        +`<span class="phz ${k}" data-c="${c}"><i></i>${esc(p.name)}</span>`;
     }).join("");
     el.innerHTML=`<div class="tl-rail">`
       +[0,1,2].map(one).join('<span class="sep"></span>')+`</div>`;
@@ -4704,7 +4714,7 @@ function centerTurnRail(){
 function centerTimeline(){
   const el=$("tline"); if(!el) return;
   const rail=el.querySelector(".tl-rail");
-  const now=el.querySelector('.tl.now[data-c="1"]')||el.querySelector(".tl.now");
+  const now=el.querySelector('.phz.now[data-c="1"]')||el.querySelector(".phz.now");
   if(!rail||!now) return;
   const w=el.clientWidth; if(!w) { requestAnimationFrame(centerTimeline); return; }
   rail.style.transform=`translateX(${Math.round(w/2 - (now.offsetLeft + now.offsetWidth/2))}px)`;
