@@ -58,6 +58,10 @@ AGENT_KEY = os.getenv("AGENT_KEY", "")  # 에이전트(코드 세션) 원격 조
 # 떨어지고(허를 찔러 얼버무릴 여지를 준다), 정확한 카드(시나리오의 rebuttal)면 100% 실토.
 INTERROGATE_TRUTH_BASE = 0.60
 INTERROGATE_TRUTH_WRONG_EVIDENCE = 0.20
+# 같은 곳을 다시 찌를 때마다 붙는 가산. 얼버무림은 막다른 골목이 아니라 한 걸음이어야 한다.
+INTERROGATE_PRESS_STEP = 0.30
+# 이만큼 찔리면 결국 분다. 운이 나쁘다고 정보가 영영 닫혀서는 안 된다.
+INTERROGATE_PRESS_BREAK = 3
 
 try:
     import anthropic
@@ -176,6 +180,7 @@ def fresh_room() -> dict:
         "flood": 0,
         "turn": None,             # 조사 페이즈 현재 차례 roleId (하이브리드 턴)
         "interrogate": {"seq": None, "used": 0, "votes": [], "bonus": False},  # 토론 페이즈 심층심문 예산
+        "press": {},              # "배역:카드" -> 얼버무린 횟수. 판이 끝날 때까지 누적된다
         "started": False,         # 호스트가 '이대로 진행'을 확정하면 True — 이후 배역 변경 불가
     }
 
@@ -1759,15 +1764,28 @@ def interrogate(b: Interrogate):
         entry = ((getattr(SC, "INTERROGATE_SELF", {}) or {}).get(b.targetRoleId) if selfmode
                  else (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(b.cardId))
 
+        # 같은 자리를 몇 번 찔렸는가. 한 번 얼버무렸다고 그 정보가 닫히면 안 된다 —
+        # 얼버무림은 「여기가 아프다」는 신호이고, 계속 밀면 결국 분다.
+        pk = f'{b.targetRoleId}:{b.cardId or "_self"}'
+        pressed = ROOM.setdefault("press", {}).get(pk, 0)
+
         if entry:
             if evid_id and evid_id == entry.get("rebuttal"):
                 told_truth = True
-            elif evid_id:
-                told_truth = random.random() < INTERROGATE_TRUTH_WRONG_EVIDENCE
+            elif pressed >= INTERROGATE_PRESS_BREAK:
+                told_truth = True                      # 더는 못 버틴다
             else:
-                told_truth = random.random() < INTERROGATE_TRUTH_BASE
+                base = INTERROGATE_TRUTH_WRONG_EVIDENCE if evid_id else INTERROGATE_TRUTH_BASE
+                told_truth = random.random() < base + pressed * INTERROGATE_PRESS_STEP
             outcome = "truth" if told_truth else "evasive"
-            line = entry["truth"] if told_truth else entry["evasive"]
+            if told_truth:
+                ROOM["press"].pop(pk, None)
+                line = entry["truth"]
+            else:
+                ROOM["press"][pk] = pressed + 1
+                # evasive가 여러 줄이면 찔린 횟수만큼 말이 흔들리게 고른다.
+                ev = entry["evasive"]
+                line = ev[min(pressed, len(ev) - 1)] if isinstance(ev, (list, tuple)) else ev
         elif selfmode:
             outcome, line = "evasive", "\"…무슨 말씀이신지 모르겠습니다.\""
         else:
@@ -1777,6 +1795,14 @@ def interrogate(b: Interrogate):
         ROOM["interrogate"]["used"] += 1
 
         badge = {"truth": "🗣️ 실토", "evasive": "🌀 얼버무림", "plain": "💬 답변"}[outcome]
+        if outcome == "evasive":
+            nxt = ROOM["press"].get(pk, 0)
+            if nxt >= INTERROGATE_PRESS_BREAK:
+                badge = "🌀 얼버무림 · 더는 못 버틴다"
+            elif nxt >= 2:
+                badge = "🌀 말이 흔들린다"
+        elif outcome == "truth" and pressed:
+            badge = "🗣️ 실토 — 끝내 무너졌다"
         if selfmode:
             header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · 본인 추궁'
         else:
@@ -1786,7 +1812,8 @@ def interrogate(b: Interrogate):
                               "askerRoleId": b.askerRoleId, "targetRoleId": b.targetRoleId,
                               "cardId": b.cardId, "outcome": outcome, "text": header, "line": line})
         bump()
-        return {"ok": True, "outcome": outcome, "line": line, "budget": _interrogate_budget()}
+        return {"ok": True, "outcome": outcome, "line": line,
+                "press": ROOM["press"].get(pk, 0), "budget": _interrogate_budget()}
 
 
 @app.get("/api/hand/{role_id}")
