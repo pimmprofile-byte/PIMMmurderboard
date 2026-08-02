@@ -42,6 +42,9 @@ COMMON_INTRO = (
 
 VICTIM = "오승택 (교복 차림) · 3학년 2반에서 발견 · 놀랍도록 생생한 시체 · 오른손에 무언가를 꽉 쥐고 있다."
 
+# 사건 현장 사진을 눌렀을 때 붙는 한 줄. 사진이 말하는 것까지만 적는다.
+SCENE_NOTE = "3학년 2반 교실. 교복 차림의 오승택이 바닥에 누워 있다."
+
 VICTIM_CARD = {
     "name": "오승택", "age": "", "job": "교복 차림",
     "tagline": "3학년 2반 교실에서 발견됐다.",
@@ -277,7 +280,7 @@ ENDINGS = {
 def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
-        "map": MAP, "victimCard": VICTIM_CARD, "mapLabel": "학교 안",
+        "map": MAP, "victimCard": VICTIM_CARD, "sceneNote": SCENE_NOTE, "mapLabel": "학교 안",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
                         "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],

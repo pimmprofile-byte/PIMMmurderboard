@@ -88,6 +88,9 @@ VICTIM = (
     "얼굴을 떠올리려고 하면 자꾸 다른 얼굴이 겹친다."
 )
 
+# 사건 현장 사진을 눌렀을 때 붙는 한 줄. 사진이 말하는 것까지만 적는다.
+SCENE_NOTE = "안방. 이불 위에 누운 채로 발견됐다."
+
 VICTIM_CARD = {
     "name": "죽은 사람", "age": "", "job": "나이는 아무도 말하지 못한다",
     "tagline": "안방에 누운 채로 발견됐다.",
@@ -224,7 +227,7 @@ def private_sheet(cid: str):
 def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
-        "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE, "map": MAP, "victimCard": VICTIM_CARD, "mapLabel": "집 안",
+        "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE, "map": MAP, "victimCard": VICTIM_CARD, "sceneNote": SCENE_NOTE, "mapLabel": "집 안",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"],
                     "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [],

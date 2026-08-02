@@ -49,14 +49,19 @@ VICTIM = (
     "사망 추정 새벽 2시 10~35분 · 개인 단말기(포드 인증코드 보관)가 사라진 상태."
 )
 
+# 사건 현장 사진을 눌렀을 때 붙는 한 줄. 사진이 말하는 것까지만 적는다.
+SCENE_NOTE = "함교에 쓰러진 선장 서준혁의 시신. 발밑에 물이 고여 있다."
+
 VICTIM_CARD = {
     "name": "서준혁", "age": "52", "job": "이원록함 선장",
     "tagline": "함교 조타석 옆에 쓰러져 있었다.",
-    "facts": ["후두부 가격 후 경부 압박",
-              "목에 굵고 거친 검은 기름 자국이 한 줄",
-              "외부작업복 차림 · 장갑 한 짝은 끼워지지 않은 채",
+    # 눈으로 본 상태만 적는다. 사인도, 순서도, 목 자국의 정체도 조사카드가 밝힐 몫이다 —
+    # 의무관이 이 자리에서 단언한 사인은 사실 오진이고, 그걸 뒤집는 게 이 판의 한 축이다.
+    "facts": ["후두부가 부어 있다 — 둔기에 맞은 듯한 외상",
+              "목에 굵고 거친 자국이 한 줄 둘려 있다",
+              "외부작업복 차림 · 장갑 한 짝은 끼워지지 않은 채 옆에 떨어져 있다",
               "사망 추정 새벽 2시 10~35분",
-              "개인 단말기(포드 인증코드 보관)가 사라진 상태"],
+              "늘 지니던 개인 단말기가 사라졌다"],
 }
 
 # ── 사건 당시 알리바이 대화록 ──
@@ -1203,7 +1208,7 @@ def public_scenario() -> dict:
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
         # 알리바이 대화록 — 공통지문·피해자 바로 아래에 붙는다. 이름은 클라이언트가 배역표에서 찾는다.
         "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE,
-        "map": MAP, "victimCard": VICTIM_CARD, "mapLabel": "배 안",
+        "map": MAP, "victimCard": VICTIM_CARD, "sceneNote": SCENE_NOTE, "mapLabel": "배 안",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
                         "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],

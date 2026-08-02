@@ -49,6 +49,9 @@ VICTIM = (
     "등에 밀친 자국, 손톱 밑 저항흔, 한 손에 무언가를 움켜쥠 · 사망 추정 시각 새벽 1시 05분경(막차 이후)."
 )
 
+# 사건 현장 사진을 눌렀을 때 붙는 한 줄. 사진이 말하는 것까지만 적는다.
+SCENE_NOTE = "해원역 승강장 끝. 선로 위에 서동철이 쓰러져 있다."
+
 VICTIM_CARD = {
     "name": "서동철", "age": "48", "job": "사채업자",
     "tagline": "승강장 끝 선로에서 감전사했다(제3궤조).",
@@ -288,7 +291,7 @@ ENDINGS = {
 def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
-        "map": MAP, "victimCard": VICTIM_CARD, "mapLabel": "역 안",
+        "map": MAP, "victimCard": VICTIM_CARD, "sceneNote": SCENE_NOTE, "mapLabel": "역 안",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
                         "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],

@@ -58,11 +58,15 @@ VICTIM = (
     "요 몇 주 치매 증세가 급격히 심해졌고, 사람을 자꾸 다른 이름으로 불렀다."
 )
 
+# 사건 현장 사진을 눌렀을 때 붙는 한 줄. 사진이 말하는 것까지만 적는다.
+SCENE_NOTE = "관리동 안쪽 방. 책상 앞에 엎어진 구본진과, 넘어진 아내 사진."
+
 VICTIM_CARD = {
     "name": "구본진", "age": "64", "job": "평화누리 캠핑장 주인",
     "tagline": "관리동 안쪽 방, 아내 사진이 놓인 책상 앞에서 발견됐다.",
-    "facts": ["목에 손자국이 남아 있다",
-              "몸싸움의 흔적이 거의 없다 — 30초를 못 버틴 것으로 보인다",
+    # 「삼십 초」는 진범이 배운 기술의 표지다 — 여기 적으면 조사할 것이 없어진다.
+    "facts": ["목에 좌우 대칭으로 눌린 자국이 남아 있다",
+              "저항한 흔적이 거의 없다 · 손톱 밑에도 아무것도 없다",
               "요 몇 주 치매 증세가 급격히 심해졌다",
               "사람을 자꾸 다른 이름으로 불렀다"],
 }
@@ -1043,7 +1047,7 @@ def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
         "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE,
-        "map": MAP, "victimCard": VICTIM_CARD, "mapLabel": "쉘터",
+        "map": MAP, "victimCard": VICTIM_CARD, "sceneNote": SCENE_NOTE, "mapLabel": "쉘터",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"],
                     "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
