@@ -183,7 +183,7 @@ def public_card(cid: str):
         return None
     return {"id": c["id"], "loc": c["loc"], "locName": c["locName"], "round": c["round"],
             "title": c["title"], "text": c["text"], "bait": c.get("bait", False),
-            "spot": c.get("spot", ""), "hint": c.get("hint", ""), "unlocks": c.get("unlocks", "")}
+            "spot": c.get("spot", ""), "unlocks": c.get("unlocks", "")}
 
 
 def private_notes(role_id: str, card_id: str) -> list:

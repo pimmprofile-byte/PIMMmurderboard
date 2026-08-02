@@ -579,6 +579,13 @@
   .cardart{margin:0 0 13px;border-radius:5px;overflow:hidden;border:1px solid var(--line);
     cursor:pointer;max-height:44svh}
   .cardart img{display:block;width:100%;height:auto;max-height:44svh;object-fit:cover;object-position:50% 42%}
+  .sharesec{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--gold-b);
+    margin:14px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+  .sharesec.cold{color:var(--cold)}
+  .shareSay{width:100%;margin-top:12px;padding:10px 12px;border-radius:4px;font-size:14px;
+    font-family:inherit;line-height:1.6;resize:vertical;
+    background:var(--bg2);border:1px solid var(--line);color:var(--ink)}
+  .shareSay:focus{outline:none;border-color:var(--cold)}
   .pchips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .pchips .pc-note{font-size:11.5px;color:var(--muted)}
   .pill.pair{display:inline-flex;align-items:center;gap:3px;padding-left:4px}
@@ -1551,6 +1558,10 @@ function openHMenu(){
   if(gmOn||localStorage.getItem("pmb.gmkeyset")==="1")
     it.push(["🎬","진행석","페이즈 진행·조사 마킹","go('gm')"]);
   it.push(["▶","오프닝 다시 보기","사건이 어떻게 시작됐는지","replayVN()"]);
+  // 나가는 길. 호스트가 나가면 방이 닫히므로 말이 달라야 한다 — 여태 이 문이 없어서
+  // 브라우저를 닫는 것 말고는 방을 뜨는 방법이 없었다.
+  if(STATE&&STATE.isHost) it.push(["⨯","방 삭제하기","모두의 판이 끝나고 기록이 지워집니다","leaveRoom(true)"]);
+  else                    it.push(["←","방 나가기","내 배역을 놓고 사건 목록으로","leaveRoom(false)"]);
   $("hmenuBox").innerHTML=`<div class="hm-t">진행 <b>${esc(ph.name||"")}</b></div>`
     + it.map(([k,t,s2,fn])=>`<button class="hm-i" onclick="closeHMenu();${fn}">
         <span class="k">${k}</span><span>${esc(t)}</span><span class="s">${esc(s2)}</span></button>`).join("")
@@ -1558,6 +1569,23 @@ function openHMenu(){
   $("hmenu").classList.add("on");
 }
 function closeHMenu(){ $("hmenu").classList.remove("on"); }
+/* 나가기. 참가자는 자기 자리만 비우고 떠나고, 호스트는 방을 닫는다. */
+async function leaveRoom(isHost){
+  if(isHost){
+    if(!await ask({title:"방을 삭제합니다",
+                   body:"진행 중인 판이 끝나고, 배역·조사 기록·종막 답안이 모두 지워집니다.\n다른 사람들도 함께 나가집니다.",
+                   warn:"되돌릴 수 없습니다.", ok:"삭제하고 나가기", cancel:"그만두기", tone:"danger"})) return;
+    await post("/api/reset",{clientId,key:gmKey||localStorage.getItem("pmb.gmkey")||""});
+  }else{
+    if(!await ask({title:"방에서 나갑니다",
+                   body:"내 배역을 놓고 사건 목록으로 돌아갑니다.\n판은 남은 사람들끼리 계속됩니다.",
+                   warn:(STATE&&STATE.started)?"시작된 판이라 자리는 그대로 비어 있게 됩니다 — 다시 들어와 이어서 할 수 있습니다.":"",
+                   ok:"나가기", cancel:"머물기", tone:"cold"})) return;
+    if(myRoleId) await post("/api/release",{roleId:myRoleId,clientId});
+  }
+  wipeLocal(true);
+  location.href="/";
+}
 
 /* ===== 페이즈 전환 시네마틱 ===== */
 let fxSeq=null;
@@ -3132,7 +3160,10 @@ function showPairHint(id, pi){
   $("cardBox").style.setProperty("--mt","var(--cold)");
   openModal("cardModal");
 }
-function cnote(c){ return c&&c.hint?`<div class="cnote"><b>해석</b>${esc(c.hint)}</div>`:""; }
+/* 카드에 딸린 「해석」은 이제 화면에 안 나온다. 작가가 미리 써둔 답을 카드마다 붙여주면
+   플레이어가 읽어낼 일이 없어지고, 카드를 읽는 대신 해석을 읽게 된다. 그 문장은 서버에만
+   남아서 AI 배역이 카드를 읽을 때 쓴다 — 내 배역만 아는 것(mynote)은 그대로 보인다. */
+function cnote(c){ return ""; }
 /* 이 카드에서 나만 읽어낸 것. 서버가 내 배역 몫만 만들어 보내므로 남의 화면엔 애초에 없다.
    keep = 「내가 찾던 게 이거였다」 · eye = 배운 게 있어 한 겹 더 본 것. */
 function mynote(id){
@@ -3233,19 +3264,27 @@ let swapGive=null, swapTake=null, swapBusy=false;
    올리는 순간 전체공개가 되므로(모두가 내용을 본다) 무엇이 걸리는지 먼저 알려준다. */
 let sharePick=null, shareBusy=false;
 function showShare(){
-  if(!myRoleValid()||!myHand.length) return;
+  if(!myRoleValid()) return;
   sharePick=null; shareBusy=false;
-  const kg=(sheetRole&&sheetRole.keepGoal)?sheetRole.keepGoal:null;   // 시트를 한 번이라도 열었으면 안다
+  const mineIds=new Set(myHand.map(c=>c.id));
+  const pubc=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
+  if(!myHand.length&&!pubc.length) return;
+  const card=(c,mine)=>`<button class="swapcard" data-id="${c.id}" onclick="sharePickOne('${c.id}')">
+      <span class="sc-t">${esc(c.title)}</span>
+      <span class="sc-w">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""}</span></button>`;
   $("swapBox").innerHTML=`<div class="mhead">
-      <div class="mh-t"><span class="mh-eb">내려놓고 이야기한다</span><h2>💬 대화에 올리기</h2>
-        <span class="mh-sub">제목과 나온 자리만 알립니다 — 내용은 나만 봅니다</span></div>
+      <div class="mh-t"><span class="mh-eb">카드를 짚으며 말한다</span><h2>💬 대화에 올리기</h2>
+        <span class="mh-sub">공개가 아닙니다 — 어느 카드 얘기인지만 알립니다</span></div>
       <button class="mh-x" onclick="closeModal('swapModal')" aria-label="닫기">✕</button></div>
     <div class="mbody">
-      <div class="mlead"><b>공개가 아닙니다.</b> «이런 걸 하나 쥐고 있다»고 말만 하는 겁니다 — 남들은 제목과 나온 자리만 보고, 내용은 못 봅니다. 카드는 그대로 내 손패에 남습니다.</div>
-      <div class="swaprow" id="shareRow">${myHand.map(c=>`<button class="swapcard" data-id="${c.id}" onclick="sharePickOne('${c.id}')">
-        <span class="sc-t">${esc(c.title)}</span>
-        <span class="sc-w">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""}</span></button>`).join("")}</div>
-      <div class="swaphint" id="shareHint">올릴 카드를 고르세요.</div>
+      <div class="mlead">내 손패를 올리면 <b>«이런 걸 하나 쥐고 있다»</b>고 말하는 것이고, 테이블 카드를 올리면 <b>그 카드를 짚는 것</b>입니다.
+        어느 쪽이든 내용은 새어 나가지 않고, 카드도 그대로 남습니다.</div>
+      ${myHand.length?`<div class="sharesec">내 손패 · 비공개</div>
+        <div class="swaprow" id="shareRow">${myHand.map(c=>card(c,true)).join("")}</div>`:""}
+      ${pubc.length?`<div class="sharesec cold">테이블 · 전체공개</div>
+        <div class="swaprow">${pubc.map(c=>card(c,false)).join("")}</div>`:""}
+      <div class="swaphint" id="shareHint">짚을 카드를 고르세요.</div>
+      <textarea id="shareSay" class="shareSay" rows="2" placeholder="같이 할 말 (없어도 됩니다) — 이거 좀 이상하지 않아요?"></textarea>
     </div>
     <div class="mfoot"><button class="btn" onclick="closeModal('swapModal')">취소</button>
       <button class="btn" id="shareGo" disabled onclick="shareConfirm()">대화에 올리기</button></div>`;
@@ -3254,15 +3293,20 @@ function showShare(){
 }
 function sharePickOne(id){
   sharePick=id;
-  document.querySelectorAll("#shareRow .swapcard").forEach(b=>b.classList.toggle("on",b.dataset.id===id));
-  const c=myHand.find(x=>x.id===id);
-  $("shareHint").innerHTML=c?`<b style="color:var(--cold)">${esc(c.title)}</b>을(를) 쥐고 있다고 말합니다. 내용은 알리지 않습니다.`:"올릴 카드를 고르세요.";
+  document.querySelectorAll("#swapBox .swapcard").forEach(b=>b.classList.toggle("on",b.dataset.id===id));
+  const mine=myHand.find(x=>x.id===id);
+  const c=mine||(STATE.revealed||[]).find(x=>x.id===id);
+  $("shareHint").innerHTML=c
+    ? (mine?`<b style="color:var(--gold-b)">${esc(c.title)}</b>을(를) 쥐고 있다고 말합니다. 내용은 알리지 않습니다.`
+           :`테이블의 <b style="color:var(--cold)">${esc(c.title)}</b>을(를) 짚습니다.`)
+    : "짚을 카드를 고르세요.";
   $("shareGo").disabled=!sharePick;
 }
 async function shareConfirm(){
   if(shareBusy||!sharePick) return;
   shareBusy=true; $("shareGo").disabled=true;
-  const r=await post("/api/mention",{cardId:sharePick,roleId:myRoleId,clientId});
+  const say=($("shareSay")||{}).value||"";
+  const r=await post("/api/mention",{cardId:sharePick,roleId:myRoleId,clientId,text:say.trim()});
   shareBusy=false;
   if(r&&r.error){ banner(r.error); $("shareGo").disabled=false; return; }
   closeModal("swapModal"); closeModal("handModal");

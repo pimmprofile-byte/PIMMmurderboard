@@ -1237,7 +1237,7 @@ def public_card(cid: str) -> dict | None:
         return None
     return {"id": c["id"], "loc": c["loc"], "locName": c["locName"], "round": c["round"],
             "title": c["title"], "text": c["text"], "bait": c.get("bait", False),
-            "spot": c.get("spot", ""), "hint": c.get("hint", ""),
+            "spot": c.get("spot", ""),
             "unlocks": c.get("unlocks", "")}
 
 

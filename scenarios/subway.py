@@ -308,8 +308,7 @@ def public_card(cid: str) -> dict | None:
     if not c:
         return None
     return {"id": c["id"], "loc": c["loc"], "locName": c["locName"], "round": c["round"],
-            "title": c["title"], "text": c["text"], "bait": c.get("bait", False),
-            "hint": c.get("hint", "")}
+            "title": c["title"], "text": c["text"], "bait": c.get("bait", False),}
 
 
 def private_sheet(cid: str) -> dict | None:

@@ -2179,6 +2179,7 @@ class MentionCard(BaseModel):
     cardId: str
     roleId: str
     clientId: str
+    text: str = ""          # 카드와 함께 붙이는 한 마디. 「이거 좀 이상하지 않아?」
 
 
 @app.post("/api/mention")
@@ -2193,19 +2194,29 @@ def mention_card(b: MentionCard):
         r = ROOM["roles"].get(b.roleId)
         if not r or r["clientId"] != b.clientId:
             return JSONResponse({"error": "그 배역으로 말할 수 없습니다"}, status_code=403)
-        if b.cardId not in ROOM["hands"].get(b.roleId, []):
-            return JSONResponse({"error": "손패에 없는 카드입니다"}, status_code=409)
+        # 내 손패든 이미 테이블에 깔린 것이든 가리킬 수 있다. 추리는 남이 깐 카드를 두고
+        # 「이거 좀 이상하지 않아?」 하는 데서 시작하는데, 여태 자기 카드만 가리킬 수 있었다.
+        mine = b.cardId in ROOM["hands"].get(b.roleId, [])
+        pub = b.cardId in ROOM["revealed"]
+        if not (mine or pub):
+            return JSONResponse({"error": "손패에도 테이블에도 없는 카드입니다"}, status_code=409)
         c = SC.get_card(b.cardId)
         if not c:
             return JSONResponse({"error": "없는 카드"}, status_code=404)
         who = SC.get_character(b.roleId) or {}
         nm = who.get("name", b.roleId)
         where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c["locName"]
+        say = (b.text or "").strip()[:400]
+        head = (f'🃏 {nm}{_subj(nm)} [{where}] 「{c["title"]}」{_obj(c["title"])} 손에 쥐고 있다고 말했습니다.'
+                if mine else
+                f'🃏 {nm}{_subj(nm)} [{where}] 「{c["title"]}」{_obj(c["title"])} 가리켰습니다.')
         ROOM["table"].append({
             "kind": "cardref", "roleId": b.roleId, "speaker": nm,
             "cardId": c["id"], "cardTitle": c["title"], "cardWhere": where,
-            "text": f'🃏 {nm}{_subj(nm)} [{where}] 「{c["title"]}」{_obj(c["title"])} 손에 쥐고 있다고 말했습니다.',
+            "mine": mine, "say": say, "text": head,
         })
+        if say:                       # 한 마디를 붙였으면 그건 그 배역이 실제로 한 말이다
+            ROOM["table"].append({"kind": "human", "roleId": b.roleId, "speaker": nm, "text": say})
         _ev("mention", roleId=b.roleId, speaker=nm, cardId=c["id"], title=c["title"])
         bump()
     return {"ok": True}
