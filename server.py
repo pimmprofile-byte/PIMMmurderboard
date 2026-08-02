@@ -260,7 +260,7 @@ def _crisis_open():
         if r["mode"] == "ai":
             cr["answers"][rid] = SC.crisis_ai_answer(rid)
     ROOM["table"].append({"kind": "system", "broadcast": True,
-                          "text": f'🌊 {conf["title"]} — 각자 화면에서 판단을 고르세요.'})
+                          "text": f'{conf["title"]} — 각자 화면에서 판단을 고르세요.'})
     _fire_cut("crisis:open")
     _ev("crisis", state="open")
     _crisis_try_resolve()
@@ -292,9 +292,9 @@ def _crisis_resolve():
         # 해치를 밖에서 잠갔다. 그 안은 그 밤 내내 못 들어간다.
         ROOM["sealed"] = sorted(set((ROOM.get("sealed") or []) + list(conf.get("seals") or [])))
     ROOM["table"].append({"kind": "system", "broadcast": True,
-                          "text": ("🌊 " + conf["success"]) if ok else ("🌊 " + conf["fail"])})
+                          "text": conf["success"] if ok else conf["fail"]})
     if ok and conf.get("after"):
-        ROOM["table"].append({"kind": "system", "broadcast": True, "text": "🔧 " + conf["after"]})
+        ROOM["table"].append({"kind": "system", "broadcast": True, "text": conf["after"]})
     _fire_cut("crisis:success" if ok else "crisis:fail")
     _ev("crisis", state="solved" if ok else "failed", right=right, of=len(assigned))
 
@@ -782,7 +782,7 @@ def _seed_alibi() -> None:
         return
     head = getattr(SC, "ALIBI_HEAD", "") or "각자가 한 말을 그대로 옮긴 것이다 — 참인지는 아무도 모른다."
     ROOM["table"].append({"kind": "system", "broadcast": True,
-                          "text": "🕑 사건 당시 · 알리바이 대화록 — " + head})
+                          "text": "사건 당시 · 알리바이 대화록 — " + head})
     for a in log:
         c = SC.get_character(a.get("who", "")) or {}
         ROOM["table"].append({"kind": "alibi", "roleId": a.get("who", ""),
@@ -803,7 +803,7 @@ def start_game(b: HostReq):
         if opens:
             return JSONResponse({"error": f"아직 정해지지 않은 배역이 {len(opens)}개 있습니다"}, status_code=409)
         ROOM["started"] = True
-        ROOM["table"].append({"kind": "system", "broadcast": True, "text": "🎬 배역이 확정됐습니다. 오프닝을 시작합니다."})
+        ROOM["table"].append({"kind": "system", "broadcast": True, "text": "배역이 확정됐습니다. 오프닝을 시작합니다."})
         _seed_alibi()
         bump()
     return {"ok": True, "started": True}
@@ -1416,7 +1416,7 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
         nm = (SC.get_character(role_id) or {}).get("name", role_id)
         where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c.get("locName", "")
         ROOM["table"].append({"kind": "system", "broadcast": True,
-                              "text": f'🔎 {nm}{_subj(nm)} 〈{where}〉{_obj(where)} 살펴봤습니다.'})
+                              "text": f'{nm}{_subj(nm)} 〈{where}〉{_obj(where)} 살펴봤습니다.'})
         _auto_combine()
         bump()
     return None
@@ -1463,7 +1463,7 @@ def _publish_from(role_id: str, card_id: str) -> None:
         where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c["locName"]
         ttl = c["title"]
         ROOM["table"].append({"kind": "system", "broadcast": True,
-                              "text": f'📌 {nm}{_subj(nm)} [{where}] 「{ttl}」{_obj(ttl)} 전체공개했습니다.'})
+                              "text": f'{nm}{_subj(nm)} [{where}] 「{ttl}」{_obj(ttl)} 전체공개했습니다.'})
         bump()
 
 
@@ -1486,7 +1486,7 @@ def _auto_combine() -> None:
         # 그걸 해내고도 라운드를 기다리라는 건 잠금을 두 번 거는 셈이다.
         if all(x in ROOM["revealed"] for x in need):
             ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": f'🧩 테이블 위의 두 조각이 맞물렸습니다 — 「{c["title"]}」이(가) 드러납니다.'})
+                                  "text": f'테이블 위의 두 조각이 맞물렸습니다 — 「{c["title"]}」이(가) 드러납니다.'})
             _publish(cid)
             continue
         for rid, hl in ROOM["hands"].items():
@@ -1495,7 +1495,7 @@ def _auto_combine() -> None:
                 ROOM["checkedRound"].setdefault(rid, {})[cid] = current_round(ROOM["seq"])
                 nm = (SC.get_character(rid) or {}).get("name", rid)
                 ROOM["table"].append({"kind": "system", "broadcast": True,
-                                      "text": f'🧩 {nm}{_subj(nm)} 쥐고 있던 두 조각을 맞췄습니다 — 새 단서가 그 손에 들어왔습니다.'})
+                                      "text": f'{nm}{_subj(nm)} 쥐고 있던 두 조각을 맞췄습니다 — 새 단서가 그 손에 들어왔습니다.'})
                 _ev("combine", roleId=rid, cardId=cid, title=c["title"])
                 break
     bump()
@@ -1513,7 +1513,7 @@ def _publish(card_id: str, by: str = "") -> None:
         if c and c.get("unlocks") == "pod" and not ROOM.get("podOpen"):
             ROOM["podOpen"] = True
             ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": "🛟 계통도가 가리키던 것이 드러났습니다 — 배치도에 탈출 포드가 표시됩니다."})
+                                  "text": "계통도가 가리키던 것이 드러났습니다 — 배치도에 탈출 포드가 표시됩니다."})
             _ev("unlock", what="pod", cardId=card_id)
             _fire_cut("pod")
         if c:
@@ -1614,7 +1614,7 @@ def swap_card(b: SwapCard):
         nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
         tt = take["title"] if take else b.takeId
         ROOM["table"].append({"kind": "system", "broadcast": True,
-                              "text": f'🔄 {nm}{_subj(nm)} 「{tt}」{_obj(tt)} 도로 가져갔습니다.'})
+                              "text": f'{nm}{_subj(nm)} 「{tt}」{_obj(tt)} 도로 가져갔습니다.'})
         bump()
     return {"ok": True}
 
@@ -1654,19 +1654,19 @@ def pod_vote(b: VoteReq):
         nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
         if first:
             ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": f"🛟 {nm}{_subj(nm)} 포드 탑승자를 정했습니다. (누구인지는 전원이 정한 뒤에 열립니다)"})
+                                  "text": f"{nm}{_subj(nm)} 포드 탑승자를 정했습니다. (누구인지는 전원이 정한 뒤에 열립니다)"})
         st = _pod_state()
         if st["done"]:
             res = st["result"]
             names = [(SC.get_character(x) or {}).get("name", x) for x in res["boarded"]]
             if res["reason"] == "tie":
-                msg = "🛟 발사창이 열렸지만 표가 넷 이상으로 갈렸습니다 — 자리를 나누지 못해 아무도 타지 못합니다."
+                msg = "발사창이 열렸지만 표가 넷 이상으로 갈렸습니다 — 자리를 나누지 못해 아무도 타지 못합니다."
             elif not names:
-                msg = "🛟 아무도 표를 받지 못했습니다. 포드는 빈 채로 남습니다."
+                msg = "아무도 표를 받지 못했습니다. 포드는 빈 채로 남습니다."
             elif len(names) == 1:
-                msg = f"🛟 발사창이 열립니다. {names[0]}, 혼자 탑니다."
+                msg = f"발사창이 열립니다. {names[0]}, 혼자 탑니다."
             else:
-                msg = f"🛟 발사창이 열립니다. 타는 사람 — {', '.join(names)}."
+                msg = f"발사창이 열립니다. 타는 사람 — {', '.join(names)}."
             ROOM["table"].append({"kind": "system", "broadcast": True, "text": msg})
         bump()
     return {"ok": True, "pod": _pod_state()}
@@ -1722,7 +1722,7 @@ def choose_destination(b: VoteReq):
         nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
         if first:
             ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": f"🧭 {nm}{_subj(nm)} 갈 곳을 정했습니다. (어디인지는 전원이 정한 뒤에 열립니다)"})
+                                  "text": f"{nm}{_subj(nm)} 갈 곳을 정했습니다. (어디인지는 전원이 정한 뒤에 열립니다)"})
         st = _dest_state()
         if st and st["done"]:
             byd = {}
@@ -1731,7 +1731,7 @@ def choose_destination(b: VoteReq):
             label = {d["id"]: d["name"] for d in SC.DESTINATIONS}
             lines = " · ".join(f"{label.get(d, d)} — {', '.join(ns)}" for d, ns in byd.items())
             ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": f"🧭 길이 갈립니다. {lines}"})
+                                  "text": f"길이 갈립니다. {lines}"})
         bump()
     return {"ok": True, "dest": _dest_state()}
 
@@ -1788,7 +1788,7 @@ def interrogate_vote(b: InterrogateVote):
         if budget["voteNeed"] > 0 and len(votes) >= budget["voteNeed"]:
             ROOM["interrogate"]["bonus"] = True
             ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": "🗳️ 추가 심문 1회가 승인됐습니다."})
+                                  "text": "추가 심문 1회가 승인됐습니다."})
         bump()
         return {"ok": True, "budget": _interrogate_budget()}
 
@@ -1861,15 +1861,15 @@ def interrogate(b: Interrogate):
 
         ROOM["interrogate"]["used"] += 1
 
-        badge = {"truth": "🗣️ 실토", "evasive": "🌀 얼버무림", "plain": "💬 답변"}[outcome]
+        badge = {"truth": "실토", "evasive": "얼버무림", "plain": "답변"}[outcome]
         if outcome == "evasive":
             nxt = ROOM["press"].get(pk, 0)
             if nxt >= INTERROGATE_PRESS_BREAK:
-                badge = "🌀 얼버무림 · 더는 못 버틴다"
+                badge = "얼버무림 · 더는 못 버틴다"
             elif nxt >= 2:
-                badge = "🌀 말이 흔들린다"
+                badge = "말이 흔들린다"
         elif outcome == "truth" and pressed:
-            badge = "🗣️ 실토 — 끝내 무너졌다"
+            badge = "실토 — 끝내 무너졌다"
         if selfmode:
             header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · 본인 추궁'
         else:
@@ -2159,7 +2159,7 @@ def _advance():
             il = SC.interlude_for(seq)
             if il:
                 ROOM["table"].append({"kind": "system", "broadcast": True,
-                                      "text": f"📻 {getattr(SC, 'PA_LABEL', '교내방송')} — {il}"})
+                                      "text": f"{getattr(SC, 'PA_LABEL', '교내방송')} — {il}"})
             # phase.gm은 진행자에게 주는 지시문이다("…확실히 짚어주세요"). 테이블에 넣으면
             # 플레이어 대화창에 그대로 뜬다. 막이 바뀌었다는 표시만 남긴다.
             ROOM["table"].append({"kind": "system", "text": f'— {ph["name"]} —'})
@@ -2207,9 +2207,9 @@ def mention_card(b: MentionCard):
         nm = who.get("name", b.roleId)
         where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c["locName"]
         say = (b.text or "").strip()[:400]
-        head = (f'🃏 {nm}{_subj(nm)} [{where}] 「{c["title"]}」{_obj(c["title"])} 손에 쥐고 있다고 말했습니다.'
+        head = (f'{nm}{_subj(nm)} [{where}] 「{c["title"]}」{_obj(c["title"])} 손에 쥐고 있다고 말했습니다.'
                 if mine else
-                f'🃏 {nm}{_subj(nm)} [{where}] 「{c["title"]}」{_obj(c["title"])} 가리켰습니다.')
+                f'{nm}{_subj(nm)} [{where}] 「{c["title"]}」{_obj(c["title"])} 가리켰습니다.')
         ROOM["table"].append({
             "kind": "cardref", "roleId": b.roleId, "speaker": nm,
             "cardId": c["id"], "cardTitle": c["title"], "cardWhere": where,

@@ -21,16 +21,16 @@ PA_LABEL = "선내 방송"
 # 시작하지만 이 배 사람들은 그렇지 않다 — 여기서 늘어나는 건 '이제 꺼내기로 한 말'이다.
 FRAGMENT_LABEL = "지금 할 말"
 FRAGMENT_EYEBROW = "이번 토론에서 꺼낼 것"
-FRAGMENT_NOTICE = "🫧 할 말이 하나 정해졌다 — 상단 ‘내 정보’를 확인하세요."
+FRAGMENT_NOTICE = "할 말이 하나 정해졌다 — 상단 ‘내 정보’를 확인하세요."
 
 # ── 조사 맵 — CARDS의 loc 문자와 대응, 렌더 순서대로 ──
 MAP = [
-    {"loc": "A", "icon": "🧭", "name": "함교"},
-    {"loc": "B", "icon": "⚙️", "name": "기관실"},
-    {"loc": "C", "icon": "📦", "name": "화물실"},
-    {"loc": "D", "icon": "⚕️", "name": "의무실"},
-    {"loc": "E", "icon": "📡", "name": "통신실"},
-    {"loc": "F", "icon": "🛏️", "name": "선실"},
+    {"loc": "A", "icon": "", "name": "함교"},
+    {"loc": "B", "icon": "", "name": "기관실"},
+    {"loc": "C", "icon": "", "name": "화물실"},
+    {"loc": "D", "icon": "", "name": "의무실"},
+    {"loc": "E", "icon": "", "name": "통신실"},
+    {"loc": "F", "icon": "", "name": "선실"},
 ]
 
 COMMON_INTRO = (
@@ -213,7 +213,7 @@ INTERLUDES = {
 # ── 배역 6인 ──
 CHARACTERS = [
     {
-        "id": "munjaei", "name": "문재이", "age": "34", "sex": "여", "job": "항해사", "avatar": "🧭", "color": "#17B7A6",
+        "id": "munjaei", "name": "문재이", "age": "34", "sex": "여", "job": "항해사", "avatar": "", "color": "#17B7A6",
         "tagline": "이 배에서 가장 침착해 보이는 사람. 그 침착함이 어디서 오는지는 아무도 모른다.",
         "persona": "빠르고 단정적인 말투. 감정보다 계산이 먼저 나온다. 소란이 커지면 '지금 그게 중요해?'라며 잘라낸다.",
         "hidden": True,
@@ -275,7 +275,7 @@ CHARACTERS = [
         "knows": ["F1", "F2", "F3", "F4"],
     },
     {
-        "id": "yutaeo", "name": "유태오", "age": "24", "sex": "남", "job": "조타수(막내)", "avatar": "🎚️", "color": "#2E5AAC",
+        "id": "yutaeo", "name": "유태오", "age": "24", "sex": "남", "job": "조타수(막내)", "avatar": "", "color": "#2E5AAC",
         "tagline": "막내. 사건이 벌어지는 동안 벽 하나 너머 숙직실에서 자고 있었다.",
         "persona": "말끝이 흐려지는 존댓말. 겁이 많고 눈치를 본다. 확신 없이 '그런데요…'로 말을 시작한다. 배워둔 응급처치 이야기를 할 때만 말이 또렷해진다.",
         "hidden": False,
@@ -385,7 +385,7 @@ CHARACTERS = [
         "knows": ["A4"],
     },
     {
-        "id": "oserin", "name": "오세린", "age": "38", "sex": "여", "job": "의무관", "avatar": "⚕️", "color": "#D9E2EC",
+        "id": "oserin", "name": "오세린", "age": "38", "sex": "여", "job": "의무관", "avatar": "", "color": "#D9E2EC",
         "tagline": "배의 의무관. 그런데 정작 사람이 죽은 밤에 시신 앞에서 한 발 물러서 있었다.",
         "persona": "차분하고 질문이 많다. 자기 이야기는 잘 안 하면서 남의 말은 끝까지 듣는다. 곤란한 질문은 되묻는 것으로 받아넘긴다. 의료 이야기가 나오면 말이 뭉툭해진다.",
         "hidden": True,
@@ -449,7 +449,7 @@ CHARACTERS = [
         "knows": ["D3", "D4", "D5", "A7"],
     },
     {
-        "id": "jinharam", "name": "진하람", "age": "41", "sex": "남", "job": "화물장", "avatar": "📦", "color": "#7C5CC0",
+        "id": "jinharam", "name": "진하람", "age": "41", "sex": "남", "job": "화물장", "avatar": "", "color": "#7C5CC0",
         "tagline": "말수가 적고 뭔가에 짓눌린 사람. 요즘 자꾸 헛것을 본다.",
         "persona": "느릿하고 신중한 말투. 확실하지 않으면 말하지 않는다. 추궁당하면 오래 침묵한다. 가끔 허공을 보다 말을 놓친다.",
         "hidden": True,
@@ -528,7 +528,7 @@ CHARACTERS = [
         "knows": ["C6", "C7", "C8"],
     },
     {
-        "id": "kangyunseo", "name": "강윤서", "age": "29", "sex": "여", "job": "통신사", "avatar": "📡", "color": "#E5A02C",
+        "id": "kangyunseo", "name": "강윤서", "age": "29", "sex": "여", "job": "통신사", "avatar": "", "color": "#E5A02C",
         "tagline": "끊긴 구조 신호에 매달린다. 시신을 처음 발견한 사람이기도 하다.",
         "persona": "또렷하고 조급한 말투. 기술 이야기가 나오면 말이 빨라진다. 거짓말을 잘 못 해서 표정이 먼저 드러난다.",
         "hidden": True,
@@ -595,7 +595,7 @@ CHARACTERS = [
         "knows": ["E7", "D6", "E6"],
     },
     {
-        "id": "handokyung", "name": "한무영", "age": "46", "sex": "남", "job": "기관장", "avatar": "🔧", "color": "#B33A2E",
+        "id": "handokyung", "name": "한무영", "age": "46", "sex": "남", "job": "기관장", "avatar": "", "color": "#B33A2E",
         "tagline": "가장 앞장서서 배를 지키겠다고 나서는 사람. 모두가 그를 믿는다.",
         "persona": "낮고 침착한 목소리. 말수가 적고 단정적이다. 사람들을 안심시키는 말을 골라 쓴다. 추궁당해도 목소리가 흔들리지 않는다.",
         "hidden": True,

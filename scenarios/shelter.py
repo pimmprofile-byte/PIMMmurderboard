@@ -29,15 +29,15 @@ AP_BY_ROUND = {1: 3, 2: 2, 3: 2}
 PA_LABEL = "캠핑장 방송"
 FRAGMENT_LABEL = "떠오른 것"
 FRAGMENT_EYEBROW = "그날의 조각"
-FRAGMENT_NOTICE = "🧠 잊고 있던 게 하나 떠올랐다 — 아래 ‘내 정보’를 확인하세요."
+FRAGMENT_NOTICE = "잊고 있던 게 하나 떠올랐다 — 아래 ‘내 정보’를 확인하세요."
 
 MAP = [
-    {"loc": "A", "name": "관리동", "icon": "🏚️"},
-    {"loc": "B", "name": "취사장", "icon": "🍲"},
-    {"loc": "C", "name": "발전동", "icon": "⚙️"},
-    {"loc": "D", "name": "텐트터", "icon": "⛺"},
-    {"loc": "E", "name": "창고", "icon": "📦"},
-    {"loc": "F", "name": "숲길", "icon": "🌲"},
+    {"loc": "A", "name": "관리동", "icon": ""},
+    {"loc": "B", "name": "취사장", "icon": ""},
+    {"loc": "C", "name": "발전동", "icon": ""},
+    {"loc": "D", "name": "텐트터", "icon": ""},
+    {"loc": "E", "name": "창고", "icon": ""},
+    {"loc": "F", "name": "숲길", "icon": ""},
 ]
 
 COMMON_INTRO = (
@@ -161,7 +161,7 @@ HIDDEN_ID = "inhyesuk"
 CHARACTERS = [
     {
         "id": "chaseoryeong", "name": "차서령", "age": "31", "sex": "여", "job": "무직",
-        "avatar": "💼", "color": "#C0553F",
+        "avatar": "", "color": "#C0553F",
         "tagline": "최연소 국회의원이었다가 나락에 간 재벌가 딸. 말이 험한데 여기 남은 이유는 사람이다.",
         "persona": "직설적이고 험하다. 존댓말을 잘 안 쓴다. 정색하면 말투가 갑자기 단정해진다.",
         "look": "관리 잘된 손. 옷은 낡았는데 걸음걸이가 다르다. 웃을 때만 어려 보인다.",
@@ -234,7 +234,7 @@ CHARACTERS = [
     },
     {
         "id": "handogyeom", "name": "한도겸", "age": "26", "sex": "남", "job": "연구원",
-        "avatar": "🧪", "color": "#3DA9A0",
+        "avatar": "", "color": "#3DA9A0",
         "tagline": "고등학생처럼 보이는 스물여섯. 이 재앙이 무엇인지 아는 유일한 사람이다.",
         "persona": "존댓말이 반듯하고 말이 빠르다. 숫자와 근거로 말한다. 사람 이야기가 나오면 갑자기 말이 느려진다.",
         "look": "또래보다 대여섯 살은 어려 보인다. 안경, 후드, 낡은 백팩. 손톱이 짧다.",
@@ -307,7 +307,7 @@ CHARACTERS = [
     },
     {
         "id": "nogangil", "name": "노강일", "age": "42", "sex": "남", "job": "무직",
-        "avatar": "🎖️", "color": "#5B6E4A",
+        "avatar": "", "color": "#5B6E4A",
         "tagline": "퇴역 특전사. 퇴거 명령을 어기고 남았고, 그 대가로 아무것도 남지 않았다.",
         "persona": "말이 짧고 군더더기가 없다. 존댓말인데 딱딱하다. 화가 나면 오히려 조용해진다.",
         "look": "체격이 크고 자세가 곧다. 손등에 굳은살. 웃는 걸 본 사람이 없다.",
@@ -385,7 +385,7 @@ CHARACTERS = [
     },
     {
         "id": "inhyesuk", "name": "인혜숙", "age": "52", "sex": "여", "job": "무직",
-        "avatar": "🧤", "color": "#7A5C86",
+        "avatar": "", "color": "#7A5C86",
         "tagline": "쉰둘인데 예순처럼 보인다. 오래전 삶을 놓았고, 그 전에 하던 일이 있었다.",
         "persona": "느리고 낮게 말한다. 자기 이야기를 잘 안 한다. 남의 말은 끝까지 듣는다. 가끔 아주 정확한 단어를 쓴다.",
         "look": "실제 나이보다 열 살은 더 들어 보인다. 손이 거칠고 자세가 굽었다. 머리를 늘 검게 물들인다.",
@@ -802,13 +802,13 @@ def public_suspicion(revealed_ids: list) -> dict:
 # 잠수정의 포드 투표가 「누구를 태울까」였다면 여기는 「나는 어디로 갈까」다.
 # 남을 태우는 게 아니라 제 발로 가는 것이라 설득도 담합도 통하지 않는다.
 DESTINATIONS = [
-    {"id": "panmunjom", "name": "판문점", "icon": "☢️",
+    {"id": "panmunjom", "name": "판문점", "icon": "",
      "desc": "분화구로 간다. 약을 끝내러 가는 건지 마무리하러 가는 건지는 본인만 안다."},
-    {"id": "stay", "name": "쉘터에 남는다", "icon": "🏚️",
+    {"id": "stay", "name": "쉘터에 남는다", "icon": "",
      "desc": "여기서 산다. 구본진이 하던 것을 잇는다."},
-    {"id": "south", "name": "남으로", "icon": "⚓",
+    {"id": "south", "name": "남으로", "icon": "",
      "desc": "항구. 밀항. 나만 살아 나간다."},
-    {"id": "seoul", "name": "서울로", "icon": "🏙️",
+    {"id": "seoul", "name": "서울로", "icon": "",
      "desc": "사람들 속으로. 알리러 간다."},
 ]
 

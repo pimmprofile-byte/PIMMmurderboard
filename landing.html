@@ -615,7 +615,7 @@ async function admLoad(sid){
   const zones=(d.map||[]).map(z=>{
     const cs=(byLoc[z.loc]||[]).slice().sort((x,y)=>(x.round-y.round)||x.id.localeCompare(y.id));
     if(!cs.length) return "";
-    return `<div class="adzone"><h4>${ADM_ESC(z.icon||"")} ${ADM_ESC(z.name||z.loc)}<span class="n">${cs.length}장</span></h4>
+    return `<div class="adzone"><h4>${ADM_ESC(z.name||z.loc)}<span class="n">${cs.length}장</span></h4>
       <div class="adcards">${cs.map(admCard).join("")}</div></div>`;
   }).join("");
   const loose=(d.cards||[]).filter(c=>!(d.map||[]).some(z=>z.loc===c.loc));
@@ -635,7 +635,7 @@ function admCard(c){
   ].filter(Boolean).join("");
   return `<div class="adc ${c.bait?"bait":""} ${c.unlocks?"rulecard":""}">
     <div class="ch"><span class="cid">${ADM_ESC(c.id)}</span><span class="cti">${ADM_ESC(c.title)}</span></div>
-    <div class="cwhere">${ADM_ESC(c.icon||"")} ${ADM_ESC(c.locName||"")}${c.spot?" · "+ADM_ESC(c.spot):""}</div>
+    <div class="cwhere">${ADM_ESC(c.locName||"")}${c.spot?" · "+ADM_ESC(c.spot):""}</div>
     <div class="ctx">${ADM_ESC(c.text)}</div>
     ${c.hint?`<div class="chint">${ADM_ESC(c.hint)}</div>`:""}
     ${tags?`<div class="ctags">${tags}</div>`:""}</div>`;
@@ -650,7 +650,7 @@ function showCardBrowser(){
     return `<button class="adtab${id===admScen?" on":""}" onclick="admScen='${id}';showCardBrowser()">${ADM_ESC(sc.title)}</button>`; }).join("");
   $("adcard").className="adcard wide";
   $("adcard").innerHTML=`<h3>조사카드 훑어보기</h3><div class="adsub">QA READOUT · 본문·힌트까지 전부</div>
-    <div class="adtabs">${tabs}<button class="adtab" onclick="showRoleBrowser()">👤 배역</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
+    <div class="adtabs">${tabs}<button class="adtab" onclick="showRoleBrowser()">배역</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
     <div id="admcards"></div>
     <button class="adclose" onclick="closeAdmin()">닫기</button>`;
   $("admask").classList.add("on");
@@ -725,7 +725,7 @@ function showRoleBrowser(){
     return `<button class="adtab${id===admScen?" on":""}" onclick="admScen='${id}';showRoleBrowser()">${ADM_ESC(sc.title)}</button>`; }).join("");
   $("adcard").className="adcard wide";
   $("adcard").innerHTML=`<h3>배역 훑어보기</h3><div class="adsub">QA READOUT · 목표·비밀·심문 대사까지 전부</div>
-    <div class="adtabs">${tabs}<button class="adtab" onclick="showCardBrowser()">🃏 조사카드</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
+    <div class="adtabs">${tabs}<button class="adtab" onclick="showCardBrowser()">조사카드</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
     <div id="admroles"></div>
     <button class="adclose" onclick="closeAdmin()">닫기</button>`;
   $("admask").classList.add("on");
@@ -746,8 +746,8 @@ function showAdminPanel(){
   $("adcard").className="adcard";
   $("adcard").innerHTML=`<h3>열람 모드 · 사건 정본</h3><div class="adsub">QA READOUT · 모든 내용 열람</div>
     ${rows}
-    <button class="adtab" style="margin-top:16px;width:100%;padding:11px" onclick="showCardBrowser()">🃏 조사카드 전부 훑어보기 →</button>
-    <button class="adtab" style="margin-top:7px;width:100%;padding:11px" onclick="showRoleBrowser()">👤 배역 전부 훑어보기 →</button>
+    <button class="adtab" style="margin-top:16px;width:100%;padding:11px" onclick="showCardBrowser()">조사카드 전부 훑어보기 →</button>
+    <button class="adtab" style="margin-top:7px;width:100%;padding:11px" onclick="showRoleBrowser()">배역 전부 훑어보기 →</button>
     <button class="adclose" onclick="closeAdmin()">닫기</button>`;
   $("admask").classList.add("on");
 }
