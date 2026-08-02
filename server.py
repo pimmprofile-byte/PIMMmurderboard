@@ -754,9 +754,10 @@ def state(clientId: str = "", gm: int = 0):
             st["culpritId"] = getattr(SC, "CULPRIT_ID", "")
             # 시각표를 선으로 그리려면 구역 이름이 있어야 한다. 방 목록에서 그대로 끌어온다.
             # 시각표에 loc 이 없는 시나리오는 선 그림을 건너뛰고 표만 그린다.
+            # 방 상세(ROOMS)가 없는 시나리오는 배치도(MAP)에서 끌어온다 — 어느 쪽이든 구역 이름은 있다.
             locs, seen = [], set()
-            for r in (getattr(SC, "ROOMS", []) or []):
-                k = r.get("key")
+            for r in (getattr(SC, "ROOMS", None) or getattr(SC, "MAP", []) or []):
+                k = r.get("key") or r.get("loc")
                 if k and k not in seen:
                     seen.add(k)
                     locs.append({"id": k, "name": r.get("name") or k})
