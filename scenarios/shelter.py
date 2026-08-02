@@ -50,6 +50,31 @@ ZONE_LOCK = {
 # 갈아 마시는 판을 막는다 — 한 번에 무엇을 물을지 고르는 것이 이 판의 심문이다.
 INTERROGATE_ONCE = True
 
+# 그림이 있는 구역은 그림 위에 핀을 찍고, 없는 구역은 목록으로 떨어진다.
+# art 는 assets/shelter_room_{art}.webp 를 가리킨다 — 파일이 없으면 화면이 알아서 목록을 연다.
+# G(소지품)·P(인물)은 자리가 아니라 사람을 뒤지는 것이라 방이 없다.
+ROOMS = [
+    {"key": "A", "loc": "A", "name": "관리동", "art": "admin"},
+    {"key": "B", "loc": "B", "name": "취사장", "art": "kitchen"},
+    {"key": "C", "loc": "C", "name": "발전동", "art": "power"},
+    {"key": "D", "loc": "D", "name": "텐트터", "art": "tents"},
+    {"key": "E", "loc": "E", "name": "창고", "art": "store"},
+    {"key": "F", "loc": "F", "name": "숲길", "art": "trail"},
+]
+
+# 그림 위의 핀 자리 — 카드가 가리키는 물건의 한가운데를 그림 폭·높이의 %로 적는다.
+# 여기 없는 카드는 화면이 알아서 흩어놓으므로, 그림이 있는 구역만 잡아두면 된다.
+# 아래 15%는 가로보기 바가 덮으므로 y 는 72를 넘기지 않는다.
+PINS = {
+    # 취사장 — 식탁이 가운데, 개수대가 왼쪽, 선반이 왼쪽 위
+    "B7": (46, 60),   # 식탁 밑 바닥
+    "B1": (13, 55),   # 개수대
+    "B2": (50, 47),   # 식탁
+    # 발전동 — 발전기가 왼쪽, 배전반이 오른쪽 벽, 기름통이 가운데
+    "C5": (48, 62),   # 기름통과 벽 사이
+    "C6": (91, 30),   # 배전반 뒤 벽장
+}
+
 MAP = [
     {"loc": "A", "name": "관리동", "icon": ""},
     {"loc": "B", "name": "취사장", "icon": ""},
@@ -454,7 +479,7 @@ CHARACTERS = [
             "산 이야기는 아껴라. 꺼내는 순간 내가 이 재앙에 얽힌 사람이 된다.",
             "어르신의 정체가 드러난 뒤에는 말이 달라져도 된다. 이 배역은 그때부터 그쪽 편이다.",
         ],
-        "knows": ["C6", "P1"],
+        "knows": ["P1"],
         "ai_note": "무고자다. 말이 짧고 딱딱하게. 알리바이가 없다는 걸 먼저 인정하고 사실만 말하라. "
                    "기술 이야기가 나오면 감추지 말고 인정한 뒤 되물어라. "
                    "산 이야기와 통제 계획은 먼저 꺼내지 마라. "
@@ -566,7 +591,7 @@ CHARACTERS = [
             "어르신을 몰아세우는 데 앞장서라. 이미 죽은 사람이라 반박을 안 한다.",
             "어르신의 정체가 드러나면 참지 마라. 이 배역은 그때부터 이 계획에 정면으로 선다.",
         ],
-        "knows": ["A8", "E3"],
+        "knows": ["P2"],
         "ai_note": "무고자다. 말이 험하고 직설적이라 오히려 의심을 덜 받는다. 어르신의 정체를 캐는 데 앞장서라. "
                    "다만 자기 집안 이야기와 19시 50분 관리동은 끝까지 인정하지 마라. "
                    "집안 투자 목록 이야기가 나오면 「사업 이름이 스무 개였다」로 흐리고 그중 하나를 짚지 마라. "
@@ -678,7 +703,7 @@ CHARACTERS = [
             "어르신을 할아버지처럼 대해도 된다. 실제로 그렇게 느끼고 있었다.",
             "어르신의 정체가 드러난 뒤에는 흔들려도 된다. 이 배역은 그때 제일 크게 무너진다.",
         ],
-        "knows": ["A2", "F2"],
+        "knows": ["P3"],
         "ai_note": "무고자다. 숫자와 근거로 말하라. 논문·억제제·극약은 절대 먼저 꺼내지 마라. "
                    "어르신을 따르던 티를 내라 — 할아버지처럼 여기고 있었다. "
                    "어르신의 정체가 드러난 뒤에는 말이 느려지고 흔들려야 한다. "
@@ -800,7 +825,7 @@ CHARACTERS = [
             "내가 이 계획의 판을 짰다는 것은 살인을 인정한 뒤에도 말하지 않는다. 그게 마지막 방어선이다.",
             "이 계획이 옳았느냐는 말이 나오면 잠깐 말이 막혀도 된다. 이 배역은 그 자리에서 제일 흔들린다.",
         ],
-        "knows": ["P4", "E3", "G1"],
+        "knows": ["P4"],
         "ai_note": "진범이다. 느리고 낮게, 위협적이지 않게 굴어라. 그게 이 배역이 살아남는 방식이다. "
                    "군인이 몰릴 때 거들지 말고 오히려 한 번 감싸라. "
                    "손목·염색·국정원은 절대 먼저 말하지 마라. 정확히 그 카드를 들이대면 그때만 인정하라. "
@@ -1762,7 +1787,7 @@ def private_sheet(cid: str):
             "storyToday": c.get("storyToday", ""), "hide": c.get("hide", []), "past": c.get("past", []),
             "age": c.get("age", ""), "look": c.get("look", ""),
             "night": NIGHT.get(cid, []),
-            "knows": [{"id": x["id"], "title": x["title"], "locName": x["locName"],
+            "knows": [{"id": x["id"], "title": x["title"], "locName": x["locName"], "loc": x["loc"],
                        "spot": x.get("spot", ""), "text": x["text"], "round": x.get("round", 1)}
                       for x in (get_card(k) for k in (c.get("knows") or [])) if x],
             # 어느 카드인지는 적지 않는다. 열어보면 그 자리에서 본인에게만 뜬다(private_notes).
@@ -1776,6 +1801,11 @@ def public_scenario() -> dict:
         "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE,
         "map": MAP, "victimCard": VICTIM_CARD, "sceneNote": SCENE_NOTE, "mapLabel": "쉘터",
         "belongLocs": BELONGINGS_LOCS, "belongLabel": BELONGINGS_LABEL, "belongLimit": BELONG_LIMIT,
+        "pins": {k: list(v) for k, v in PINS.items()},
+        "rooms": [{"key": r["key"], "loc": r["loc"], "name": r["name"], "art": r["art"],
+                   "from": r.get("from", ""), "at": list(r.get("at", ()) or []),
+                   "cards": list(r.get("cards", []) or []), "note": r.get("note", ""),
+                   "needPod": False} for r in ROOMS],
         "alibiHead": ALIBI_HEAD,
         "zoneLock": ZONE_LOCK, "interrogateOnce": INTERROGATE_ONCE,
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"],
