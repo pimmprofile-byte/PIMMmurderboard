@@ -718,6 +718,13 @@
   .shtab:hover{color:var(--ink)}
   .shtab.on{background:var(--mt,var(--gold));border-color:var(--mt,var(--gold));color:#12100c}
   .shtab .n{font-size:10.5px;opacity:.7;font-variant-numeric:tabular-nums}
+  /* 아직 안 열어본 탭 — 한 번 보면 표시가 사라진다 */
+  .shtab.unseen{position:relative;border-color:#6b5730;color:var(--gold-b)}
+  .shtab.unseen::after{content:"";position:absolute;top:5px;right:6px;width:6px;height:6px;
+    border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--panel2);
+    animation:tabPulse 1.9s ease-in-out infinite}
+  .shtab.on.unseen::after{display:none}
+  @keyframes tabPulse{0%,100%{opacity:1}50%{opacity:.35}}
   /* 표지 — 초상 왼쪽, 이름·나이·성별·직책과 말투 지침이 오른쪽. */
   .cov-top{display:grid;grid-template-columns:minmax(96px,34%) 1fr;gap:14px;align-items:start;margin:14px 0 4px}
   .cov-info{min-width:0;padding-top:2px}
@@ -790,6 +797,9 @@
   .bc-goal{display:flex;gap:10px;font-size:15px;padding:9px 0;border-bottom:1px solid var(--line)}.bc-goal:last-child{border-bottom:0}.bc-goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif}
   /* 내 정보(배역 시트)는 한 번에 읽을 분량이 많다 — 팝업을 넓히고 본문을 키운다.
      본문 줄길이는 measure로 잡아, 넓어져도 한 줄이 지나치게 길어지지 않게 한다. */
+  #sheetModal{top:0}
+  #sheetModal .mhead{padding-top:calc(11px + env(safe-area-inset-top))}
+  #sheetModal .sw-nav{top:calc(50% - var(--dockh,64px)/2)}
   #sheetModal .box{max-width:760px;max-height:92vh;max-height:94svh}
   #sheetModal .mbody{padding:14px 14px 0}
   #sheetModal h2{font-size:22px}
@@ -1630,7 +1640,7 @@ function applyState(){
     $("dkHandN").textContent=`${myHand.length}/${handLimit()}`;
     const hb=$("dkHand"); hb.classList.toggle("on", overLimit()>0);
     hb.textContent=overLimit()>0?"!":"";
-    $("dkSheet").classList.toggle("on",sheetSeenSeq!=null&&STATE.seq>sheetSeenSeq);
+    $("dkSheet").classList.toggle("on",(sheetSeenSeq!=null&&STATE.seq>sheetSeenSeq)||hasUnseenTab());
     paintTimeline();
     paintCoach();
     applyChatFold();
@@ -4125,14 +4135,34 @@ async function showMySheet(){
 }
 const SHEET_TABS=[["main","나의 이야기"],["extra","추가 정보"],["sum","한눈에"]];
 let sheetSlides=[], sheetRole=null, sheetTab="main";
-function sheetGo(t){ sheetTab=t; renderSheetTabs(); }
+/* 「추가 정보」·「한눈에」는 열어보지 않고 지나치기 쉽다 — 한 번 볼 때까지 표시를 남긴다.
+   배역별로 따로 센다. 배역을 바꾸면 그 사람의 시트는 처음 보는 것이다. */
+function tabSeenKey(){ return "pmb.shtabs."+(myRoleId||""); }
+function tabsSeen(){
+  try{ return new Set(JSON.parse(localStorage.getItem(tabSeenKey())||"[]")); }catch(e){ return new Set(); }
+}
+function markTabSeen(t){
+  const q=tabsSeen(); if(q.has(t)) return;
+  q.add(t); try{ localStorage.setItem(tabSeenKey(),JSON.stringify([...q])); }catch(e){}
+}
+/* 아직 안 열어본 탭이 있는가 — 하단바의 내 정보 점이 이것도 본다. */
+function hasUnseenTab(){
+  if(!myRoleValid()) return false;
+  const q=tabsSeen();
+  // 아직 한 번도 안 연 판에서는 어떤 탭이 있는지 모른다 — 셋 다 안 봤다고 본다.
+  if(!sheetSlides.length) return q.size<SHEET_TABS.length;
+  return SHEET_TABS.some(([k])=>sheetSlides.some(x=>x.tab===k)&&!q.has(k));
+}
+function sheetGo(t){ sheetTab=t; markTabSeen(t); renderSheetTabs(); }
 function renderSheetTabs(){
   const s=sheetRole; if(!s) return;
   const meta=[s.age,s.sex,s.job].filter(Boolean).join(" · ");
   const has=t=>sheetSlides.some(x=>x.tab===t);
+  const seen=tabsSeen();
+  markTabSeen(sheetTab);
   const tabs=SHEET_TABS.filter(([k])=>has(k)).map(([k,l])=>{
     const n=sheetSlides.filter(x=>x.tab===k).length;
-    return `<button class="shtab${k===sheetTab?" on":""}" onclick="sheetGo('${k}')">${l}<span class="n">${n}</span></button>`;}).join("");
+    return `<button class="shtab${k===sheetTab?" on":""}${seen.has(k)?"":" unseen"}" onclick="sheetGo('${k}')">${l}<span class="n">${n}</span></button>`;}).join("");
   const cur=sheetSlides.filter(x=>x.tab===sheetTab).map(x=>x.html);
   $("sheetBox").innerHTML=`<div class="mhead sheeth">
       <div class="sh-id">${avaHTML(s,"sm")}
