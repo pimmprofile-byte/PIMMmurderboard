@@ -390,7 +390,7 @@ async function loadTextLoads(){
       let s=SCEN.find(x=>x.id===m.id);
       // 서버에만 있는 새 사건은 여기서 만들어 붙인다. 예전엔 이 배열에 손으로 적어야
       // 목록에 떴고, 안 적으면 시나리오를 등록해놓고도 아무도 못 골랐다.
-      if(!s){ s={id:m.id, img:"", glow:"rgba(120,150,170,.30)"}; SCEN.push(s); }
+      if(!s){ s={id:m.id, img:`/assets/poster_${m.id}.jpg`, glow:"rgba(120,150,170,.30)"}; SCEN.push(s); }
       // 표시 순서도 ORDER가 정한다 — 여기 없으면 render가 걸러버려서 등록해도 안 보였다.
       if(ORDER.indexOf(m.id)<0) ORDER.push(m.id);
       s.title=m.title||s.title||m.id;
@@ -400,6 +400,8 @@ async function loadTextLoads(){
       s.players=m.players||s.players||"";
       s.tagline=m.tagline||s.tagline||"";
       s.locked=!!m.locked;
+      if(m.id==="shelter")      s.glow="rgba(120,168,72,.26)";    // 창밖의 녹색
+      if(m.id==="karma_mirror") s.glow="rgba(126,140,148,.22)";   // 잿빛. 다섯 중 가장 옅다
       if(m.text) s.text=m.text;
     });
     // 이 파일에는 scr 변수가 없다. 화면이 켜져 있는지는 DOM으로 본다(파일 내 다른 곳과 같은 방식).
