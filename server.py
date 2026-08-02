@@ -61,6 +61,9 @@ INTERROGATE_TRUTH_BASE = 0.60
 INTERROGATE_PRESS_STEP = 0.30
 # 이만큼 찔리면 결국 분다. 심문 횟수가 넉넉하지 않아서, 한 번 얼버무리면 그 다음은 무조건이다.
 INTERROGATE_PRESS_BREAK = 1
+# 엉뚱한 카드를 들이밀면 오히려 허를 찔러 넘어갈 여지를 준다 — 아무 카드나 대면 분다면
+# 「무엇을 들이미는가」가 추리가 아니라 요식이 된다.
+INTERROGATE_TRUTH_WRONG_EVIDENCE = 0.25
 
 try:
     import anthropic
@@ -1979,33 +1982,54 @@ def interrogate(b: Interrogate):
         # 들이민 증거가 이 사람을 가리키는 카드라면, 실토는 그 증거에 얽힌 진상이 된다.
         # 「무엇을 묻는가」보다 「무엇을 들이미는가」가 답을 정한다.
         ev_entry = None
-        if evid_id and not selfmode and b.targetRoleId in _points_at(evid_id):
-            ev_entry = (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(evid_id)
+        # ── 심문은 확률이 아니라 태그로 굴러간다 ──────────────────────────
+        # 카드마다 「이 카드는 누구의 비밀인가」가 INTERROGATE 표에 적혀 있다.
+        #  · 그 사람이 그 카드를 쥐고 있고 그 자리를 지목했다  → 얼버무리고 그 자리에서 분다
+        #  · 내가 그 카드를 쥐고 그 사람에게 들이밀었다        → 마찬가지
+        #  · 그 사람과 상관없는 카드를 들이밀었다              → 정말로 모른다. 아는 척도 안 한다
+        #  · 그 사람이 쥔 카드인데 그의 비밀이 아니다          → 그냥 내용을 사실대로 말한다
+        # 예전엔 아무 카드나 대도 실토가 나왔고(«무엇을 들이미는가»가 무의미했다),
+        # 그 전에는 주사위가 답을 정했다(같은 추리가 판마다 다르게 끝났다).
+        ev_entry = None
+        stumped = False        # 상관없는 카드를 들이밀었나
+        if evid_id and not selfmode:
+            if b.targetRoleId in _points_at(evid_id):
+                ev_entry = (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(evid_id)
+            if not ev_entry:
+                stumped = True
+        ev_hit = bool(ev_entry)
         if ev_entry:
             entry = ev_entry
             pk = f'{b.targetRoleId}:{evid_id}'
             pressed = ROOM.setdefault("press", {}).get(pk, 0)
+        # 정체를 찌를 때는 그 사람의 «정체를 벗기는 카드» 한 장만 통한다.
+        elif selfmode and entry and evid_id and evid_id == (entry.get("rebuttal") or ""):
+            ev_hit = True
 
-        if entry:
-            # 증거를 들이밀었으면 그 자리에서 분다. 판마다 심문은 두어 번뿐인데
-            # 「짝으로 지정된 카드」만 통하게 두니, 아픈 데를 정확히 찔러놓고도
-            # 다시 한 번 찌르라고 턴을 더 요구하는 꼴이 됐다. 그건 추리를 벌주는 규칙이다.
-            if evid_id:
-                told_truth = True
-            elif pressed >= INTERROGATE_PRESS_BREAK:
-                told_truth = True                      # 맨손으로도 두 번째면 무너진다
-            else:
-                told_truth = random.random() < INTERROGATE_TRUTH_BASE + pressed * INTERROGATE_PRESS_STEP
-            outcome = "truth" if told_truth else "evasive"
+        if stumped:
+            # 남의 비밀이 든 카드를 엉뚱한 사람에게 들이민 것이다. 아는 척할 이유가 없다.
+            shown = SC.get_card(evid_id) or {}
+            outcome = "unknown"
+            line = f'"「{shown.get("title", "그거")}」요? …그건 제가 아는 게 없습니다. 정말이에요."'
+        elif entry and not selfmode:
+            # 그의 비밀이 든 카드다. 한 번 얼버무렸다가 같은 턴에 분다 —
+            # 아픈 데를 정확히 짚어놓고 턴을 한 번 더 쓰게 만들 이유가 없다.
+            ROOM["press"].pop(pk, None)
             ev = entry["evasive"]
             first = ev[0] if isinstance(ev, (list, tuple)) else ev
-            if told_truth:
+            outcome = "truth"
+            line = f'{first}\n\n…{entry["truth"]}'
+        elif entry:
+            # 정체 추궁 — 벗기는 카드를 들이밀지 않는 한 넘어간다. 계속 밀면 결국 분다.
+            ev = entry["evasive"]
+            first = ev[0] if isinstance(ev, (list, tuple)) else ev
+            if ev_hit or pressed >= INTERROGATE_PRESS_BREAK:
                 ROOM["press"].pop(pk, None)
-                # 증거 앞에서는 한 번 얼버무렸다가 이내 무너진다 — 그걸 한 턴 안에 다 보여준다.
-                line = f'{first}\n\n…{entry["truth"]}' if evid_id else entry["truth"]
+                outcome = "truth"
+                line = f'{first}\n\n…{entry["truth"]}' if ev_hit else entry["truth"]
             else:
                 ROOM["press"][pk] = pressed + 1
-                # evasive가 여러 줄이면 찔린 횟수만큼 말이 흔들리게 고른다.
+                outcome = "evasive"
                 line = ev[min(pressed, len(ev) - 1)] if isinstance(ev, (list, tuple)) else ev
         elif selfmode:
             outcome, line = "evasive", "\"…무슨 말씀이신지 모르겠습니다.\""
@@ -2015,7 +2039,7 @@ def interrogate(b: Interrogate):
 
         ROOM["interrogate"]["used"] += 1
 
-        badge = {"truth": "실토", "evasive": "얼버무림", "plain": "답변"}[outcome]
+        badge = {"truth": "실토", "evasive": "얼버무림", "plain": "답변", "unknown": "모른다"}[outcome]
         if outcome == "evasive":
             nxt = ROOM["press"].get(pk, 0)
             if nxt >= INTERROGATE_PRESS_BREAK:
@@ -2029,11 +2053,19 @@ def interrogate(b: Interrogate):
         else:
             # 증거가 답을 정했으면 머리글도 그 카드를 가리켜야 한다 — 아니면 엉뚱한 카드에
             # 대해 실토한 것처럼 읽힌다.
-            shown = (SC.get_card(evid_id) if ev_entry else None) or card
+            shown = (SC.get_card(evid_id) if (ev_entry or stumped) else None) or card
             where = f'{shown["locName"]} · {shown["spot"]}' if shown.get("spot") else shown["locName"]
             header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · [{where}] 「{shown["title"]}」'
+        # 대화창에서는 「추궁 결과」 상자가 아니라 그 사람이 대답하는 말로 선다 —
+        # 카드를 내려놓으며 말하는 그림이라야 추리가 대화로 읽힌다. roleId/speaker 는
+        # 답하는 쪽(추궁당한 사람)이고, 옆에 놓이는 카드는 방금 그 자리에서 오간 카드다.
+        talked = shown if not selfmode else None
         ROOM["table"].append({"kind": "interrogate", "broadcast": True,
                               "askerRoleId": b.askerRoleId, "targetRoleId": b.targetRoleId,
+                              "roleId": b.targetRoleId, "speaker": target.get("name", ""),
+                              "askerName": asker.get("name", ""), "badge": badge,
+                              "showCardId": (talked or {}).get("id", ""),
+                              "showCardTitle": (talked or {}).get("title", ""),
                               "cardId": b.cardId, "outcome": outcome, "text": header, "line": line})
         bump()
         return {"ok": True, "outcome": outcome, "line": line,
