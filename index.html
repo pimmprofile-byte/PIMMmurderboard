@@ -485,10 +485,14 @@
   /* 방 안 — 그림 위에 핀이 선다. 핀은 「무엇을 뒤지는가」까지만 말하고 내용은 말하지 않는다. */
   .room{position:relative;border-radius:4px;overflow:hidden;border:1px solid var(--line);background:#07080a}
   .room>img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
-  .pin{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;
-    background:rgba(8,10,13,.82);border:1px solid var(--cold);border-radius:20px;padding:3px 9px 3px 5px;
-    color:var(--ink);font-size:11px;cursor:pointer;backdrop-filter:blur(3px);white-space:nowrap;
-    max-width:46%;transition:border-color .15s,background .15s}
+  .pin{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;
+    background:rgba(8,10,13,.86);border:1px solid var(--cold);border-radius:20px;padding:2px 8px 2px 4px;
+    color:var(--ink);font-size:10.5px;line-height:1.5;cursor:pointer;backdrop-filter:blur(3px);
+    white-space:nowrap;max-width:34%;transition:border-color .15s,background .15s,z-index 0s}
+  /* 겹친 라벨은 누른 것이 위로 온다 — 좁은 방에서는 아무리 벌려도 붙는 자리가 생긴다. */
+  .pin:hover,.pin:focus{z-index:3}
+  /* 라벨이 늘 오른쪽으로 뻗으면 오른편 핀을 덮는다. 오른쪽 절반은 왼쪽으로 뻗게 뒤집는다. */
+  .pin.rt{flex-direction:row-reverse;padding:2px 4px 2px 8px}
   .pin i{flex:0 0 9px;height:9px;border-radius:50%;background:var(--cold);
     box-shadow:0 0 0 3px rgba(90,166,205,.22)}
   .pin span{overflow:hidden;text-overflow:ellipsis}
@@ -1907,6 +1911,8 @@ function roomCards(room){
 /* 핀 자리. 시나리오가 좌표를 주면 그걸 쓰고, 없으면 카드 id로 흩어놓는다 —
    아무 데나 겹쳐 놓이지 않게 결정적으로 계산한다(같은 카드는 늘 같은 자리). */
 function pinAt(id, i, n){
+  const fixed=(SCEN.pins||{})[id];       // 시나리오가 실제 물건 위에 찍어둔 자리
+  if(fixed&&fixed.length===2) return fixed;
   const h=[...id].reduce((a,c)=>((a*31+c.charCodeAt(0))>>>0),7);
   const col=n<=4?2:3, row=Math.floor(i/col), colN=i%col;
   const x=12+(colN+.5)*(76/col)+((h%9)-4);
@@ -1928,7 +1934,7 @@ function paintRoom(room, url){
   const pins=cards.map((c,i)=>{
     const st=cardState(c), p=pinAt(c.id,i,cards.length);
     const seen=(st.k!=="open"&&st.k!=="lock");
-    return `<button class="pin ${st.k} ${seen?"seen":""}" style="left:${p[0]}%;top:${p[1]}%"
+    return `<button class="pin ${st.k} ${seen?"seen":""} ${p[0]>55?"rt":""}" style="left:${p[0]}%;top:${p[1]}%"
       onclick="event.stopPropagation();showSpot('${c.id}')" title="${esc(c.spot||"")}">
       <i></i><span>${esc(c.spot||room.name)}</span></button>`; }).join("");
   const doors=roomSubs(room.key).filter(r=>!r.needPod||STATE.podOpen).map(r=>{
@@ -1958,7 +1964,7 @@ function roomWide(key){
     const cards=roomCards(room);
     const pins=cards.map((c,i)=>{ const st=cardState(c), p=pinAt(c.id,i,cards.length);
       const seen=(st.k!=="open"&&st.k!=="lock");
-      return `<button class="pin ${st.k} ${seen?"seen":""}" style="left:${p[0]}%;top:${p[1]}%"
+      return `<button class="pin ${st.k} ${seen?"seen":""} ${p[0]>55?"rt":""}" style="left:${p[0]}%;top:${p[1]}%"
         onclick="showSpot('${c.id}')"><i></i><span>${esc(c.spot||room.name)}</span></button>`; }).join("");
     const doors=roomSubs(room.key).filter(r=>!r.needPod||STATE.podOpen).map(r=>{
       const at=(r.at&&r.at.length)?r.at:[88,84];
