@@ -706,8 +706,7 @@
   .dlg h2{font-size:17px;line-height:1.35}
   .dlg .mbody{padding:2px 18px 16px;font-size:13.5px;line-height:1.8;color:var(--sub);white-space:pre-line}
   .dlg .mbody b{color:var(--ink)}
-  .dlg .mbody .dlg-warn{margin-top:11px;padding:9px 12px;border-radius:4px;font-size:12.5px;line-height:1.7;
-    background:color-mix(in srgb,var(--mt) 9%,transparent);border-left:2px solid var(--mt);color:var(--muted)}
+  .dlg .mbody .dlg-warn{margin-top:7px;color:var(--ember-b)}
   .dlg .mfoot{justify-content:stretch}
   .dlg .mfoot .btn{flex:1;justify-content:center;padding:11px 14px;font-size:14px}
   .dlg input.dlg-in{width:100%;margin-top:11px;padding:10px 12px;border-radius:4px;font-size:14px;
@@ -2604,7 +2603,7 @@ function startBoxHTML(){
 }
 async function startGame(){
   if(!await ask({title:"이 배역으로 시작합니다", body:"모두 자리를 잡았습니다. 오프닝이 시작됩니다.",
-                 warn:"시작한 뒤에는 배역을 바꿀 수 없습니다.", ok:"시작", cancel:"아직", tone:"cold"})) return;
+                 warn:"시작한 뒤에는 배역을 바꿀 수 없습니다.", ok:"시작", cancel:"아직", tone:"gold"})) return;
   const r=await post("/api/start",{clientId,key:gmKey});
   if(r&&r.error){ banner(r.error); return; }
   await poll();
