@@ -217,7 +217,7 @@ def private_sheet(cid: str):
 def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
-        "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE, "map": MAP,
+        "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE, "map": MAP, "mapLabel": "집 안",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"],
                     "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [],

@@ -281,7 +281,7 @@ ENDINGS = {
 def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
-        "map": MAP,
+        "map": MAP, "mapLabel": "역 안",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
                         "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],

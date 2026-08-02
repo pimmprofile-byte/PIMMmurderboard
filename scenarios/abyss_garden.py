@@ -1193,7 +1193,7 @@ def public_scenario() -> dict:
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
         # 알리바이 대화록 — 공통지문·피해자 바로 아래에 붙는다. 이름은 클라이언트가 배역표에서 찾는다.
         "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE,
-        "map": MAP,
+        "map": MAP, "mapLabel": "배 안",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
                         "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],

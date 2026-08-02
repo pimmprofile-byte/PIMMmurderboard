@@ -1034,7 +1034,7 @@ def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
         "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE,
-        "map": MAP,
+        "map": MAP, "mapLabel": "쉘터",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"],
                     "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],

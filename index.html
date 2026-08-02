@@ -159,14 +159,19 @@
   .chead .rmid{font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--sub);
     background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:5px;padding:2px 5px}
   .chead .ph{font-size:12px;color:var(--gold)}.chead .me{font-size:12px;color:var(--sub)}.chead .spacer{margin-left:auto}
-  .pbanner{display:flex;align-items:flex-start;gap:11px;padding:9px 14px;border-bottom:1px solid var(--line);
-    background:var(--bg2);font-size:13px;color:#dfe4f4;line-height:1.6}
-  .pbanner .pb-t{flex:1 1 auto;min-width:0}
+  /* GM은 화면에서 한 줄만 말한다. 전문은 눌러서 보고, 기록은 대화창에 남는다.
+     세 군데서 같은 목소리가 나면 어느 것을 읽어야 할지 알 수 없다. */
+  .pbanner{display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--line);
+    background:var(--bg2);font-size:12.5px;color:#dfe4f4;line-height:1.5}
+  .pbanner .pb-t{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;
+    background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+  .pbanner .pb-x{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pbanner .pb-more{flex:0 0 auto;color:var(--muted);font-size:11px}
   /* 막을 넘기는 건 호스트의 일이다. 다른 사람에게는 누구 차례인지만 알려준다. */
   .pbanner .pb-go{flex:0 0 auto;align-self:center}
   .pbanner .pb-wait{flex:0 0 auto;align-self:center;font-size:11.5px;color:var(--muted);
     white-space:nowrap;border:1px solid var(--line);border-radius:20px;padding:4px 10px}
-  .pbanner .g{color:var(--gold);font-size:11px;letter-spacing:.06em;margin-right:6px}
+  .pbanner .g{flex:0 0 auto;color:var(--gold);font-size:10px;letter-spacing:.08em}
   .pbanner .il{color:var(--cold);margin-top:5px;font-size:12.5px}
   .ppanel{flex:1 1 auto;overflow-y:auto;padding:14px}
   /* 토론은 말이 본체다. 패널을 눌러 대화가 화면 절반쯤을 갖게 한다. */
@@ -370,7 +375,11 @@
     #gmAiRole{font-size:16px}   /* id 선택자라 위 규칙에 안 걸린다 */
   }
   .composer textarea:focus{outline:none;border-color:var(--gold)}.composer textarea:disabled{opacity:.5}
-  .banner{background:#2a1414;border:1px solid #5a2c2c;color:#ffd3d3;padding:8px 14px;font-size:13px;text-align:center;display:none}.banner.on{display:block}
+  .banner{position:fixed;left:50%;top:112px;transform:translate(-50%,-14px);z-index:80;
+    max-width:min(92vw,420px);background:#2a1414;border:1px solid #5a2c2c;color:#ffd3d3;
+    padding:9px 15px;font-size:13px;line-height:1.5;text-align:center;border-radius:11px;
+    box-shadow:0 12px 30px -10px #000;opacity:0;pointer-events:none;transition:opacity .22s,transform .22s}
+  .banner.on{opacity:1;transform:translate(-50%,0)}
   .aicall{display:flex;gap:6px;flex-wrap:wrap;padding:7px 12px;border-top:1px solid var(--line);background:var(--bg2);align-items:center}
   .aicall .lb{font-size:11px;color:var(--muted)}
   .aichip{display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:4px 10px;cursor:pointer;font-size:12px}
@@ -390,7 +399,8 @@
   .panel-note{color:var(--sub);font-size:13.5px;line-height:1.8}
 
   /* 카드맵 */
-  .clue-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .clue-h{display:flex;align-items:center;gap:7px;margin-bottom:9px;flex-wrap:wrap}
+  .clue-h .mspace{flex:1 1 auto}
   .clue-h h3{margin:0;font-size:15px;color:var(--gold-b)}
   .gcard{aspect-ratio:3/4;border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;cursor:pointer;position:relative;overflow:hidden;background:linear-gradient(160deg,#1a1918,#141312);transition:.15s}
   .gcard:hover{transform:translateY(-2px);border-color:var(--gold)}
@@ -466,7 +476,7 @@
   .keeprow.ok .rs{color:var(--good);border-color:#2f6b48}
   .keeprow.no .rs{color:var(--bad);border-color:#6b2f2f}
   .keeprow .dt{flex-basis:100%;font-size:12px;color:var(--muted)}
-  .handwarn{background:#3a1f10;border:1px solid #7a4520;color:#ffd9b0;border-radius:11px;padding:10px 13px;margin-bottom:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .handwarn{background:#3a1f10;border:1px solid #7a4520;color:#ffd9b0;border-radius:11px;padding:7px 9px 7px 13px;margin-bottom:10px;display:flex;align-items:center;gap:9px;font-size:13px;white-space:nowrap;overflow-x:auto;scrollbar-width:none}
   .handwarn b{color:#ffc078}
   .handwarn .btn{margin-left:auto}
   .gcard.face.taken{border-color:var(--tc,#555);background:linear-gradient(160deg,#161514,#100f0e);opacity:.75;cursor:not-allowed}
@@ -781,20 +791,23 @@
   @keyframes tbpulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
   @media (prefers-reduced-motion:reduce){.tb-tick i{animation:none;opacity:.8}}
   .tb-wait .btn.sm{margin-left:8px}
-  .turnbar{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin-bottom:12px}
-  .turnbar .tb-h{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px}
-  .turnbar .tb-now{font-weight:800;font-size:14.5px}
-  .turnbar .tb-tag{font-family:"SF Mono",Consolas,monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 7px;margin-left:auto}
-  .turnbar .tb-tag.mine{color:var(--gold-b);border-color:var(--gold)}
-  .tb-order{display:flex;gap:6px;flex-wrap:wrap}
+  .turnbar{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:9px 11px;margin-bottom:10px}
+  /* 순서를 줄바꿈하면 두 줄이 되고, 그 위에 이름줄이 또 붙어 셋이 됐다.
+     지금 차례인 사람은 칩 자체가 말해준다 — 머리줄은 없앴다. */
+  .tb-order{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+    margin:0 -11px;padding:1px 11px}
+  .tb-order::-webkit-scrollbar{display:none}
   .tb-chip{display:flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px 4px 8px;border-radius:999px;
+    white-space:nowrap;flex:0 0 auto;
     border:1px solid var(--line);background:var(--bg);color:var(--sub);opacity:.55;transition:.2s}
+  .tb-chip .tg{font-family:"SF Mono",Consolas,monospace;font-size:9px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--gold-b);margin-left:1px}
   .tb-chip .d{width:8px;height:8px;border-radius:50%;background:var(--tc,#888);flex:0 0 auto}
   .tb-chip.on{opacity:1;border-color:var(--tc,var(--gold));color:#fff;box-shadow:0 0 12px -3px var(--tc,var(--gold))}
   .tb-chip.done{opacity:.4;text-decoration:line-through}
-  .turnbar .tb-act{margin-top:11px;display:flex;gap:8px;flex-wrap:wrap}
+  .turnbar .tb-act{margin-top:9px;display:flex;gap:8px;flex-wrap:wrap}
   .turnbar .tb-act .btn{flex:1;min-width:120px;text-align:center}
-  .tb-wait{margin-top:10px;font-size:12.5px;color:var(--muted);text-align:center}
+  .tb-wait{margin-top:8px;font-size:12px;color:var(--muted);text-align:center}
 
   /* ============ GM 마킹 보드 ============ */
   #s-gm{display:none;flex-direction:column;height:100dvh}#s-gm.on{display:flex}
@@ -1026,8 +1039,7 @@
      '누가 무엇을 쥐었나'는 그 줄을 열어봐야 알았고, 그게 이 화면의 존재 이유였다.
      조사카드를 전부 펼쳐놓고 카드마다 임자를 붙인다(관리자 훑어보기와 같은 결).
      남의 손패는 임자만 보인다 — 제목·본문은 전체공개된 것만 나온다. */
-  .dashhead{display:flex;align-items:baseline;gap:9px;margin:18px 0 8px;font-size:13.5px;font-weight:700;flex-wrap:wrap}
-  .dashhead .dh-note{font-size:12px;color:var(--muted);font-weight:400}
+  .dashhead{margin:16px 0 8px;font-size:13.5px;font-weight:700;color:var(--gold-b)}
   .dash{display:flex;flex-direction:column;gap:14px}
   .dz-h{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;cursor:pointer;
     background:none;border:0;padding:0 0 7px;margin-bottom:8px;border-bottom:1px solid var(--line);
@@ -1044,10 +1056,10 @@
   .dc.act:hover{border-color:var(--wc)}
   .dc .sp{font-size:12.5px;font-weight:700;word-break:keep-all;line-height:1.45}
   .dc .ti{font-size:13.5px;font-weight:800;color:var(--gold-b);word-break:keep-all;line-height:1.45}
-  /* 본문은 네 줄까지만 — 여기는 훑는 판이고, 전문은 카드를 눌러 읽는다.
-     한 장이 길어지면 그 줄의 다른 칸까지 통째로 늘어나 판이 성겨진다. */
+  /* 요약 한 줄까지만 — 여기는 훑는 판이고, 전문은 카드를 눌러 읽는다.
+     네 줄씩 펼쳐두니 카드 열두 장이 화면 열 개 분량이 됐다. */
   .dc .tx{font-size:12px;color:var(--sub);line-height:1.65;word-break:keep-all;
-    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden}
   .dc .st{font-size:11.5px;color:var(--muted)}
   .dc .wh{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--wc);font-weight:700}
   .dc .wh i{font-style:normal;font-size:14px}
@@ -1061,9 +1073,6 @@
   .dc.pub{--wc:var(--cold);background:linear-gradient(160deg,#111a22,#0e1620)}
   .dc.pub .ti{color:var(--cold)}
   .dc.lock{opacity:.5}
-  .dash-lg{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:10px}
-  .dash-lg span{display:inline-flex;align-items:center;gap:5px}
-  .dash-lg b{width:9px;height:9px;border-radius:2px;display:inline-block;background:var(--line)}
   /* 구역 점 — 시나리오 선택창 사람표시와 같은 읽는 법 */
   .zpips{display:flex;gap:3px}
   .zp{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18)}
@@ -1084,9 +1093,15 @@
   .mzoom{overflow:hidden;border:1px solid var(--line);border-radius:11px;background:#0b1016;touch-action:none}
   .mzoom .mvp{transform-origin:0 0;will-change:transform}
   /* 배치도의 구역이 곧 버튼이다 — 위에 무엇도 얹지 않는다 */
-  .mapbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 8px}
-  .mapbar .mh{font-size:13.5px;font-weight:700}
-  .mapbar .mnote{font-size:12px;color:var(--muted);flex:1}
+  /* 지도 위에 머리줄은 하나뿐이다 — 이름·수치·규칙·확대가 한 줄에 다 있다. */
+  .mapbar{display:flex;align-items:center;gap:7px;margin:0 0 8px;overflow-x:auto;scrollbar-width:none}
+  .mapbar::-webkit-scrollbar{display:none}
+  .mapbar>*{flex:0 0 auto}
+  .mapbar .mh{font-size:13.5px;font-weight:700;color:var(--gold-b)}
+  .mapbar .mspace{flex:1 1 auto;min-width:4px}
+  .mrule{flex:0 0 auto;width:21px;height:21px;border-radius:50%;border:1px solid var(--line);background:none;
+    color:var(--muted);font-size:11px;line-height:1;cursor:pointer;padding:0}
+  .mrule:hover{border-color:var(--gold);color:var(--gold-b)}
   .mapwrap.live svg .z-live{cursor:pointer}
   .mapwrap.live svg .z-live:hover .zone-fill{fill:#1b3648;stroke:var(--gold)}
   .mapwrap.live svg .z-live .z-cnt{fill:var(--gold-b)}
@@ -1581,7 +1596,9 @@ function applyState(){
     const goHTML=last?"" : (STATE.isHost
       ? `<button class="btn gold sm pb-go" onclick="advance()">다음 막 ›</button>`
       : `<span class="pb-wait">호스트가 넘깁니다</span>`);
-    $("pbanner").innerHTML=`<span class="pb-t"><span class="g">GM</span>${esc(gmTxt)}</span>${goHTML}`;
+    gmFull=gmTxt;
+    $("pbanner").innerHTML=`<button class="pb-t" onclick="showGmSay()"><span class="g">GM</span>`
+      +`<span class="pb-x">${esc(gmTxt)}</span>${gmTxt.length>26?`<span class="pb-more">${ICO.eye}</span>`:""}</button>${goHTML}`;
     // 페이즈 패널
     renderPanel(ph);
     // 채팅
@@ -2663,14 +2680,14 @@ function renderPanel(ph){
     // 오프닝은 GM 보드(호스트 화면)에서만 재생한다 — 16:9 큰 화면에 띄워 다 같이 보는 연출이라,
     // 각자 폰에서 따로 돌면 소리가 겹치고 진행이 흩어진다.
   }
-  else if(k==="invest"){ const ap=ph.ap||0; const u=(STATE.usedAP||{})[myRoleId]||0; const left=Math.max(0,ap-u); const apPill=myRoleValid()?`<span class="pill" style="color:${left>0?'var(--good)':'var(--ember-b)'}">이번 턴 조사 ${u}/${ap}</span>`:"";
-    p.innerHTML=`${crisisHTML()}${handWarn()}${turnBar()}<div class="clue-h"><h3>조사 맵</h3>${apPill}<span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span></div><div class="panel-note" style="margin-bottom:10px">${myRoleValid()?`내 차례에 <b>${ap}장</b>까지. 연 카드는 <b>손패(비공개)</b>로 들어오고, 알린다면 대화로 직접 말해야 합니다.`:`관전 중 — 배역을 맡아야 조사할 수 있어요.`}</div><div id="cmap"></div>`;
+  else if(k==="invest"){
+    p.innerHTML=`${crisisHTML()}${handWarn()}${turnBar()}<div id="cmap"></div>`;
     renderMap($("cmap")); paintCrisisBoard(); }
   else if(k==="talk"){
     const mineIds=new Set(myHand.map(c=>c.id));
     const pubc=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
     const hcards=(myRoleValid()?myHand:[]).map(c=>({...c,_pub:false})).concat(pubc.map(c=>({...c,_pub:true})));
-    p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span>${pubc.length?`<span class="pill" style="color:var(--cold)">전체공개 ${pubc.length}</span>`:""}</div><div class="panel-note">아래 대화창에서 서로를 취조하세요. <b>내 손패</b>는 알릴지 감출지 자유고, <b>전체공개</b> 카드는 이미 모두가 보고 있습니다.</div>
+    p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span>${pubc.length?`<span class="pill" style="color:var(--cold)">전체공개 ${pubc.length}</span>`:""}<span class="mspace"></span><button class="mrule" onclick="showTalkRule()" aria-label="토론 규칙">?</button></div>
     <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"#5a4a2c"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,#221c14,#151413)"};cursor:pointer" onclick="openCard('${c.id}')"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span>${pairsOf(c.id).map(k=>{
         const rd=pairReady(k,c.id);
         return `<button class="pill pair${rd?" rdy":""}" title="${rd?"짝이 지금 나와 있습니다 — 눌러서 맞춰보세요":"같은 조각을 단 카드를 찾으세요"}" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id,rd)}${rd?"맞물림":"조각"}</button>`;
@@ -2850,10 +2867,42 @@ function paintFlood(svg){
 
 /* 조사 화면 — 지도가 바깥에 그대로 떠 있다. 구역을 누르면 그 안으로 들어간다.
    구역 이름과 개수는 배치도가 원래 갖고 있는 글자를 쓴다. 위에 카드를 또 얹지 않는다. */
+function MAP_LABEL(){ return (SCEN&&SCEN.mapLabel)||"현장"; }
+/* 지도 머리줄이 나르는 수치. 조사 중에만 뜻이 있다. */
+function mapPills(){
+  const ph=STATE&&STATE.phase||{}; const ap=ph.ap||0;
+  const hand=`<span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span>`;
+  if(ph.key!=="invest"||!myRoleValid()) return hand;
+  const u=(STATE.usedAP||{})[myRoleId]||0, left=Math.max(0,ap-u);
+  return `<span class="pill" style="color:${left>0?'var(--good)':'var(--ember-b)'}">이번 턴 조사 ${u}/${ap}</span>`+hand;
+}
+/* 매 판마다 똑같은 규칙 문단이 지도 위를 세 줄씩 먹고 있었다. 물음표 뒤로 넣는다. */
+function showTalkRule(){
+  say({title:"토론하는 법", body:"아래 대화창에서 서로를 취조하세요.\n\n"
+    +"내 손패는 알릴지 감출지 자유입니다. 전체공개 카드는 이미 모두가 보고 있어요.\n\n"
+    +"카드를 누르면 내용이 열리고, 거기서 대화에 올릴 수 있습니다."});
+}
+function showInterrogRule(){
+  say({title:"심층심문", body:
+     "상대가 지금 손패로 쥔 카드를 지목해 답을 요구합니다. 카드 자체는 공개되지 않아요 — "
+    +"대답만 듣는 거고, 민감한 비밀이면 그 대답이 진짜라는 보장도 없습니다.\n\n"
+    +"증거 없이 물으면 어느 정도는 넘어갈 수 있어요. 엉뚱한 카드를 증거로 대면 오히려 "
+    +"더 잘 둘러댈 빌미를 줘서 성공률이 떨어지고, 정확한 카드를 짚으면 반드시 실토합니다.\n\n"
+    +"어떤 카드가 정확한지는 알려주지 않아요 — 그걸 알아내는 게 추리예요."});
+}
+function showInvestRule(){
+  const ap=(STATE&&STATE.phase&&STATE.phase.ap)||0;
+  say({title:"조사하는 법", body: myRoleValid()
+    ? `구역을 누르면 그 안으로 들어갑니다. 그림 위의 표시가 살펴볼 자리예요.\n\n`
+      +`내 차례에 ${ap}장까지 열 수 있습니다. 연 카드는 손패로 들어오고 비공개입니다 —`
+      +` 알리고 싶으면 대화로 직접 말해야 해요.`
+    : "관전 중입니다 — 배역을 맡아야 조사할 수 있어요."});
+}
 function renderMap(el){
   const podCls=(STATE&&STATE.podOpen)?"":"nopod";
-  el.innerHTML=`${floodHTML()}<div class="mapbar"><span class="mh">${ICO.map} 배 안</span>
-      <span class="mnote">구역을 누르면 들어갑니다</span>
+  el.innerHTML=`${floodHTML()}<div class="mapbar"><span class="mh">${ICO.map} ${esc(MAP_LABEL())}</span>
+      ${mapPills()}<span class="mspace"></span>
+      <button class="mrule" onclick="showInvestRule()" aria-label="조사 규칙">?</button>
       <button class="btn quiet sm" onclick="openMapDetail()">${ICO.search} 크게</button></div>
     <div class="mapwrap ${podCls} live" id="mapArt"></div>
     <div class="dash" id="dash"></div>`;
@@ -2894,8 +2943,8 @@ function dashCard(c){
   const spot=esc(c.spot||c.locName||"");
   if(st.k==="pub") return `<button class="dc pub act" onclick="openCard('${c.id}')">
     <span class="sp">${spot}</span><span class="ti">${esc((full&&full.title)||"")}</span>
-    ${full&&full.text?`<span class="tx">${esc(full.text)}</span>`:""}
-    <span class="st">전체공개 — 모두가 봅니다</span></button>`;
+    ${full&&full.text?`<span class="tx clip1">${esc(oneLine(full.text))}</span>`:""}
+    <span class="st">전체공개</span></button>`;
   if(st.k==="hand") return `<button class="dc mine act" onclick="openCard('${c.id}')">
     <span class="sp">${spot}</span><span class="ti">${esc((full&&full.title)||"")}</span>
     <span class="wh"><i>${ICO.card}</i>내 손패 · 비공개</span></button>`;
@@ -2903,7 +2952,7 @@ function dashCard(c){
     // 남이 쥔 카드는 임자만 말한다 — 제목이 새면 그 사람이 감출 것이 없어진다
     return `<div class="dc held" style="--wc:${w.color||"var(--line)"}">
       <span class="sp">${spot}</span>
-      <span class="wh"><i>${esc(w.avatar||(w.name||"?").slice(0,1))}</i>${esc(w.name||"")} 쥐고 있음</span></div>`; }
+      <span class="wh">${avaHTML(w,"xs")}${esc(w.name||"")} 쥐고 있음</span></div>`; }
   // cardState 의 잠김 사유에는 '내 차례 아님'처럼 내 사정이 섞여 있다. 현황판은 판 전체를
   // 읽는 자리라 카드 쪽 사정만 적는다 — 나머지는 그냥 아직 아무도 안 본 카드다.
   let why="아직 아무도 보지 않음", dim=false;
@@ -2931,10 +2980,7 @@ function dashHTML(){
         <span class="n">${done}/${cards.length}</span><span class="go">들어가기 ›</span></button>
       <div class="dcards">${cards.map(dashCard).join("")}</div></div>`;
   }).join("");
-  return `<div class="dashhead">조사 현황<span class="dh-note">누가 무엇을 쥐고 있는지</span></div>
-    <div class="dash-lg"><span><b style="background:var(--bg2);border:1px dashed var(--line)"></b>아직 아무도 안 봄</span>
-      <span><b style="background:var(--sub)"></b>누가 쥐고 있음</span>
-      <span><b style="background:var(--cold)"></b>전체공개</span></div>${blocks}`;
+  return `<div class="dashhead">조사 현황</div>${blocks}`;
 }
 /* ── 심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다(예산 소모, 그 자리에서 공개) ── */
 function heldCardsOf(roleId){ return ((STATE.checked||{})[roleId]||[]).map(id=>cardCat(id)).filter(Boolean); }
@@ -2943,9 +2989,8 @@ function interrogPanelHTML(){
   const ig=STATE.interrogate; if(!ig) return "";
   const targets=SCEN.characters.filter(c=>c.id!==myRoleId).map(c=>({c,cards:heldCardsOf(c.id)}));
   const voteBtn=(!ig.bonusGranted&&ig.voteNeed>0)?`<button class="btn sm" onclick="interrogVote()">${ICO.vote} 추가 심문 신청 (${ig.voteHave}/${ig.voteNeed})</button>`:(ig.bonusGranted?`<span class="pill" style="color:var(--good)">추가 심문 승인됨</span>`:"");
-  let h=`<div class="card" style="margin-top:14px"><h2>${ICO.torch} 심층심문</h2>
-    <div class="panel-note">상대가 지금 손패로 쥔 카드를 지목해 답을 요구합니다. 카드 자체는 공개되지 않아요 — 대답만 듣는 거고, 민감한 비밀이면 그 대답이 진짜라는 보장도 없습니다(몰리면 거짓말·딴소리로 넘어가요).<br><br>
-      <b style="color:var(--gold-b)">증거 없이 물으면</b> 어느 정도는 넘어갈 수 있어요. <b style="color:var(--ember-b)">엉뚱한 카드</b>를 증거로 대면 오히려 더 잘 둘러댈 빌미를 줘서 성공률이 더 떨어지고, <b style="color:var(--good)">정확한 카드</b>를 짚으면 반드시 실토합니다. 어떤 카드가 정확한지는 알려주지 않아요 — 그걸 알아내는 게 추리예요. (민감하지 않은 카드는 증거와 무관하게 늘 순순히 답합니다.)</div>
+  let h=`<div class="card" style="margin-top:14px"><div class="clue-h"><h2 style="margin:0">${ICO.torch} 심층심문</h2>
+      <span class="mspace"></span><button class="mrule" onclick="showInterrogRule()" aria-label="심문 규칙">?</button></div>
     <div class="ig-go">
       <span class="gauge"><b>${ig.remaining}</b><span>남은 심문 / ${ig.total}</span></span>
       <span class="gbtns">${voteBtn}
@@ -3077,7 +3122,7 @@ function turnBar(){
   if(!turn||!order.length) return "";
   const ap=(STATE.phase||{}).ap||0; const now=roleById(turn)||{}; const mine=turn===myRoleId;
   const chips=order.map(id=>{ const c=roleById(id)||{}; const used=(STATE.usedAP||{})[id]||0; const done=ap>0&&used>=ap;
-    return `<span class="tb-chip ${id===turn?'on':''} ${done?'done':''}" style="--tc:${c.color||'#888'}"><span class="d"></span>${esc(c.name||id)}</span>`; }).join("");
+    return `<span class="tb-chip ${id===turn?'on':''} ${done?'done':''}" style="--tc:${c.color||'#888'}"><span class="d"></span>${esc(c.name||id)}${id===turn?`<span class="tg">${mine?'MY TURN':'조사 중'}</span>`:''}</span>`; }).join("");
 
   // 전원이 조사를 마쳤으면 차례 안내 대신 다음 페이즈로 넘어가는 자리를 이 칸에 띄운다.
   // 손패가 넘치는 사람이 있으면 넘길 수 없다 — 넘기는 순간 그 카드는 정리할 기회를 잃는다.
@@ -3098,8 +3143,7 @@ function turnBar(){
     }else{
       body=`<div class="tb-why">모두 조사를 마쳤습니다 — 진행석에서 다음 페이즈로 넘겨줍니다.</div>`;
     }
-    return `<div class="turnbar done"><div class="tb-h"><span class="tb-now" style="color:var(--good)">${ICO.check} 이번 조사 끝</span>
-      <span class="tb-tag">${order.length}명 완료</span></div><div class="tb-order">${chips}</div>
+    return `<div class="turnbar done"><div class="tb-order">${chips}</div>
       <div class="tb-act col">${body}</div></div>`;
   }
 
@@ -3113,16 +3157,19 @@ function turnBar(){
     const skip=(STATE.isHost||gmOn)?`<button class="btn sm" onclick="turnNext()">건너뛰기 ›</button>`:"";
     act=`<div class="tb-wait">지금은 <b style="color:${now.color}">${esc(now.name||'')}</b> 차례예요 — 대화로 조사를 이끌어 주세요.${tick}${skip}</div>`;
   }
-  return `<div class="turnbar"><div class="tb-h"><span class="tb-now" style="color:${now.color}">${now.avatar||''} ${esc(now.name||'')} 차례</span><span class="tb-tag ${mine?'mine':''}">${mine?'MY TURN':'조사 중'}</span></div><div class="tb-order">${chips}</div>${act}</div>`;
+  return `<div class="turnbar"><div class="tb-order">${chips}</div>${act}</div>`;
 }
 function gmTurnBar(){
   const turn=STATE.turn, order=STATE.turnOrder||[]; if(!turn||!order.length) return "";
   const ap=(STATE.phase||{}).ap||0; const now=roleById(turn)||{}; const isAI=(STATE.roles[turn]||{}).mode==="ai";
   const chips=order.map(id=>{ const c=roleById(id)||{}; const used=(STATE.usedAP||{})[id]||0; const done=ap>0&&used>=ap;
-    return `<span class="tb-chip ${id===turn?'on':''} ${done?'done':''}" style="--tc:${c.color||'#888'}"><span class="d"></span>${esc(c.name||id)}</span>`; }).join("");
-  return `<div class="turnbar"><div class="tb-h"><span class="tb-now" style="color:${now.color}">${now.avatar||''} ${esc(now.name||'')} 차례</span><span class="tb-tag">${isAI?'AI':'사람'}</span></div><div class="tb-order">${chips}</div>
+    return `<span class="tb-chip ${id===turn?'on':''} ${done?'done':''}" style="--tc:${c.color||'#888'}"><span class="d"></span>${esc(c.name||id)}${id===turn?`<span class="tg">${isAI?'AI':'사람'}</span>`:''}</span>`; }).join("");
+  return `<div class="turnbar"><div class="tb-order">${chips}</div>
     <div class="tb-act">${isAI?`<button class="btn gold" onclick="aiInvestigateNow('${turn}')">${ICO.bot} ${esc(now.name)} 자동 조사</button>`:''}<button class="btn" onclick="turnNext()">다음 차례 ›</button></div></div>`;
 }
+/* 머리띠의 GM 한 줄은 잘려 있다. 전문은 여기서 연다. */
+let gmFull="";
+function showGmSay(){ if(gmFull) say({title:(STATE&&STATE.phase&&STATE.phase.name)||"진행", body:gmFull}); }
 async function turnNext(){ const bn=(scr==="gm")?gmBanner:banner; const r=await post("/api/turn/next",{clientId,roleId:myRoleId,key:gmKey}); if(r&&r.error)bn(r.error); await poll(); }
 async function aiInvestigateNow(rid){ const r=await post("/api/ai-investigate",{roleId:rid||"",clientId,key:gmKey}); if(r&&r.error){gmBanner(r.error);return;} if(r&&r.picked){ const c=roleById(rid)||{}; gmBanner(`${c.name||'AI'} 자동 조사 — ${r.picked.map(p=>p.title).join(", ")||'열 카드 없음'}`);} await poll(); }
 
@@ -3257,8 +3304,8 @@ async function publish(id){ closeModal("cardModal"); const r=await post("/api/pu
 
 function handWarn(){
   const n=overLimit(); if(n<=0) return "";
-  return `<div class="handwarn">${ICO.card} 손패가 <b>${myHand.length}장</b>이에요. <b>${handLimit()}장</b>까지만 들 수 있어서 <b>${n}장</b>을 공개해야 합니다.
-    <button class="btn ember sm" onclick="showHandTrim()">지금 정리하기</button></div>`;
+  return `<div class="handwarn">${ICO.card} 손패 <b>${myHand.length}/${handLimit()}</b> — <b>${n}장</b>을 공개해야 합니다.
+    <button class="btn ember sm" onclick="showHandTrim()">정리하기</button></div>`;
 }
 
 /* ── 손패 상한 — 넘치면 남길 카드를 고르고, 고르지 않은 카드는 전체공개로 내려놓는다 ── */
@@ -3849,7 +3896,14 @@ const ask=o=>dialog(o);
 const say=o=>dialog({...o,kind:"say"});
 const askText=o=>dialog({...o,kind:"text"});
 
-function banner(m){ const b=$("banner"); if(m){ if(b.textContent!==m) sfx("bad"); b.textContent=m;b.classList.add("on");}else b.classList.remove("on"); }
+let bannerT=null;
+function banner(m){ const b=$("banner");
+  clearTimeout(bannerT);
+  if(!m){ b.classList.remove("on"); return; }
+  if(b.textContent!==m) sfx("bad");
+  b.textContent=m; b.classList.add("on");
+  bannerT=setTimeout(()=>b.classList.remove("on"),5200);
+}
 
 /* ── 스와이프 카드 캐러셀 (실물카드처럼 옆으로 넘겨보기) ── */
 function buildSwipe(slides){
