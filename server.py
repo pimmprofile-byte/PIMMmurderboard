@@ -1365,7 +1365,16 @@ def _ai_trim_hand(role_id: str) -> list:
     return out
 
 
+def _crisis_blocking() -> bool:
+    """지금 침수 대응 판정이 걸려 있는가. 걸려 있으면 조사도 차례 넘김도 멈춘다."""
+    cr = ROOM.get("crisis") or {}
+    return bool(cr.get("open")) and cr.get("solved") is None
+
+
 def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforce_turn: bool = False) -> str | None:
+    if _crisis_blocking():
+        conf = _crisis_conf() or {}
+        return f"「{conf.get('title', '비상')}」부터 넘겨야 합니다 — 그 사이에는 아무것도 못 뒤집니다"
     c = SC.get_card(card_id)
     if not c:
         return "없는 카드"
@@ -1951,6 +1960,8 @@ def turn_next(b: TurnReq):
             allowed = True
         if not allowed:
             return JSONResponse({"error": "권한 없음"}, status_code=403)
+        if _crisis_blocking():
+            return JSONResponse({"error": "침수 대응이 먼저입니다"}, status_code=409)
         _advance_turn()
         return {"ok": True, "turn": ROOM.get("turn")}
 
@@ -2536,6 +2547,7 @@ def _auto_turn_tick():
         mode = (ROOM["roles"].get(turn) or {}).get("mode") if turn else None
         remaining = (_ap_for(seq) - _round_checks(turn, current_round(seq))) if turn else 0
         lap = len(_turn_order())
+        blocked = _crisis_blocking()   # 침수 대응 중에는 시계도 멈춘다
     if AUTO_TURN["seq"] != seq:      # 페이즈가 바뀌면 헛돌기 카운터를 푼다
         AUTO_TURN["seq"] = seq
         AUTO_TURN["idle"] = 0
@@ -2544,7 +2556,7 @@ def _auto_turn_tick():
         AUTO_TURN["key"] = key
         AUTO_TURN["since"] = now
         return
-    if not started or ph.get("key") != "invest" or not turn:
+    if not started or ph.get("key") != "invest" or not turn or blocked:
         return
     if mode != "ai":                 # 사람 차례 — 대신 넘기지 않는다
         return

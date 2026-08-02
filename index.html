@@ -2701,8 +2701,13 @@ function renderPanel(ph){
     // 각자 폰에서 따로 돌면 소리가 겹치고 진행이 흩어진다.
   }
   else if(k==="invest"){
-    p.innerHTML=`${crisisHTML()}${handWarn()}${turnBar()}<div id="cmap"></div>`;
-    renderMap($("cmap")); paintCrisisBoard(); }
+    if(crisisBlocking()){
+      p.innerHTML=crisisHTML();
+      paintCrisisBoard();
+    }else{
+      p.innerHTML=`${crisisHTML()}${handWarn()}${turnBar()}<div id="cmap"></div>`;
+      renderMap($("cmap")); paintCrisisBoard();
+    } }
   else if(k==="talk"){
     const mineIds=new Set(myHand.map(c=>c.id));
     const pubc=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
@@ -2828,6 +2833,8 @@ async function paintCrisisBoard(){
    여기 남는 건 「나중에 다시 읽을 것」이라 지도를 밀어낼 이유가 없다. */
 let crOpenDetail=false;
 function crToggle(){ crOpenDetail=!crOpenDetail; renderPanel((STATE&&STATE.phase)||{}); }
+/* 대응이 열려 있고 아직 판정이 안 났다 — 이게 끝나야 조사가 열린다(서버도 같은 판단을 한다). */
+function crisisBlocking(){ const cr=(STATE&&STATE.crisis)||null; return !!(cr&&cr.open&&cr.solved==null); }
 function crisisHTML(){
   const cr=(STATE&&STATE.crisis)||null; if(!cr) return "";
   if(cr.solved!=null){
