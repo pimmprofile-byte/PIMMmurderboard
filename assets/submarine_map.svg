@@ -53,7 +53,7 @@
     <circle cx="332" cy="50" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
     <circle cx="360" cy="50" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
     <circle cx="388" cy="50" r="5" fill="none" stroke="#c9a24a" stroke-width="1.4"/>
-    <text x="432" y="54" fill="#c9a24a" font-size="12" font-weight="700">탈출 포드 · 정원 3</text>
+    <text x="432" y="54" fill="#c9a24a" font-size="12" font-weight="700">탈출 포드 · 정원 2</text>
   </g>
 
   <!-- 침수 연출용. 기본 높이 0 -->

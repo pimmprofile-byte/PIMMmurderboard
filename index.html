@@ -1339,6 +1339,31 @@
   .unlocknote{margin-top:10px;padding:9px 12px;border:1px dashed var(--gold);border-radius:9px;
     background:rgba(201,162,74,.09);color:var(--gold-b);font-size:12.5px;line-height:1.55}
   .unlocknote b{color:#fff}
+  /* 지도 위 포드 포인터 — 누르면 인증코드를 넣는다 */
+  .podmark .pm-halo{fill:rgba(201,162,74,.16);stroke:var(--gold);stroke-width:1.2}
+  .podmark .pm-dot{fill:var(--gold);opacity:.9}
+  .podmark .pm-tick{display:none}
+  .podmark .pm-halo{animation:podPing 2.4s ease-in-out infinite}
+  @keyframes podPing{0%,100%{opacity:.5;r:13}50%{opacity:1;r:17}}
+  .podmark.ok .pm-halo{fill:rgba(80,180,130,.18);stroke:#5abe8c;animation:none;opacity:1}
+  .podmark.ok .pm-dot{fill:#0f1a14;stroke:#5abe8c;stroke-width:1.4}
+  .podmark.ok .pm-tick{display:block;fill:none;stroke:#5abe8c;stroke-width:1.8;
+    stroke-linecap:round;stroke-linejoin:round}
+  /* 마지막 10초 — 다른 건 아무것도 못 하게 화면을 덮는다 */
+  .podrush{position:fixed;inset:0;z-index:95;display:grid;place-items:center;
+    background:rgba(20,4,3,.86);backdrop-filter:blur(4px);animation:prIn .18s ease}
+  @keyframes prIn{from{opacity:0}to{opacity:1}}
+  .podrush .pr-box{width:min(88vw,340px);text-align:center;padding:26px 22px;
+    border:1px solid var(--ember-b);border-radius:16px;background:linear-gradient(170deg,#2a100d,#160a09);
+    box-shadow:0 24px 60px -20px #000}
+  .podrush .pr-k{font-size:11px;letter-spacing:.24em;color:var(--ember-b);font-weight:800}
+  .podrush .pr-t{font-family:"PIMM Myeongjo","Nanum Myeongjo",serif;font-size:21px;font-weight:800;
+    color:#fff;margin-top:9px}
+  .podrush .pr-c{margin:16px 0 6px;display:flex;align-items:baseline;justify-content:center;gap:5px}
+  .podrush .pr-c b{font-size:46px;line-height:1;color:var(--ember-b);font-variant-numeric:tabular-nums}
+  .podrush .pr-c span{font-size:13px;color:var(--sub)}
+  .podrush .pr-n{font-size:12.5px;color:#e0b8b2;line-height:1.7;margin-bottom:16px}
+  .podrush .btn{width:100%;justify-content:center;padding:13px}
   .podwarn{margin-top:10px;padding:9px 12px;border:1px solid rgba(200,68,47,.45);
     border-radius:9px;background:rgba(200,68,47,.1);color:#f2d7d1;font-size:12.5px;line-height:1.55}
   .podwarn b{color:var(--ember-b)}
@@ -1582,6 +1607,8 @@ async function boot(){
   catch(e){ $("beChip2").textContent="서버 연결 실패"; $("beChip2").className="pill bad"; return; }
   await poll();
   setInterval(poll,1500);
+  // 마지막 10초 동안에는 1.5초가 너무 길다 — 그때만 촘촘히 본다.
+  setInterval(()=>{ const pl=STATE&&STATE.podLaunch; if(pl&&!pl.closed) poll(); },700);
 }
 /* 방이 갈렸는지 본다. 서버가 방을 새로 열면 roomId가 바뀌는데, 이 기기에는 지난 판의
    배역과 「어디까지 읽었다」가 그대로 남아 있다. 그 상태로 붙으면 없는 배역을 붙들고
@@ -1698,6 +1725,7 @@ function applyState(){
     paintTimeline();
     centerTurnRail();
     popMyLine();
+    paintPodLaunch();
     paintCoach();
     paintChatBadge();
     // 다음 페이즈·조사 화면·진행석은 ☰ 서랍이 페이즈를 보고 스스로 넣고 뺀다.
@@ -2231,7 +2259,7 @@ function paintRoom(room, url){
     return `<button class="pin ${st.k} ${seen?"seen":""} ${p[0]>55?"rt":""}" style="left:${p[0]}%;top:${p[1]}%"
       onclick="event.stopPropagation();showSpot('${c.id}')" title="${esc(c.spot||"")}">
       <i></i><span>${esc(c.spot||room.name)}</span></button>`; }).join("");
-  const doors=roomSubs(room.key).filter(r=>!r.needPod||STATE.podOpen).map(r=>{
+  const doors=roomSubs(room.key).filter(r=>!r.needPod||podMarked()).map(r=>{
     const at=(r.at&&r.at.length)?r.at:[88,64];
     return `<button class="pin door" style="left:${at[0]}%;top:${at[1]}%"
       onclick="event.stopPropagation();openRoom('${r.key}')"><i></i><span>${esc(r.name)} ›</span></button>`;
@@ -2260,7 +2288,7 @@ function roomWide(key){
       const seen=(st.k!=="open"&&st.k!=="lock");
       return `<button class="pin ${st.k} ${seen?"seen":""} ${p[0]>55?"rt":""}" style="left:${p[0]}%;top:${p[1]}%"
         onclick="showSpot('${c.id}')"><i></i><span>${esc(c.spot||room.name)}</span></button>`; }).join("");
-    const doors=roomSubs(room.key).filter(r=>!r.needPod||STATE.podOpen).map(r=>{
+    const doors=roomSubs(room.key).filter(r=>!r.needPod||podMarked()).map(r=>{
       const at=(r.at&&r.at.length)?r.at:[88,84];
       return `<button class="pin door" style="left:${at[0]}%;top:${at[1]}%"
         onclick="closeWide();openRoom('${r.key}');roomWide('${r.key}')"><i></i><span>${esc(r.name)} ›</span></button>`;
@@ -2338,7 +2366,7 @@ function openZoneList(loc){
       ${st.act?`<button class="btn ${st.k==="open"?"primary":"quiet"} sm" onclick="${st.act}">${st.label}</button>`
               :`<span class="zc-off">${esc(st.label)}</span>`}</div>`; }).join("");
   $("mapBox").innerHTML=`<div class="mhead">
-      <div class="minimap ${(STATE&&STATE.podOpen)?"podon":""}" id="miniMap"></div>
+      <div class="minimap ${podMarked()?"podon":""}" id="miniMap"></div>
       <div class="mh-t"><span class="mh-eb">구역 안</span>
         <h2>${esc(z.name||loc)}</h2>
         <span class="mh-sub">볼 곳 ${cards.length} · 확인 ${done}</span></div>
@@ -2385,7 +2413,7 @@ async function openMapDetail(){
       <div class="mh-t"><span class="mh-eb">배치도</span><h2>${ICO.map} 배치도</h2>
         <span class="mh-sub">끌어서 옮기고 확대합니다</span></div>
       <button class="mh-x" onclick="closeModal('mapModal')" aria-label="닫기">${ICO.close}</button></div>
-    <div class="mbody"><div class="mzoom" id="mzoom"><div class="mvp" id="mvp">${mapHTML(svg,(STATE&&STATE.podOpen)?"":"nopod")}</div></div></div>
+    <div class="mbody"><div class="mzoom" id="mzoom"><div class="mvp" id="mvp">${mapHTML(svg,podMarked()?"":"nopod")}</div></div></div>
     <div class="mfoot"><span class="mf-note" id="mzPct">100%</span>
       <button class="btn sm" onclick="mzZoom(-1)">－</button>
       <button class="btn sm" onclick="mzZoom(1)">＋</button>
@@ -3019,8 +3047,12 @@ function showInvestRule(){
       +` 알리고 싶으면 대화로 직접 말해야 해요.`
     : "관전 중입니다 — 배역을 맡아야 조사할 수 있어요."});
 }
+/* 내 지도에 포드가 그려져 있는가. 서버가 정한다 — 처음부터 아는 사람과,
+   「비상포드 발견」이 공개된 뒤의 모두. */
+function podMarked(){ return !!(STATE&&(STATE.podMarked||STATE.podOpen)); }
+function podCodeOk(){ return !!(STATE&&STATE.podCodeOk); }
 function renderMap(el){
-  const podCls=(STATE&&STATE.podOpen)?"":"nopod";
+  const podCls=podMarked()?"":"nopod";
   el.innerHTML=`${floodHTML()}<div class="mapbar"><span class="mh">${ICO.map} ${esc(MAP_LABEL())}</span>
       ${mapPills()}<span class="mspace"></span>
       <button class="mrule" onclick="showInvestRule()" aria-label="조사 규칙">?</button>
@@ -3034,8 +3066,45 @@ async function paintMap(){
   const svgTxt=await loadMapSVG(); if(!svgTxt||!$("mapArt")) return;
   art.innerHTML=svgTxt;
   const svg=art.querySelector("svg"); if(!svg) return;
-  wireZones(svg); paintFlood(svg);
+  wireZones(svg); paintFlood(svg); wirePod(svg);
   const d=$("dash"); if(d) d.innerHTML=dashHTML();
+}
+/* 포드 자리에 포인터를 찍는다. 눌러야 코드를 넣을 수 있다 —
+   코드를 넣어둔 사람만 발사창에서 실제로 나간다. */
+function wirePod(svg){
+  const g=svg.querySelector("#pod"); if(!g) return;
+  if(!podMarked()) return;
+  const b=g.getBBox();
+  const ok=podCodeOk();
+  const ns="http://www.w3.org/2000/svg";
+  const mk=document.createElementNS(ns,"g");
+  mk.setAttribute("class","podmark"+(ok?" ok":""));
+  mk.setAttribute("transform",`translate(${b.x+b.width/2} ${b.y+b.height/2})`);
+  mk.style.cursor="pointer";
+  mk.innerHTML=`<circle r="15" class="pm-halo"></circle>
+    <circle r="9" class="pm-dot"></circle>
+    <path d="M-3.6 0 L-1 2.8 L4 -3" class="pm-tick"></path>`;
+  mk.addEventListener("click",e=>{ e.stopPropagation(); askPodCode(); });
+  g.appendChild(mk);
+}
+/* 인증코드 입력. 맞으면 그 사람에게만 남는다 — 누가 아는지는 아무도 모른다. */
+async function askPodCode(){
+  if(!myRoleValid()) { banner("배역을 맡아야 합니다"); return; }
+  if(podCodeOk()){
+    say({title:"발사 인증코드", body:"이미 넣어뒀습니다.\n\n포드에 타게 되면 그대로 나갈 수 있어요. "
+      +"다만 자리는 둘뿐이고, 누가 타는지는 마지막 토론의 표가 정합니다."});
+    return;
+  }
+  const v=await askText({title:"세일 구획 · 탈출 포드",
+    body:"발사에는 선장이 걸어둔 인증코드가 필요합니다.\n숫자 여섯 자리예요.",
+    value:"", ok:"넣기"});
+  if(v==null) return;
+  const r=await post("/api/pod/code",{roleId:myRoleId,clientId,code:v});
+  if(r&&r.error){ banner(r.error); return; }
+  if(r&&r.wrong){ sfx("bad"); say({title:"맞지 않습니다", body:"코드가 다릅니다. 다시 넣을 수 있어요."}); return; }
+  sfx("pod");
+  say({title:"인증되었습니다", body:"포드가 당신을 받아들입니다.\n\n이 사실은 당신만 압니다 — 다른 사람에게는 보이지 않아요."});
+  await poll();
 }
 /* 배치도의 구역이 곧 버튼이다. 개수는 SVG가 이미 갖고 있는 자리(#cnt-X)에 채워 넣는다 —
    글자를 새로 만들어 얹으면 지도를 고칠 때마다 자리가 어긋난다. */
@@ -4456,6 +4525,40 @@ function popMyLine(){
   const ph=(STATE.phase||{}).name||"";
   say({title:`${ph} — 내가 꺼낸 말`,
        body:mine.map(m=>`「${m.text}」`).join("\n\n")+"\n\n대화창에 그대로 올라갔습니다. 여기서부터 이어서 말하세요."});
+}
+/* 발사창이 열렸다. 코드를 못 넣은 채 표를 받았으면 여기서 10초 안에 넣어야 한다. */
+let podLaunchBox=null;
+function paintPodLaunch(){
+  const pl=STATE&&STATE.podLaunch;
+  const mineBoard=pl&&myRoleValid()&&(pl.boarded||[]).includes(myRoleId);
+  const need=mineBoard&&!pl.closed&&!podCodeOk();
+  if(!need){ if(podLaunchBox){ cancelAnimationFrame(podLaunchBox._raf||0); podLaunchBox.remove(); podLaunchBox=null; } return; }
+  if(!podLaunchBox){
+    podLaunchBox=document.createElement("div");
+    podLaunchBox.className="podrush";
+    podLaunchBox.innerHTML=`<div class="pr-box">
+      <div class="pr-k">발사창이 열렸습니다</div>
+      <div class="pr-t">인증코드를 넣으세요</div>
+      <div class="pr-c"><b id="podLeft">10.0</b><span>초</span></div>
+      <div class="pr-n">넣지 못하면 문이 닫히고, 당신은 남습니다.</div>
+      <button class="btn gold" onclick="askPodCode()">코드 넣기</button></div>`;
+    document.body.appendChild(podLaunchBox);
+    sfx("bad");
+  }
+  // 1.5초마다 오는 폴링만 보고 세면 숫자가 뚝뚝 끊긴다 — 서버가 준 값에서
+  // 이어서 스스로 세고, 다음 폴링이 오면 그 값으로 다시 맞춘다.
+  podLaunchBox._at=performance.now();
+  podLaunchBox._left=pl.left||0;
+  if(!podLaunchBox._tick){
+    const tick=()=>{
+      if(!podLaunchBox){ return; }
+      const l=$("podLeft");
+      if(l){ const d=(performance.now()-podLaunchBox._at)/1000;
+             l.textContent=Math.max(0,podLaunchBox._left-d).toFixed(1); }
+      podLaunchBox._raf=requestAnimationFrame(tick);
+    };
+    podLaunchBox._tick=true; tick();
+  }
 }
 function paintTimeline(){
   const el=$("tline"), ph=(SCEN.phases||[]); if(!el||!ph.length) return;

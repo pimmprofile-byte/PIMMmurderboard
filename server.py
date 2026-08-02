@@ -173,6 +173,8 @@ def fresh_room() -> dict:
         "typing": None,
         "events": [],            # 진행 세션이 따라 읽는 사건 기록
         "podOpen": False,        # 특정 카드가 전체공개되면 지도에 탈출 포드가 드러난다
+        "podCode": {},           # 배역 -> True. 발사 인증코드를 제 손으로 맞춘 사람들
+        "podLaunch": None,       # 발사창이 열린 순간. 코드 없이 탄 사람에게 주는 마지막 10초
         # 침수 대응 퍼즐 — 열림/답안/판정. flood는 0~100, 배치도의 물 높이를 그린다.
         "crisis": {"open": False, "solved": None, "answers": {}},
         "sealed": [],            # 잠긴 구역 — 침수 대응에 실패하면 기관실이 여기 들어간다
@@ -361,6 +363,7 @@ def public_state() -> dict:
             "rev": ROOM["rev"], "seq": seq, "round": cur, "scenarioId": SC.ID,
             "roomId": ROOM.get("roomId", ""),
             "podOpen": bool(ROOM.get("podOpen")),
+            "podLaunch": _pod_launch_public(),
             "flood": int(ROOM.get("flood", 0)),
             "crisis": _crisis_public(),
             "sealed": list(ROOM.get("sealed") or []),
@@ -469,6 +472,12 @@ class VoteReq(BaseModel):
     roleId: str
     targetRoleId: str
     clientId: str
+
+
+class PodCode(BaseModel):
+    roleId: str
+    clientId: str
+    code: str
 
 
 class SwapCard(BaseModel):
@@ -758,6 +767,11 @@ def state(clientId: str = "", gm: int = 0):
         if st["myRole"]:
             seen = list(ROOM["revealed"]) + list(ROOM["hands"].get(st["myRole"], []))
             st["myNotes"] = _my_notes(st["myRole"], seen)
+        # 포드 — 내 지도에 자리가 찍혔는가, 그리고 내가 코드를 맞췄는가.
+        # 남이 맞췄는지는 내보내지 않는다. 그게 새면 표가 그리로만 쏠린다.
+        if st.get("myRole"):
+            st["podMarked"] = _pod_marked(st["myRole"])
+            st["podCodeOk"] = bool(ROOM["podCode"].get(st["myRole"]))
         st["isHost"] = bool(clientId) and ROOM.get("host") == clientId
         # 호스트를 아무도 안 잡은 방도 있다. 그때는 '호스트 전용' 연출을 아무도 못 보게 되므로
         # 클라이언트가 그 사정을 알 수 있게 해준다(다른 엔드포인트도 같은 규칙으로 통과시킨다).
@@ -1093,6 +1107,14 @@ def _evidence_bites(card_id: str, evid_id: str) -> bool:
         if card_id in cs and evid_id in cs:
             return True
     return False
+
+
+def _points_at(card_id: str) -> list:
+    """이 카드가 가리키는 사람들. 시나리오의 INTERROGATE 표가 곧 그 태그다 —
+    「이 사람에게 이 카드를 들이밀면 할 말이 있다」가 그 표에 적혀 있다."""
+    if not card_id:
+        return []
+    return [rid for rid, d in (getattr(SC, "INTERROGATE", {}) or {}).items() if card_id in d]
 
 
 def _card_needs(c: dict) -> list:
@@ -1631,6 +1653,62 @@ def swap_card(b: SwapCard):
 
 
 # ── 탈출 포드 개방 · 범인 지목 ────────────────────────────────
+def _pod_code() -> str:
+    return str(getattr(SC, "POD_CODE", "") or "")
+
+
+def _pod_marked(cid: str) -> bool:
+    """이 배역의 지도에 포드 자리가 찍혀 있는가.
+    처음부터 아는 사람은 처음부터, 나머지는 「비상포드 발견」이 공개된 뒤부터."""
+    if not cid:
+        return False
+    return bool(ROOM.get("podOpen")) or cid in (getattr(SC, "POD_KNOWERS", []) or [])
+
+
+def _pod_launch_public():
+    """발사창이 열린 뒤의 마지막 10초. 표는 받았는데 코드를 못 맞춘 사람에게
+    그 자리에서 입력할 기회를 한 번 준다 — 못 넣으면 문이 닫힌다."""
+    pl = ROOM.get("podLaunch")
+    if not pl:
+        return None
+    left = max(0.0, pl["deadline"] - time.monotonic())
+    if left <= 0 and not pl.get("closed"):
+        pl["closed"] = True
+        _pod_close()
+    return {"boarded": list(pl["boarded"]), "left": round(left, 1),
+            "closed": bool(pl.get("closed")), "escaped": list(pl.get("escaped") or [])}
+
+
+def _pod_knows_code(rid: str) -> bool:
+    """이 배역이 코드를 넣을 수 있는 상태인가.
+    사람은 제 손으로 넣어야 한다. AI는 넣을 손이 없으므로, 숫자가 적힌 카드가
+    이미 판 위에 공개돼 있으면 아는 것으로 본다 — 아니면 AI가 타는 순간 늘 실패한다."""
+    if ROOM["podCode"].get(rid):
+        return True
+    if (ROOM["roles"].get(rid) or {}).get("mode") != "ai":
+        return False
+    src = getattr(SC, "POD_CODE_SOURCE", "")
+    return bool(src) and src in (ROOM.get("revealed") or [])
+
+
+def _pod_close():
+    """문이 닫힌다. 코드를 맞춘 사람만 실제로 나간다."""
+    pl = ROOM.get("podLaunch") or {}
+    ok = [r for r in pl.get("boarded", []) if _pod_knows_code(r)]
+    pl["escaped"] = ok
+    names = [(SC.get_character(r) or {}).get("name", r) for r in ok]
+    miss = [(SC.get_character(r) or {}).get("name", r)
+            for r in pl.get("boarded", []) if not _pod_knows_code(r)]
+    if names:
+        msg = f"포드가 떠났습니다 — {', '.join(names)}."
+    else:
+        msg = "포드는 뜨지 못했습니다. 인증코드를 넣은 사람이 없습니다."
+    if miss:
+        msg += f" ({', '.join(miss)}: 코드를 넣지 못해 남습니다)"
+    ROOM["table"].append({"kind": "system", "broadcast": True, "text": msg})
+    bump()
+
+
 def _pod_state() -> dict:
     """포드 투표 현황. 사람이 다 던지기 전에는 «누가 누구를 찍었나»를 감춘다 —
     마지막에 던지는 사람이 전부 보고 결정하면 그건 투표가 아니라 계산이다."""
@@ -1638,7 +1716,8 @@ def _pod_state() -> dict:
     voted = [r for r in humans if ROOM["podVotes"].get(r)]
     done = bool(humans) and len(voted) >= len(humans)
     st = {"seats": getattr(SC, "POD_SEATS", 3), "voters": len(humans),
-          "voted": len(voted), "done": done, "mine": None}
+          "voted": len(voted), "done": done, "mine": None,
+          "hasCode": bool(_pod_code())}
     if done and hasattr(SC, "pod_result"):
         merged = dict(getattr(SC, "POD_VOTE_AI", {}) or {})
         for r in humans:                       # 사람 표가 AI 고정표를 덮는다
@@ -1646,6 +1725,35 @@ def _pod_state() -> dict:
         st["result"] = SC.pod_result(merged)
         st["votes"] = merged
     return st
+
+
+@app.post("/api/pod/code")
+def pod_code(b: PodCode):
+    """포드 인증코드 입력. 맞히면 그 사실이 그 사람에게만 남는다 —
+    누가 코드를 아는지는 밝히지 않는다. 그걸 알면 표가 그리로만 쏠린다."""
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId:
+            return JSONResponse({"error": "그 배역이 아닙니다"}, status_code=403)
+        want = _pod_code()
+        if not want:
+            return JSONResponse({"error": "이 사건에는 인증코드가 없습니다"}, status_code=409)
+        if not _pod_marked(b.roleId):
+            return JSONResponse({"error": "아직 포드 자리를 모릅니다"}, status_code=409)
+        got = "".join(ch for ch in (b.code or "") if ch.isdigit())
+        if got != want:
+            return {"ok": False, "wrong": True}
+        first = not ROOM["podCode"].get(b.roleId)
+        ROOM["podCode"][b.roleId] = True
+        # 발사 도중에 넣었으면 그 자리에서 태운다.
+        pl = ROOM.get("podLaunch")
+        if pl and not pl.get("closed") and b.roleId in pl.get("boarded", []):
+            if all(_pod_knows_code(x) for x in pl["boarded"]):
+                pl["closed"] = True
+                _pod_close()
+        if first:
+            bump()
+        return {"ok": True}
 
 
 @app.post("/api/pod/vote")
@@ -1679,6 +1787,17 @@ def pod_vote(b: VoteReq):
             else:
                 msg = f"발사창이 열립니다. 타는 사람 — {', '.join(names)}."
             ROOM["table"].append({"kind": "system", "broadcast": True, "text": msg})
+            # 코드를 아직 못 맞춘 탑승자에게 마지막 10초. 코드가 없는 사건이면 그냥 태운다.
+            board = list(res.get("boarded") or [])
+            if board and _pod_code():
+                need = [r for r in board if not _pod_knows_code(r)]
+                if need:
+                    ROOM["podLaunch"] = {"boarded": board, "deadline": time.monotonic() + 10.0}
+                    ROOM["table"].append({"kind": "system", "broadcast": True,
+                                          "text": "발사에는 선장 인증코드가 필요합니다. 10초 안에 넣지 못하면 문이 닫힙니다."})
+                else:
+                    ROOM["podLaunch"] = {"boarded": board, "deadline": time.monotonic(), "closed": True}
+                    _pod_close()
         bump()
     return {"ok": True, "pod": _pod_state()}
 
@@ -1847,6 +1966,16 @@ def interrogate(b: Interrogate):
         pk = f'{b.targetRoleId}:{b.cardId or "_self"}'
         pressed = ROOM.setdefault("press", {}).get(pk, 0)
 
+        # 들이민 증거가 이 사람을 가리키는 카드라면, 실토는 그 증거에 얽힌 진상이 된다.
+        # 「무엇을 묻는가」보다 「무엇을 들이미는가」가 답을 정한다.
+        ev_entry = None
+        if evid_id and not selfmode and b.targetRoleId in _points_at(evid_id):
+            ev_entry = (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(evid_id)
+        if ev_entry:
+            entry = ev_entry
+            pk = f'{b.targetRoleId}:{evid_id}'
+            pressed = ROOM.setdefault("press", {}).get(pk, 0)
+
         if entry:
             # 증거를 들이밀었으면 그 자리에서 분다. 판마다 심문은 두어 번뿐인데
             # 「짝으로 지정된 카드」만 통하게 두니, 아픈 데를 정확히 찔러놓고도
@@ -1888,8 +2017,11 @@ def interrogate(b: Interrogate):
         if selfmode:
             header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · 본인 추궁'
         else:
-            where = f'{card["locName"]} · {card["spot"]}' if card.get("spot") else card["locName"]
-            header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · [{where}] 「{card["title"]}」'
+            # 증거가 답을 정했으면 머리글도 그 카드를 가리켜야 한다 — 아니면 엉뚱한 카드에
+            # 대해 실토한 것처럼 읽힌다.
+            shown = (SC.get_card(evid_id) if ev_entry else None) or card
+            where = f'{shown["locName"]} · {shown["spot"]}' if shown.get("spot") else shown["locName"]
+            header = f'{badge} — {asker.get("name","")} → {target.get("name","")} · [{where}] 「{shown["title"]}」'
         ROOM["table"].append({"kind": "interrogate", "broadcast": True,
                               "askerRoleId": b.askerRoleId, "targetRoleId": b.targetRoleId,
                               "cardId": b.cardId, "outcome": outcome, "text": header, "line": line})
