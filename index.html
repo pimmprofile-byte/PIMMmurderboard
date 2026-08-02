@@ -159,20 +159,9 @@
   .chead .rmid{font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--sub);
     background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:5px;padding:2px 5px}
   .chead .ph{font-size:12px;color:var(--gold)}.chead .me{font-size:12px;color:var(--sub)}.chead .spacer{margin-left:auto}
-  /* GM은 화면에서 한 줄만 말한다. 전문은 눌러서 보고, 기록은 대화창에 남는다.
-     세 군데서 같은 목소리가 나면 어느 것을 읽어야 할지 알 수 없다. */
-  .pbanner{display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--line);
-    background:var(--bg2);font-size:12.5px;color:#dfe4f4;line-height:1.5}
-  .pbanner .pb-t{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;
-    background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
-  .pbanner .pb-x{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pbanner .pb-more{flex:0 0 auto;color:var(--muted);font-size:11px}
   /* 막을 넘기는 건 호스트의 일이다. 다른 사람에게는 누구 차례인지만 알려준다. */
-  .pbanner .pb-go{flex:0 0 auto;align-self:center}
-  .pbanner .pb-wait{flex:0 0 auto;align-self:center;font-size:11.5px;color:var(--muted);
-    white-space:nowrap;border:1px solid var(--line);border-radius:20px;padding:4px 10px}
-  .pbanner .g{flex:0 0 auto;color:var(--gold);font-size:10px;letter-spacing:.08em}
-  .pbanner .il{color:var(--cold);margin-top:5px;font-size:12.5px}
+  .pb-wait{flex:0 0 auto;font-size:11px;color:var(--muted);white-space:nowrap;
+    border:1px solid var(--line);border-radius:20px;padding:4px 10px}
   .ppanel{flex:1 1 auto;overflow-y:auto;padding:14px}
   /* 토론은 말이 본체다. 패널을 눌러 대화가 화면 절반쯤을 갖게 한다. */
   /* 대화가 이제 제 탭을 가졌으므로, 아래 미리보기 때문에 본 화면을 눌러둘 이유가 없다.
@@ -209,6 +198,8 @@
     stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
   .dock .dk:active .i,.dock .dk.on .i{stroke:var(--gold)}
   .dock .dk .t{white-space:nowrap}
+  .dock .dk .t b{font-weight:800;color:var(--gold-b);font-variant-numeric:tabular-nums;margin-left:1px}
+  .dock .dk.over .t b{color:var(--ember-b)}
   .dock .dk:active{background:rgba(255,255,255,.06);color:var(--fg)}
   .dock .dk .bdg{position:absolute;top:2px;right:calc(50% - 22px);min-width:15px;height:15px;line-height:15px;
     border-radius:8px;background:var(--gold);color:#1a1508;font-size:9.5px;font-weight:800;padding:0 4px;display:none}
@@ -288,6 +279,12 @@
   #s-play.talk .chat{flex:1 1 auto;min-height:46vh}
   .sys{align-self:center;text-align:center;color:var(--muted);font-size:12px;border:1px dashed var(--line);border-radius:20px;padding:4px 14px;max-width:92%}
   .sys.bc{color:var(--cold);border-color:#2c465a;background:#0e1620}
+  /* GM은 대화창에서 말한다 — 배역들 사이에 끼되, 배역의 말투와 구분되게 */
+  .gmsay{align-self:stretch;display:flex;gap:9px;align-items:flex-start;max-width:100%;
+    border-left:2px solid var(--gold);background:linear-gradient(90deg,rgba(140,110,50,.16),transparent);
+    border-radius:2px 10px 10px 2px;padding:8px 12px}
+  .gmsay .g{flex:0 0 auto;color:var(--gold);font-size:10px;letter-spacing:.08em;font-weight:800;margin-top:3px}
+  .gmsay .t{flex:1 1 auto;min-width:0;font-size:13px;line-height:1.72;color:#e8e2d4;word-break:keep-all}
   .msg{display:flex;gap:8px;max-width:90%}.msg.own{align-self:flex-end;flex-direction:row-reverse}
   /* 얼굴 아바타 — 초상을 동그랗게 자른다. 초상이 없으면 .noimg가 붙고 이름 첫 글자가 대신 뜬다. */
   .ava{display:inline-grid;place-items:center;overflow:hidden;border-radius:50%;flex:0 0 auto;
@@ -642,19 +639,29 @@
   .goal{display:flex;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}.goal:last-child{border-bottom:0}.goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif}
   /* ── 스와이프 카드 캐러셀 (롤카드·손패 넘겨보기) ── */
   .swipe{position:relative;margin:6px 0 2px}
-  .sw-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  /* 세로 스크롤은 바깥(.mbody)이 혼자 맡는다. 예전엔 카드가 자기 안에서 또 굴렀는데,
+     가로로 스냅하는 트랙 안에 세로 스크롤러가 겹치면 손가락이 어느 쪽에도 안 먹는다. */
+  .sw-track{display:flex;align-items:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;
+    transition:height .22s ease}
   .sw-track::-webkit-scrollbar{display:none}
   .sw-slide{flex:0 0 100%;scroll-snap-align:center;min-width:0;padding:2px}
-  /* 좌우 화살표는 카드 위에 겹치지 않게 카드 아래 컨트롤 줄에 둔다(점 네비와 한 줄) */
+  /* 화살표는 카드 옆구리에 붙는다 — 아래 컨트롤 줄에 두니 화면이 짧은 기기에서 잘려 나갔다. */
+  .sw-rail{position:sticky;top:45%;height:0;z-index:4;pointer-events:none}
+  .sw-nav{position:absolute;top:-28px;pointer-events:auto;z-index:4;
+    width:38px;height:56px;border-radius:11px;padding:0;
+    background:rgba(10,9,8,.72);border:1px solid var(--line);backdrop-filter:blur(5px);
+    color:var(--ink);font-size:22px;line-height:1;display:grid;place-items:center;cursor:pointer;
+    transition:opacity .15s,border-color .15s,background .15s}
+  .sw-nav.prev{left:-4px}
+  .sw-nav.next{right:-4px}
+  .sw-nav:hover:not(:disabled){border-color:var(--gold);color:#fff;background:rgba(10,9,8,.9)}
+  .sw-nav:disabled{opacity:0;pointer-events:none}
   .sw-ctrl{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:13px}
-  .sw-nav{position:static;flex:0 0 auto;width:32px;height:32px;border-radius:50%;
-    background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-size:19px;line-height:1;display:grid;place-items:center;cursor:pointer;transition:.15s}
-  .sw-nav:hover:not(:disabled){border-color:var(--gold);color:#fff}
-  .sw-nav:disabled{opacity:.2;cursor:default}
   .sw-dots{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap}
   .sw-dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.22s;cursor:pointer}
   .sw-dot.on{background:var(--gold);width:22px;border-radius:4px}
-  .sw-count{text-align:center;font-size:11.5px;color:var(--muted);margin-top:5px;letter-spacing:.02em}
+  .sw-count{text-align:center;font-size:11.5px;color:var(--muted);margin-top:6px;letter-spacing:.02em}
   /* 큰 카드(롤/손패) */
   .bigcard{border-radius:16px;padding:18px 18px 20px;background:linear-gradient(165deg,#1d1c1b,#141312);border:1px solid var(--line);min-height:220px}
   .bigcard.role{border-color:color-mix(in srgb,var(--rc,#8a7a4a) 45%,var(--line));background:linear-gradient(165deg,#201f1e,#151413)}
@@ -760,20 +767,12 @@
      내려도 마지막 줄이 흐린 채 남아 '잘렸다'로 읽혔고, 아이폰에서는 마스크가 스크롤
      레이어를 먹어 손가락이 안 먹히기도 한다. 그래서 흐림은 카드 밖(슬라이드)에 얹고,
      더 굴릴 게 없으면 JS 가 꺼버린다. 높이는 주소창이 오르내려도 안 잘리게 svh 로 잡는다. */
-  #sheetModal .bigcard{min-height:300px;padding:24px 26px 30px;
-    max-height:min(64vh,540px);max-height:min(60svh,520px);
-    overflow-y:auto;overscroll-behavior:contain;
-    scrollbar-width:thin;scrollbar-color:#4a4844 transparent}
-  #sheetModal .bigcard::-webkit-scrollbar{width:5px}
-  #sheetModal .bigcard::-webkit-scrollbar-thumb{background:#4a4844;border-radius:3px}
-  #sheetModal .bigcard::-webkit-scrollbar-track{background:transparent}
-  #sheetModal .sw-slide{position:relative}
-  #sheetModal .sw-slide::after{content:"더 있어요 ▾";position:absolute;left:2px;right:2px;bottom:2px;
-    height:58px;border-radius:0 0 16px 16px;display:grid;align-items:end;justify-items:center;
-    padding-bottom:8px;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--gold-b);
-    background:linear-gradient(180deg,rgba(21,20,19,0),rgba(21,20,19,.82) 46%,rgba(21,20,19,.99) 74%);
-    opacity:0;transition:opacity .18s;pointer-events:none}
-  #sheetModal .sw-slide.more::after{opacity:1}
+  #sheetModal .bigcard{min-height:300px;padding:24px 26px 30px}
+  /* 화살표가 글을 가리지 않게 카드 양옆을 비워 둔다. */
+  #sheetModal .sw-slide,#handModal .sw-slide{padding:2px 34px}
+  #sheetModal .sw-nav,#handModal .sw-nav{left:auto;right:auto}
+  #sheetModal .sw-nav.prev,#handModal .sw-nav.prev{left:0}
+  #sheetModal .sw-nav.next,#handModal .sw-nav.next{right:0}
   #sheetModal .bc-eyebrow{font-size:11.5px;margin-bottom:11px}
   #sheetModal .bc-title{font-size:24px;line-height:1.3}
   #sheetModal .bc-sub{font-size:14.5px;margin-top:5px}
@@ -1305,12 +1304,10 @@
     <span class="ph" id="pPhase"></span>
     <span class="me" id="pMe"></span>
     <span class="spacer"></span>
-    <button class="btn gold sm" id="handBtn" onclick="showMyHand()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="7.2" y="3.4" width="12" height="16" rx="2"/><path d="M4.9 6.6 3.2 16.2a2 2 0 0 0 1.6 2.3l2.4.5"/><path d="M10.6 8.4h5.2M10.6 12h5.2"/></svg> <span id="handN">0</span></button>
-    <button class="btn sm" id="sheetBtn" onclick="showMySheet()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.6h6l1.6 2.2H19a1.6 1.6 0 0 1 1.6 1.6v9.4A1.6 1.6 0 0 1 19 19.4H5a1.6 1.6 0 0 1-1.6-1.6V6.2A1.6 1.6 0 0 1 5 4.6Z"/><path d="M8.4 12.4h7.2M8.4 15.4h4.6"/></svg> 내 정보</button>
+    <span id="pGo"></span>
     <button class="btn sm" id="menuBtn" onclick="openHMenu()" aria-label="메뉴"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   </div>
   <div class="banner" id="banner"></div>
-  <div class="pbanner" id="pbanner"></div>
   <div class="ppanel" id="ppanel"></div>
   <button class="chattab" id="chatTab" onclick="foldChat()">
     <span class="ct-t"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 12.4c0 3.7-3.6 6.7-8 6.7a9.6 9.6 0 0 1-2.6-.35L5 20.6l1.2-3.3A6.3 6.3 0 0 1 4.4 12.4c0-3.7 3.6-6.7 8-6.7s8 3 8 6.7Z"/></svg> 대화</span><span class="ct-n" id="chatN"></span>
@@ -1330,7 +1327,7 @@
       <span class="t">조사화면</span></button>
     <button class="dk" onclick="showMyHand()">
       <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="7.2" y="3.4" width="12" height="16" rx="2"/><path d="M4.9 6.6 3.2 16.2a2 2 0 0 0 1.6 2.3l2.4.5"/><path d="M10.6 8.4h5.2M10.6 12h5.2"/></svg>
-      <span class="t">내 단서</span><span class="bdg" id="dkHand"></span></button>
+      <span class="t">내 단서 <b id="dkHandN">0/3</b></span><span class="bdg" id="dkHand"></span></button>
     <button class="dk" onclick="showMySheet()">
       <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.6h6l1.6 2.2H19a1.6 1.6 0 0 1 1.6 1.6v9.4A1.6 1.6 0 0 1 19 19.4H5a1.6 1.6 0 0 1-1.6-1.6V6.2A1.6 1.6 0 0 1 5 4.6Z"/><path d="M8.4 12.4h7.2M8.4 15.4h4.6"/></svg>
       <span class="t">내 정보</span><span class="dot" id="dkSheet"></span></button>
@@ -1589,22 +1586,20 @@ function applyState(){
     const pn=ph.name||"";
     $("pPhase").textContent=(rtag&&!pn.includes(rtag))?`${pn} · ${rtag}`:pn;
     updateComposer();
-    // 배너
-    const il=(STATE.table||[]).slice().reverse().find(m=>m.broadcast);
-    const gmTxt=(ph.key==="reveal"&&STATE.ending)?"진상이 밝혀졌습니다.":(ph.gm||"");
+    // 막을 넘기는 건 호스트의 일이다. 다른 사람에게는 누구 차례인지만 알려준다.
     const last=!(SCEN.phases||[]).some(x=>x.seq===(STATE.seq||0)+1);
-    const goHTML=last?"" : (STATE.isHost
-      ? `<button class="btn gold sm pb-go" onclick="advance()">다음 막 ›</button>`
+    $("pGo").innerHTML=last?"" : (STATE.isHost
+      ? `<button class="btn gold sm" onclick="advance()">다음 막 ›</button>`
       : `<span class="pb-wait">호스트가 넘깁니다</span>`);
-    gmFull=gmTxt;
-    $("pbanner").innerHTML=`<button class="pb-t" onclick="showGmSay()"><span class="g">GM</span>`
-      +`<span class="pb-x">${esc(gmTxt)}</span>${gmTxt.length>26?`<span class="pb-more">${ICO.eye}</span>`:""}</button>${goHTML}`;
     // 페이즈 패널
     renderPanel(ph);
     // 채팅
     if(STATE.rev!==lastRev){ renderChat(); lastRev=STATE.rev; }
     if($("chatModal").classList.contains("on")) renderChat("chatFull");
-    const hb=$("dkHand"); hb.textContent=myHand.length; hb.classList.toggle("on",myHand.length>0);
+    // 손패 수는 상단바가 아니라 여기서 센다 — 카드를 여는 자리와 세는 자리가 같아야 한다.
+    $("dkHandN").textContent=`${myHand.length}/${handLimit()}`;
+    const hb=$("dkHand"); hb.classList.toggle("on", overLimit()>0);
+    hb.textContent=overLimit()>0?"!":"";
     $("dkSheet").classList.toggle("on",sheetSeenSeq!=null&&STATE.seq>sheetSeenSeq);
     paintTimeline();
     paintCoach();
@@ -1723,7 +1718,7 @@ function foldChat(){
 function applyChatFold(){
   const sc=$("s-play"); if(!sc) return;
   sc.classList.toggle("chatoff",chatOff);
-  const n=(STATE&&STATE.table||[]).filter(m=>m.kind==="ai"||m.kind==="human").length;
+  const n=(STATE&&STATE.table||[]).filter(m=>m.kind==="ai"||m.kind==="human"||m.kind==="gm").length;
   const el=$("chatN"); if(el) el.textContent=n?`${n}줄`:"";
 }
 
@@ -3167,9 +3162,6 @@ function gmTurnBar(){
   return `<div class="turnbar"><div class="tb-order">${chips}</div>
     <div class="tb-act">${isAI?`<button class="btn gold" onclick="aiInvestigateNow('${turn}')">${ICO.bot} ${esc(now.name)} 자동 조사</button>`:''}<button class="btn" onclick="turnNext()">다음 차례 ›</button></div></div>`;
 }
-/* 머리띠의 GM 한 줄은 잘려 있다. 전문은 여기서 연다. */
-let gmFull="";
-function showGmSay(){ if(gmFull) say({title:(STATE&&STATE.phase&&STATE.phase.name)||"진행", body:gmFull}); }
 async function turnNext(){ const bn=(scr==="gm")?gmBanner:banner; const r=await post("/api/turn/next",{clientId,roleId:myRoleId,key:gmKey}); if(r&&r.error)bn(r.error); await poll(); }
 async function aiInvestigateNow(rid){ const r=await post("/api/ai-investigate",{roleId:rid||"",clientId,key:gmKey}); if(r&&r.error){gmBanner(r.error);return;} if(r&&r.picked){ const c=roleById(rid)||{}; gmBanner(`${c.name||'AI'} 자동 조사 — ${r.picked.map(p=>p.title).join(", ")||'열 카드 없음'}`);} await poll(); }
 
@@ -3785,6 +3777,8 @@ function cardChips(text){
 function chatRow(m){
   if(m.kind==="system"){ const s=document.createElement("div"); s.className="sys"+(m.broadcast?" bc":"");
     s.innerHTML=esc(m.text)+cardChips(m.text); return s; }
+  if(m.kind==="gm"){ const s=document.createElement("div"); s.className="gmsay";
+    s.innerHTML=`<span class="g">GM</span><span class="t">${esc(m.text)}</span>`; return s; }
   if(m.kind==="cardref"){
     const s=document.createElement("div"); s.className="sys ref";
     s.innerHTML=esc(m.text)+`<div class="cchips">${chipFor(m.cardId,m.cardTitle)}</div>`;
@@ -3831,12 +3825,10 @@ function renderChat(boxId){
 function updateComposer(){
   const ok=myRoleValid(); const c=ok?roleById(myRoleId):null;
   $("melab").textContent=ok?c.name:"관전 중"; $("melab").style.color=ok?c.color:"var(--sub)";
-  $("input").disabled=!ok; $("sendBtn").disabled=!ok; $("sheetBtn").style.display=ok?"":"none";
-  // 페이즈가 넘어갈 때마다 시트에는 읽을 게 붙는다(옛일·기억의 파편·이번 페이즈에 할 말).
-  // 그걸 아직 안 열어봤으면 버튼을 물들여 «여기 열어보세요»를 보이게 한다.
-  $("sheetBtn").classList.toggle("fresh", ok && sheetSeenSeq < (STATE&&STATE.seq!=null?STATE.seq:0));
-  $("handBtn").style.display=ok?"":"none"; $("handN").textContent=myHand.length+"/"+handLimit();
-  $("handBtn").classList.toggle("ember",overLimit()>0);
+  $("input").disabled=!ok; $("sendBtn").disabled=!ok;
+  // 손패 수와 「읽을 게 붙었다」 표시는 하단바가 나른다 — 여는 자리와 세는 자리가 같다.
+  const dk=($("dock")||{}).children||[];
+  if(dk[1]) dk[1].classList.toggle("over", ok&&overLimit()>0);
   $("input").placeholder=ok?"배역이 되어 말하세요…  (Enter 전송)":"로비에서 배역을 골라야 말할 수 있어요";
   $("pMe").textContent=ok?(c.avatar+" "+c.name):"";
 }
@@ -3910,8 +3902,13 @@ function buildSwipe(slides){
   const track=slides.map(s=>`<div class="sw-slide">${s}</div>`).join("");
   const dots=slides.map((_,i)=>`<span class="sw-dot${i===0?" on":""}" data-i="${i}"></span>`).join("");
   // 좌우 화살표를 카드 위에 겹쳐 띄우면 글이 길 때 본문을 가린다 — 카드 아래 컨트롤 줄에 둔다.
-  const ctrls=slides.length>1?`<div class="sw-ctrl"><button class="sw-nav prev" aria-label="이전">‹</button><div class="sw-dots">${dots}</div><button class="sw-nav next" aria-label="다음">›</button></div><div class="sw-count"><b class="sw-cur">1</b> / ${slides.length} · 옆으로 넘겨보세요</div>`:"";
-  return `<div class="swipe"><div class="sw-track">${track}</div>${ctrls}</div>`;
+  if(slides.length<2) return `<div class="swipe"><div class="sw-track">${track}</div></div>`;
+  return `<div class="swipe">
+    <div class="sw-rail"><button class="sw-nav prev" aria-label="이전">‹</button>
+      <button class="sw-nav next" aria-label="다음">›</button></div>
+    <div class="sw-track">${track}</div>
+    <div class="sw-ctrl"><div class="sw-dots">${dots}</div></div>
+    <div class="sw-count"><b class="sw-cur">1</b> / ${slides.length} · 옆으로 넘기거나 화살표를 누르세요</div></div>`;
 }
 function wireSwipe(box){
   const sw=box.querySelector(".swipe"); if(!sw)return;
@@ -3921,21 +3918,19 @@ function wireSwipe(box){
   // 「NaN / 5」가 그대로 화면에 찍혔다. 폭이 잡히기 전에는 첫 장으로 본다.
   const cur=()=>{ const w=track.clientWidth; if(!w) return 0;
     return Math.max(0, Math.min(slides.length-1, Math.round(track.scrollLeft/w))); };
-  const upd=()=>{ const i=cur(); dots.forEach((d,j)=>d.classList.toggle("on",j===i)); const c=sw.querySelector(".sw-cur"); if(c)c.textContent=i+1; if(prev)prev.disabled=i<=0; if(next)next.disabled=i>=slides.length-1; };
+  // 장마다 길이가 다르다. 트랙을 제일 긴 장에 맞춰 두면 짧은 장 아래로 빈 곳이 열린다 —
+  // 지금 보고 있는 장의 높이만 준다.
+  const fit=()=>{ const sl=slides[cur()]; if(sl) track.style.height=sl.offsetHeight+"px"; };
+  const upd=()=>{ const i=cur(); dots.forEach((d,j)=>d.classList.toggle("on",j===i)); const c=sw.querySelector(".sw-cur"); if(c)c.textContent=i+1; if(prev)prev.disabled=i<=0; if(next)next.disabled=i>=slides.length-1; fit(); };
   const goTo=i=>{ i=Math.max(0,Math.min(slides.length-1,i)); track.scrollTo({left:i*track.clientWidth,behavior:"smooth"}); };
   track.addEventListener("scroll",()=>{ clearTimeout(track._t); track._t=setTimeout(upd,60); },{passive:true});
   if(prev)prev.onclick=()=>goTo(cur()-1);
   if(next)next.onclick=()=>goTo(cur()+1);
   dots.forEach(d=>d.onclick=()=>goTo(+d.dataset.i));
-  // 카드가 화면보다 길면 카드 안에서 굴린다. 아래 흐림('더 있어요')은 더 굴릴 게
-  // 남았을 때만 켠다 — 끝까지 내렸는데도 흐리면 잘린 것으로 보인다.
-  slides.forEach(sl=>{
-    const card=sl.querySelector(".bigcard"); if(!card) return;
-    const mark=()=>sl.classList.toggle("more", card.scrollHeight-card.scrollTop-card.clientHeight>8);
-    card.addEventListener("scroll",mark,{passive:true});
-    mark(); requestAnimationFrame(mark);         // 웹폰트가 늦게 오면 높이가 나중에 잡힌다
-    if(document.fonts&&document.fonts.ready) document.fonts.ready.then(mark).catch(()=>{});
-  });
+  // 웹폰트·사진이 늦게 오면 높이가 나중에 잡힌다 — 잡힐 때마다 다시 맞춘다.
+  if(window.ResizeObserver){ const ro=new ResizeObserver(()=>fit()); slides.forEach(sl=>ro.observe(sl)); }
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(fit).catch(()=>{});
+  sw.querySelectorAll("img").forEach(im=>{ if(!im.complete) im.addEventListener("load",fit,{once:true}); });
   upd();
   requestAnimationFrame(upd);          // 폭이 잡힌 뒤 한 번 더 — 첫 숫자가 비어 보이지 않게
 }
@@ -3951,7 +3946,7 @@ function markSheetSeen(){
   if(s<=sheetSeenSeq) return;
   sheetSeenSeq=s;
   try{ localStorage.setItem("pmb.sheetseen."+(myRoleId||""),String(s)); }catch(e){}
-  $("sheetBtn").classList.remove("fresh");
+
 }
 async function showMySheet(){
   if(!myRoleValid())return;

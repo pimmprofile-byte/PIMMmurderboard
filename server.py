@@ -804,6 +804,9 @@ def start_game(b: HostReq):
             return JSONResponse({"error": f"아직 정해지지 않은 배역이 {len(opens)}개 있습니다"}, status_code=409)
         ROOM["started"] = True
         ROOM["table"].append({"kind": "system", "broadcast": True, "text": "배역이 확정됐습니다. 오프닝을 시작합니다."})
+        _ph0 = SC.phase_by_seq(ROOM["seq"])
+        if _ph0.get("gm"):
+            ROOM["table"].append({"kind": "gm", "broadcast": True, "text": _ph0["gm"]})
         _seed_alibi()
         bump()
     return {"ok": True, "started": True}
@@ -2160,9 +2163,11 @@ def _advance():
             if il:
                 ROOM["table"].append({"kind": "system", "broadcast": True,
                                       "text": f"{getattr(SC, 'PA_LABEL', '교내방송')} — {il}"})
-            # phase.gm은 진행자에게 주는 지시문이다("…확실히 짚어주세요"). 테이블에 넣으면
-            # 플레이어 대화창에 그대로 뜬다. 막이 바뀌었다는 표시만 남긴다.
             ROOM["table"].append({"kind": "system", "text": f'— {ph["name"]} —'})
+            # GM의 말은 대화창에 남는다. 머리띠에 한 줄로 띄워두면 다음 막에서 사라져
+            # 놓친 사람이 다시 볼 데가 없었다 — 기록이 남는 자리는 여기뿐이다.
+            if ph.get("gm"):
+                ROOM["table"].append({"kind": "gm", "broadcast": True, "text": ph["gm"]})
             _ev("phase", name=ph["name"], key=ph.get("key", ""), min=ph.get("min", 0),
                 ap=int(ph.get("ap", 0) or 0), gm=ph.get("gm", ""), interlude=il or "")
             _reset_turn_for_seq(seq)   # 조사 페이즈면 순번 초기화
