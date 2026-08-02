@@ -176,6 +176,8 @@ def fresh_room() -> dict:
         # 결재 결정문 — 자리마다 한 문장씩 고른다. 범인으로 지목된 사람은 결재권을 잃고
         # 그 칸은 남은 사람들의 투표로 찬다. picks 는 최종값, votes 는 잃은 칸의 표다.
         "decision": {"picks": {}, "votes": {}, "extra": ""},
+        "itgUsed": [],            # 심층심문에 이미 쓴 카드. 시나리오가 1회성이면 다시 못 쓴다
+        "ready": [],              # 「결과 확인」을 누른 배역. 전원이 누르면 판이 다음으로 넘어간다
         "typing": None,
         "events": [],            # 진행 세션이 따라 읽는 사건 기록
         "podOpen": False,        # 특정 카드가 전체공개되면 지도에 탈출 포드가 드러난다
@@ -384,6 +386,9 @@ def public_state() -> dict:
             "cuts": list(ROOM.get("cuts") or []),
             "checked": checked,
             "usedAP": used,
+            "ready": _ready_state(),
+            "itgUsed": (list(ROOM.get("itgUsed") or []) if getattr(SC, "INTERROGATE_ONCE", False) else []),
+            "belongLimit": _belong_limit(),
             # 구역 몫을 쓰는 조사 페이즈에서, 배역별로 어느 구역을 몇 장 열었는지.
             "quotaUsed": {rid: _quota_used(rid, cur) for rid in ROOM["roles"]},
             "handLimit": _hand_limit(),
@@ -475,6 +480,11 @@ class ClientOnly(BaseModel):
 
 class Investigate(BaseModel):
     cardId: str
+    roleId: str
+    clientId: str
+
+
+class RoleReq(BaseModel):
     roleId: str
     clientId: str
 
@@ -787,6 +797,7 @@ def state(clientId: str = "", gm: int = 0):
             st["myDest"] = ROOM.get("dest", {}).get(st["myRole"])
             _d = ROOM.get("decision") or {}
             st["myDecision"] = (_d.get("picks") or {}).get(st["myRole"])
+            st["overBelong"] = _over_belong(st["myRole"])
             st["myDecisionVotes"] = {seat: v.get(st["myRole"])
                                      for seat, v in (_d.get("votes") or {}).items()
                                      if v.get(st["myRole"])}
@@ -1040,6 +1051,34 @@ def _round_checks(role_id: str, rnd: int) -> int:
     return sum(1 for r in ROOM["checkedRound"].get(role_id, {}).values() if r == rnd)
 
 
+def _belong_locs() -> list:
+    return list(getattr(SC, "BELONGINGS_LOCS", []) or [])
+
+
+def _belong_limit() -> int:
+    return int(getattr(SC, "BELONG_LIMIT", 2))
+
+
+def _bundle_of(card: dict) -> list:
+    """묶음으로 열리는 카드면 같이 열릴 형제들을 돌려준다. 아니면 빈 목록.
+
+    소지품은 한 장씩 뒤지는 물건이 아니다 — 네 사람 것을 한자리에 늘어놓고 한 번에 본다.
+    그래서 한 장을 열면 그 구역·그 라운드의 넉 장이 통째로 온다.
+    """
+    if not card.get("shared"):
+        return []
+    return [c for c in SC.CARDS
+            if c.get("shared") and c["loc"] == card["loc"] and c["round"] == card["round"]]
+
+
+def _zone_lock(loc: str, rnd: int) -> str:
+    """아직 못 가는 구역이면 그 자리에서 읽어줄 한 줄. 갈 수 있으면 빈 문자열."""
+    z = (getattr(SC, "ZONE_LOCK", {}) or {}).get(loc)
+    if z and rnd < int(z.get("until", 0)):
+        return z.get("why", "아직 갈 수 없습니다.")
+    return ""
+
+
 def _quota_for(seq: int) -> list:
     """이번 조사 페이즈의 «구역 몫». 시나리오가 안 정했으면 빈 목록 — 그럼 아무 제한도 없다.
 
@@ -1081,13 +1120,19 @@ def _quota_block(role_id: str, seq: int, loc: str) -> str | None:
     st = _quota_state(role_id, seq)
     if not st:
         return None
-    for b in st:
+    ordered = bool(SC.phase_by_seq(seq).get("quotaOrder"))
+    for i, b in enumerate(st):
         if loc in b["locs"]:
             if b["used"] >= b["n"]:
                 left = [x for x in st if x["used"] < x["n"]]
                 if left:
                     return f'{b["label"]}은(는) 이번 턴 몫을 다 썼습니다 — 남은 건 「{left[0]["label"]}」입니다'
                 return f'{b["label"]}은(는) 이번 턴 몫을 다 썼습니다'
+            if ordered:
+                # 앞 몫이 안 찼으면 뒤 몫부터 쓸 수 없다. 순서가 곧 진행 방식이다.
+                prev = [x for x in st[:i] if x["used"] < x["n"]]
+                if prev:
+                    return f'「{prev[0]["label"]}」부터 보고 나서 갑니다'
             return None
     return "이번 조사 턴에는 볼 수 없는 구역입니다"
 
@@ -1112,8 +1157,29 @@ def _hand_limit() -> int:
     return int(getattr(SC, "HAND_LIMIT", 3))
 
 
+def _split_hand(role_id: str):
+    """손패를 «일반 단서»와 «소지품» 두 칸으로 가른다. 상한이 서로 다르다."""
+    bl = set(_belong_locs())
+    clue, belong = [], []
+    for cid in ROOM["hands"].get(role_id, []):
+        c = SC.get_card(cid) or {}
+        (belong if c.get("loc") in bl else clue).append(cid)
+    return clue, belong
+
+
 def _over_limit(role_id: str) -> int:
-    return max(0, len(ROOM["hands"].get(role_id, [])) - _hand_limit())
+    """일반 단서 칸이 넘친 장수. 넘치면 그만큼 전체공개로 내려놓아야 한다."""
+    clue, _ = _split_hand(role_id)
+    return max(0, len(clue) - _hand_limit())
+
+
+def _over_belong(role_id: str) -> int:
+    """소지품 칸이 넘친 장수. 이쪽은 공개가 아니라 «버리는» 것으로 정리한다 —
+    넷의 물건을 다 본 다음 무엇을 손에 남길지가 이 판의 선택이다."""
+    if not _belong_locs():
+        return 0
+    _, belong = _split_hand(role_id)
+    return max(0, len(belong) - _belong_limit())
 
 
 def _human_roles() -> list:
@@ -1245,6 +1311,14 @@ def _openable_cards(role_id: str) -> list:
     quota_locs = set()
     for b in qst:
         quota_locs.update(b["locs"])
+    # 순서가 정해진 페이즈면, 아직 차례가 아닌 몫도 후보에서 뺀다.
+    # 안 그러면 AI가 막힌 구역을 골랐다가 거절당하고 그 라운드를 통째로 흘린다 — 실제로 그랬다.
+    if bool(SC.phase_by_seq(ROOM["seq"]).get("quotaOrder")):
+        for i, b in enumerate(qst):
+            if b["used"] < b["n"]:
+                for later in qst[i + 1:]:
+                    full.update(later["locs"])
+                break
     mine = ROOM["hands"].get(role_id, [])
     seen = set(ROOM["revealed"])
     for cids in ROOM["hands"].values():
@@ -1253,7 +1327,9 @@ def _openable_cards(role_id: str) -> list:
     for c in SC.CARDS:
         if c["id"] in mine or c["id"] in ROOM["revealed"] or c["round"] > cur:
             continue
-        if _holder_of(c["id"]):          # 남이 이미 가져간 카드는 후보에서 제외
+        if _holder_of(c["id"]) and not c.get("shared"):   # 남이 가져간 카드는 후보에서 제외
+            continue
+        if _zone_lock(c.get("loc", ""), cur):             # 아직 못 가는 구역
             continue
         if qst and (c["loc"] in full or c["loc"] not in quota_locs):
             continue
@@ -1483,8 +1559,16 @@ def _ai_trim_hand(role_id: str) -> list:
     # 손패가 차는 순간 자기 목표를 스스로 공개해버렸다 — 달성률이 0이었다.
     hide |= set(((getattr(SC, "KEEP_GOALS", {}) or {}).get(role_id) or {}).get("cards", []))
     out = []
+    # 소지품 칸은 «버려서» 맞춘다. 공개할 물건이 아니라 넷이 같이 본 물건이라서다.
+    while _over_belong(role_id) > 0:
+        _, belong = _split_hand(role_id)
+        if not belong:
+            break
+        drop = max(belong, key=lambda cid: (interest.get(cid, 0.0),
+                                            zlib.crc32(f"{role_id}|b|{cid}".encode()) % 97))
+        ROOM["hands"][role_id].remove(drop)
     while _over_limit(role_id) > 0:
-        hand = list(ROOM["hands"].get(role_id, []))
+        hand, _ = _split_hand(role_id)
         if not hand:
             break
         # hide 목록은 마지막까지 쥔다. 그 밖에서는 interest 가 높을수록 먼저 내려놓는다.
@@ -1520,6 +1604,9 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
     if not c:
         return "없는 카드"
     cur = current_round(ROOM["seq"])
+    lock = _zone_lock(c.get("loc", ""), cur)
+    if lock:
+        return lock
     if c["round"] > cur:
         return f"아직 조사할 수 없습니다 (조사 R{c['round']}에 열림)"
     # 선행 카드 검사. 여태 _openable_cards(=화면 표시와 AI 선택)에만 있었고 실제 조사 요청에는
@@ -1537,6 +1624,8 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
     ap = _ap_for(ROOM["seq"])
     already = card_id in ROOM["hands"].get(role_id, [])
     holder = _holder_of(card_id)
+    if c.get("shared"):
+        holder = None            # 소지품은 넷이 함께 늘어놓고 본다 — 먼저 본 사람이 가져가는 물건이 아니다
     if holder and holder != role_id:
         # 조사카드는 한 사람만 가진다 — 먼저 조사한 사람에게 물어봐야 한다.
         h = SC.get_character(holder) or {}
@@ -1574,8 +1663,15 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
         return None
     h = ROOM["hands"].setdefault(role_id, [])
     if card_id not in h:
+        # 묶음이면 형제들이 같이 온다. 조사턴은 그래도 한 번만 센다 —
+        # 라운드 기록은 대표 한 장에만 남기고 나머지는 0라운드로 둔다.
+        sibs = _bundle_of(c)
         h.append(card_id)
         ROOM["checkedRound"].setdefault(role_id, {})[card_id] = cur
+        for x in sibs:
+            if x["id"] not in h:
+                h.append(x["id"])
+                ROOM["checkedRound"][role_id][x["id"]] = 0
         # 카드의 제목과 본문은 그 배역의 손패다. 하지만 '누가 어디를 봤는가'는 공개 정보고,
         # 마킹이 존재하는 이유가 바로 그것이다 — 그 자체가 추리 재료다.
         nm = (SC.get_character(role_id) or {}).get("name", role_id)
@@ -1748,6 +1844,68 @@ def publish_card(b: Investigate):
             return JSONResponse({"error": "내 손패에 없는 카드입니다"}, status_code=409)
         _publish_from(b.roleId, b.cardId)
     return {"ok": True, "over": _over_limit(b.roleId)}
+
+
+@app.post("/api/belongings/keep")
+def belongings_keep(b: SwapCard):
+    """소지품 칸을 상한까지 줄인다. b.giveId 에 «남길 카드 id들»을 쉼표로 잇는다.
+
+    넷의 물건을 한자리에 늘어놓고 본 다음, 손에 남길 것만 고른다.
+    안 고른 것은 공개되지 않고 그냥 사라진다 — 봤다는 사실만 남는다.
+    """
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId:
+            return JSONResponse({"error": "권한 없음"}, status_code=403)
+        keep = [x for x in (b.giveId or "").split(",") if x]
+        lim = _belong_limit()
+        if len(keep) > lim:
+            return JSONResponse({"error": f"{lim}장까지만 남길 수 있습니다"}, status_code=409)
+        _, belong = _split_hand(b.roleId)
+        if any(k not in belong for k in keep):
+            return JSONResponse({"error": "내가 지금 보고 있는 소지품이 아닙니다"}, status_code=409)
+        for cid in belong:
+            if cid not in keep:
+                ROOM["hands"][b.roleId].remove(cid)
+        bump()
+    return {"ok": True, "overBelong": _over_belong(b.roleId)}
+
+
+@app.post("/api/ready")
+def ready_toggle(b: RoleReq):
+    """「결과 확인」 토글. 사람 배역이 전원 켜면 판이 다음 막으로 넘어간다.
+
+    호스트 한 사람이 넘기는 것과 다르다 — 종막은 아직 할 말이 남은 사람이 있기 마련이고,
+    그 사람이 준비되기 전에 진상이 열리면 판이 거기서 끝나버린다.
+    """
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "그 배역으로 누를 수 없습니다"}, status_code=403)
+        rd = ROOM.setdefault("ready", [])
+        nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
+        if b.roleId in rd:
+            rd.remove(b.roleId)
+        else:
+            rd.append(b.roleId)
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": f"{nm}{_subj(nm)} 결과 확인을 눌렀습니다."})
+        st = _ready_state()
+        if st and st["done"]:
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": "전원이 준비됐습니다 — 다음 막으로 넘어갑니다."})
+            ROOM["ready"] = []
+            _advance()
+        bump()
+    return {"ok": True, "ready": _ready_state()}
+
+
+def _ready_state():
+    humans = _human_roles()
+    if not humans:
+        return None
+    rd = [r for r in (ROOM.get("ready") or []) if r in humans]
+    return {"n": len(rd), "of": len(humans), "done": len(rd) >= len(humans), "mine": list(rd)}
 
 
 @app.post("/api/swap")
@@ -2224,12 +2382,24 @@ def interrogate(b: Interrogate):
         selfmode = not (b.cardId or "").strip()
         if not selfmode and b.cardId not in ROOM["hands"].get(b.targetRoleId, []):
             return JSONResponse({"error": "그 배역이 지금 들고 있는 카드가 아닙니다"}, status_code=409)
+        # 사건에 따라 한 카드는 한 번만 추궁에 쓸 수 있다. 같은 자리를 몇 번이고
+        # 들이대며 갈아 마시는 판을 막는다 — 무엇을 물을지 고르는 것이 곧 심문이다.
+        once = bool(getattr(SC, "INTERROGATE_ONCE", False))
+        used = ROOM.setdefault("itgUsed", [])
+        if once and not selfmode and b.cardId in used:
+            c0 = SC.get_card(b.cardId) or {}
+            return JSONResponse({"error": f'「{c0.get("title", "그 카드")}」는 이미 추궁에 쓴 카드입니다 — 다른 것으로 물으세요'},
+                                status_code=409)
 
         evid_id = (b.evidenceCardId or "").strip()
         if evid_id:
             has_access = evid_id in ROOM["hands"].get(b.askerRoleId, []) or evid_id in ROOM["revealed"]
             if not has_access:
                 return JSONResponse({"error": "내가 갖고 있지 않은 카드는 증거로 댈 수 없습니다"}, status_code=409)
+            if once and evid_id in used:
+                c0 = SC.get_card(evid_id) or {}
+                return JSONResponse({"error": f'「{c0.get("title", "그 카드")}」는 이미 추궁에 쓴 카드입니다'},
+                                    status_code=409)
 
         card = None if selfmode else SC.get_card(b.cardId)
         target = SC.get_character(b.targetRoleId) or {}
@@ -2302,6 +2472,10 @@ def interrogate(b: Interrogate):
             outcome, line = "plain", f'{intro} 「{card["title"]}」— {card["text"]}'.strip()
 
         ROOM["interrogate"]["used"] += 1
+        if bool(getattr(SC, "INTERROGATE_ONCE", False)):
+            for cid in (b.cardId, evid_id):
+                if cid and cid not in ROOM["itgUsed"]:
+                    ROOM["itgUsed"].append(cid)
 
         badge = {"truth": "실토", "evasive": "얼버무림", "plain": "답변", "unknown": "모른다"}[outcome]
         if outcome == "evasive":
@@ -2630,6 +2804,7 @@ def _seed_phase_lines(seq: int) -> None:
 def _advance():
     _ev("phase_leaving", name=SC.phase_by_seq(ROOM["seq"])["name"])
     with LOCK:
+        ROOM["ready"] = []          # 준비 표시는 막마다 새로 받는다
         if ROOM["seq"] < len(SC.PHASES):
             ROOM["seq"] += 1
             seq = ROOM["seq"]
