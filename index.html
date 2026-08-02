@@ -3785,7 +3785,7 @@ function showWho(keepTab){
       <div class="wi">
         <div class="wn" style="color:${c.color}">${esc(c.name)}<span class="sub">${esc(c.age)}·${esc(c.job)}</span>${seat}</div>
         <div class="wt">${esc(c.tagline||"")}</div>
-        ${c.known?`<div class="wknown"><span class="k">세간에 알려진 것</span>${esc(c.known)}</div>`:""}
+        ${c.known?`<div class="wknown"><span class="k">여기 사람들이 아는 것</span>${esc(c.known)}</div>`:""}
         ${ids.length?`<div class="wcards">${cards}</div>`:`<div class="wnone">지금 쥐고 있는 카드가 없습니다.</div>`}
       </div></div>`;
   }).join("");
