@@ -1068,8 +1068,13 @@ def _bundle_of(card: dict) -> list:
     """
     if not card.get("shared"):
         return []
+    # 묶음 이름이 있으면 그것으로 묶는다. 없으면 구역·라운드로 묶는다(옛 방식).
+    b = card.get("bundle")
+    if b:
+        return [c for c in SC.CARDS if c.get("bundle") == b]
     return [c for c in SC.CARDS
-            if c.get("shared") and c["loc"] == card["loc"] and c["round"] == card["round"]]
+            if c.get("shared") and not c.get("bundle")
+            and c["loc"] == card["loc"] and c["round"] == card["round"]]
 
 
 def _zone_lock(loc: str, rnd: int) -> str:
@@ -1324,12 +1329,14 @@ def _openable_cards(role_id: str) -> list:
     seen = set(ROOM["revealed"])
     for cids in ROOM["hands"].values():
         seen.update(cids)
-    out = []
+    out, fresh = [], []
     for c in SC.CARDS:
         if c["id"] in mine or c["id"] in ROOM["revealed"] or c["round"] > cur:
             continue
         if _holder_of(c["id"]) and not c.get("shared"):   # 남이 가져간 카드는 후보에서 제외
             continue
+        if c.get("shared") and c["id"] not in mine and _holder_of(c["id"]):
+            fresh.append(c["id"])                          # 남이 이미 연 묶음 — 뒤로 미룬다
         if _zone_lock(c.get("loc", ""), cur):             # 아직 못 가는 구역
             continue
         if qst and (c["loc"] in full or c["loc"] not in quota_locs):
@@ -1341,7 +1348,10 @@ def _openable_cards(role_id: str) -> list:
     # 자기 카드만 남은 배역이 후보 0이 되어 턴을 그냥 흘린다 — 실제로 그랬다.
     if any(c.get("owner") != role_id for c in out):
         out = [c for c in out if c.get("owner") != role_id]
-    return out
+    # 아직 아무도 안 연 묶음이 남아 있으면 그쪽부터 고른다. 열린 묶음을 또 여는 건
+    # 조사턴 하나를 버리는 것이고, 그러면 넷이 겹쳐서 나머지 묶음이 통째로 안 열린다.
+    untouched = [c for c in out if c["id"] not in fresh]
+    return untouched or out
 
 
 def _recent_text(n: int = 8) -> str:
