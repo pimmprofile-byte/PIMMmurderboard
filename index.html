@@ -1781,6 +1781,9 @@ function openHMenu(){
   else if(notLast)
     it.push([ICO.next,"다음 막으로","호스트가 넘깁니다","0"]);
   it.push([ICO.mask,"배역 화면","맡은 배역을 바꾸거나 확인","go('lobby')"]);
+  if(STATE&&STATE.hasHost&&!STATE.isHost)
+    it.push([ICO.film,"진행 권한 가져오기",
+             STATE.hostStale?"호스트 기기가 응답이 없습니다":"이 기기가 판을 진행합니다","takeHost()"]);
   if(gmOn||localStorage.getItem("pmb.gmkeyset")==="1")
     it.push([ICO.film,"진행석","페이즈 진행·조사 마킹","go('gm')"]);
   it.push([ICO.play,"오프닝 다시 보기","사건이 어떻게 시작됐는지","replayVN()"]);
@@ -1795,6 +1798,19 @@ function openHMenu(){
   $("hmenu").classList.add("on");
 }
 function closeHMenu(){ $("hmenu").classList.remove("on"); }
+/* 진행 권한 넘겨받기 — 호스트를 쥔 기기가 창을 닫았거나 저장소를 지웠으면
+   아무도 막을 넘길 수 없어 판이 그 자리에 선다. 그 자리를 이어받는 문이다. */
+async function takeHost(){
+  const stale=!!(STATE&&STATE.hostStale);
+  if(!await ask({title:"진행 권한을 가져옵니다",
+                 body:stale?"지금 호스트로 지정된 기기가 한참째 응답이 없습니다.\n이 기기가 대신 판을 진행합니다."
+                          :"다른 기기가 진행을 맡고 있습니다.\n가져오면 그 기기는 진행 권한을 잃습니다.",
+                 warn:stale?"":"같이 하는 사람과 먼저 이야기하세요.",
+                 ok:"가져오기", cancel:"그만두기", tone:stale?"cold":"danger"})) return;
+  const r=await post("/api/host/claim",{clientId,force:true});
+  banner(r&&r.isHost?"이 기기가 진행을 맡습니다.":"가져오지 못했습니다.");
+  await poll();
+}
 /* 나가기. 참가자는 자기 자리만 비우고 떠나고, 호스트는 방을 닫는다. */
 async function leaveRoom(isHost){
   if(isHost){

@@ -535,6 +535,7 @@ class CrisisAnswer(BaseModel):
 
 class HostReq(BaseModel):
     clientId: str = ""
+    force: bool = False
     # GM 진행석은 호스트와 별개다 — 호스트가 아닌 기기가 진행을 맡을 수 있으므로
     # 그 기기는 키로 자기를 밝힌다. AGENT_KEY를 안 걸어둔 로컬 판에서는 빈 값도 통과한다.
     key: str = ""
@@ -786,6 +787,11 @@ def state(clientId: str = "", gm: int = 0):
             st["podMarked"] = _pod_marked(st["myRole"])
             st["podCodeOk"] = bool(ROOM["podCode"].get(st["myRole"]))
         st["isHost"] = bool(clientId) and ROOM.get("host") == clientId
+        if st["isHost"]:
+            ROOM["hostSeen"] = time.time()
+        # 호스트를 쥔 기기가 사라지면(창을 닫았거나, 저장소를 지웠거나, 다른 폰으로 옮겼거나)
+        # 아무도 판을 못 굴린다. 그 자리는 잠깐 비면 남이 이어받을 수 있어야 한다.
+        st["hostStale"] = bool(ROOM.get("host")) and not st["isHost"] and _host_stale()
         # 호스트를 아무도 안 잡은 방도 있다. 그때는 '호스트 전용' 연출을 아무도 못 보게 되므로
         # 클라이언트가 그 사정을 알 수 있게 해준다(다른 엔드포인트도 같은 규칙으로 통과시킨다).
         st["hasHost"] = ROOM.get("host") is not None
@@ -842,16 +848,37 @@ def _roles_locked() -> bool:
     return bool(ROOM.get("started"))
 
 
+# 호스트가 이만큼 조용하면 자리를 비운 것으로 본다. 폴링이 1.5초라 넉넉히 잡아도 짧다.
+HOST_STALE_SEC = 45
+
+
+def _host_stale() -> bool:
+    seen = ROOM.get("hostSeen")
+    return seen is None or (time.time() - seen) > HOST_STALE_SEC
+
+
 @app.post("/api/host/claim")
 def host_claim(b: HostReq):
     with LOCK:
         if not b.clientId:
             return JSONResponse({"error": "clientId"}, status_code=400)
+        # 비어 있거나 내 것이면 그냥 잡는다. 남이 쥐고 있어도 그쪽이 한참 조용하거나
+        # 이쪽이 작정하고 가져가겠다고 하면 넘겨준다 — 친구들끼리 도는 방이고,
+        # 여기서 막아봐야 판이 멈추는 것 말고는 지켜지는 게 없다.
         if ROOM.get("host") in (None, b.clientId):
             ROOM["host"] = b.clientId
+            ROOM["hostSeen"] = time.time()
             bump()
             return {"ok": True, "isHost": True}
-        return {"ok": False, "isHost": False, "hasHost": True}
+        if b.force or _host_stale():
+            prev = ROOM.get("host")
+            ROOM["host"] = b.clientId
+            ROOM["hostSeen"] = time.time()
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": "진행 권한이 다른 기기로 넘어갔습니다."})
+            bump()
+            return {"ok": True, "isHost": True, "tookOver": True, "prev": bool(prev)}
+        return {"ok": False, "isHost": False, "hasHost": True, "stale": False}
 
 
 @app.post("/api/host/release")
