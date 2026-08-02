@@ -594,6 +594,16 @@
   .vic-s img{flex:0 0 96px;display:block;width:96px;aspect-ratio:16/9;object-fit:cover;border-radius:3px}
   .vic-s .cap{flex:1 1 auto;min-width:0;font-size:12px;line-height:1.6;color:var(--sub)}
   .vic-s .cap b{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+  /* 소지품 카드 — 사람마다 그림 하나씩 */
+  .cardart.grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .cardart.grid .ca-one{position:relative;display:block;padding:0;border:1px solid var(--line);
+    border-radius:9px;overflow:hidden;background:var(--bg);cursor:pointer}
+  .cardart.grid .ca-one:active{transform:scale(.985)}
+  .cardart.grid .ca-slot{aspect-ratio:4/3;border-radius:9px;background:var(--bg2)}
+  .cardart.grid .ca-one img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+  .cardart.grid .ca-nm{position:absolute;left:0;right:0;bottom:0;padding:14px 8px 5px;
+    font-size:11.5px;font-weight:700;text-align:left;
+    background:linear-gradient(180deg,transparent,rgba(0,0,0,.82))}
   /* 소지품 정리 목록 */
   .trimlist{display:flex;flex-direction:column;gap:7px;margin-top:11px}
   .trimrow{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:11px 12px;
@@ -3524,12 +3534,38 @@ function oneLine(t){
    읽는 호흡을 끊어준다. 규약은 /assets/{시나리오}_card_{카드ID}. 없으면 글만 뜬다. */
 function paintCardArt(id){
   const sid=STATE.scenarioId||""; if(!sid) return;
-  findAsset(`/assets/${sid}_card_${id}`, url=>{
-    const t=$("cardText"); if(!url||!t||t.dataset.art) return;
-    t.dataset.art="1";
-    t.insertAdjacentHTML("beforebegin",
-      `<div class="cardart" onclick="showPic('${url}','${esc(($("cardBox").querySelector("h2")||{}).textContent||"")}')">
-         <img src="${url}" alt="" decoding="async"></div>`);
+  const c=cardCat(id)||{};
+  // 소지품 카드는 한 장에 네 사람 것이 들어 있다 — 그림도 사람마다 하나씩이라
+  // /assets/{사건}_card_{카드}_{배역}. 없는 사람은 그냥 빠진다.
+  const per=(belongLocs()||[]).indexOf(c.loc)>=0
+    ? (SCEN.characters||[]).map(x=>({rid:x.id, name:x.name, color:x.color}))
+    : [];
+  if(!per.length){
+    findAsset(`/assets/${sid}_card_${id}`, url=>{
+      const t=$("cardText"); if(!url||!t||t.dataset.art) return;
+      t.dataset.art="1";
+      t.insertAdjacentHTML("beforebegin",
+        `<div class="cardart" onclick="showPic('${url}','${esc(($("cardBox").querySelector("h2")||{}).textContent||"")}')">
+           <img src="${url}" alt="" decoding="async"></div>`);
+    });
+    return;
+  }
+  const t=$("cardText"); if(!t||t.dataset.art) return;
+  t.dataset.art="1";
+  // 자리를 먼저 배역 순서대로 잡아둔다. 그림을 받아오는 대로 붙이면 로딩이 빠른 것부터
+  // 들어와서 순서가 매번 달라진다 — 카드 본문의 나열 순서와 어긋나면 읽다가 눈이 튄다.
+  t.insertAdjacentHTML("beforebegin",
+    `<div class="cardart grid" id="cardArtGrid">${per.map(x=>
+      `<div class="ca-slot" data-rid="${x.rid}"></div>`).join("")}</div>`);
+  per.forEach(x=>{
+    findAsset(`/assets/${sid}_card_${id}_${x.rid}`, url=>{
+      const g=$("cardArtGrid"); if(!g) return;
+      const slot=g.querySelector(`.ca-slot[data-rid="${x.rid}"]`); if(!slot) return;
+      if(!url){ slot.remove(); return; }              // 그림이 없는 사람은 자리도 없앤다
+      slot.outerHTML=`<button class="ca-one" onclick="showPic('${url}','${esc(x.name)}')">
+           <img src="${url}" alt="" decoding="async">
+           <span class="ca-nm" style="color:${x.color||"#bbb"}">${esc(x.name)}</span></button>`;
+    });
   });
 }
 function pairOf(id){ return (SCEN.pairKeys||[]).find(k=>k.cards.includes(id))||null; }
