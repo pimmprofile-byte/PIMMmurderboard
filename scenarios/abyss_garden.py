@@ -49,6 +49,16 @@ VICTIM = (
     "사망 추정 새벽 2시 10~35분 · 개인 단말기(포드 인증코드 보관)가 사라진 상태."
 )
 
+VICTIM_CARD = {
+    "name": "서준혁", "age": "52", "job": "이원록함 선장",
+    "tagline": "함교 조타석 옆에 쓰러져 있었다.",
+    "facts": ["후두부 가격 후 경부 압박",
+              "목에 굵고 거친 검은 기름 자국이 한 줄",
+              "외부작업복 차림 · 장갑 한 짝은 끼워지지 않은 채",
+              "사망 추정 새벽 2시 10~35분",
+              "개인 단말기(포드 인증코드 보관)가 사라진 상태"],
+}
+
 # ── 사건 당시 알리바이 대화록 ──
 # 오프닝이 끝나고 문재이가 «각자 어디 있었는지부터 맞춰보죠»라고 한 직후,
 # 한 바퀴 돌려 받아적은 기록. 전부 '주장'이다 — 여기서 참말은 절반뿐이다.
@@ -1193,7 +1203,7 @@ def public_scenario() -> dict:
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
         # 알리바이 대화록 — 공통지문·피해자 바로 아래에 붙는다. 이름은 클라이언트가 배역표에서 찾는다.
         "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE,
-        "map": MAP, "mapLabel": "배 안",
+        "map": MAP, "victimCard": VICTIM_CARD, "mapLabel": "배 안",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
                         "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],

@@ -58,6 +58,15 @@ VICTIM = (
     "요 몇 주 치매 증세가 급격히 심해졌고, 사람을 자꾸 다른 이름으로 불렀다."
 )
 
+VICTIM_CARD = {
+    "name": "구본진", "age": "64", "job": "평화누리 캠핑장 주인",
+    "tagline": "관리동 안쪽 방, 아내 사진이 놓인 책상 앞에서 발견됐다.",
+    "facts": ["목에 손자국이 남아 있다",
+              "몸싸움의 흔적이 거의 없다 — 30초를 못 버틴 것으로 보인다",
+              "요 몇 주 치매 증세가 급격히 심해졌다",
+              "사람을 자꾸 다른 이름으로 불렀다"],
+}
+
 ALIBI_NOTE = "각자가 스스로 말한 것을 그대로 옮겼다. 참인지는 아무도 모른다."
 ALIBI_LOG = [
     {"who": "handogyeom", "t": "19:20", "say": "어르신이 또 사모님 얘기를 시작하셔서… 저는 먼저 일어났어요. 텐트에 있었습니다. 혼자요."},
@@ -1034,7 +1043,7 @@ def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
         "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE,
-        "map": MAP, "mapLabel": "쉘터",
+        "map": MAP, "victimCard": VICTIM_CARD, "mapLabel": "쉘터",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"],
                     "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],

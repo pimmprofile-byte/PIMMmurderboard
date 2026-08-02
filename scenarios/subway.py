@@ -49,6 +49,13 @@ VICTIM = (
     "등에 밀친 자국, 손톱 밑 저항흔, 한 손에 무언가를 움켜쥠 · 사망 추정 시각 새벽 1시 05분경(막차 이후)."
 )
 
+VICTIM_CARD = {
+    "name": "서동철", "age": "48", "job": "사채업자",
+    "tagline": "승강장 끝 선로에서 감전사했다(제3궤조).",
+    "facts": ["등에 밀친 자국", "손톱 밑 저항흔", "한 손에 무언가를 움켜쥠",
+              "사망 추정 새벽 1시 05분경 — 막차 이후"],
+}
+
 # 진상 전문 — 서버 전용
 TRUTH_FULL = (
     "진범은 윤미래(31)다. '사회부 기자'라는 신분은 위조이고, 진짜 정체는 서동철 사채 피해 유가족이다.\n"
@@ -281,7 +288,7 @@ ENDINGS = {
 def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
-        "map": MAP, "mapLabel": "역 안",
+        "map": MAP, "victimCard": VICTIM_CARD, "mapLabel": "역 안",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"], "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [{"id": c["id"], "name": c["name"], "age": c["age"], "job": c["job"],
                         "avatar": c["avatar"], "color": c["color"], "tagline": c["tagline"],

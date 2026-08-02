@@ -88,6 +88,13 @@ VICTIM = (
     "얼굴을 떠올리려고 하면 자꾸 다른 얼굴이 겹친다."
 )
 
+VICTIM_CARD = {
+    "name": "죽은 사람", "age": "", "job": "나이는 아무도 말하지 못한다",
+    "tagline": "안방에 누운 채로 발견됐다.",
+    "facts": ["겉으로 보이는 상처가 없다",
+              "얼굴을 떠올리려고 하면 자꾸 다른 얼굴이 겹친다"],
+}
+
 ALIBI_NOTE = "각자가 자기 자리에서 본 것을 옮겼다. 겹쳐 읽으면 맞지 않는 데가 있다."
 ALIBI_LOG = []
 
@@ -217,7 +224,7 @@ def private_sheet(cid: str):
 def public_scenario() -> dict:
     return {
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
-        "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE, "map": MAP, "mapLabel": "집 안",
+        "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE, "map": MAP, "victimCard": VICTIM_CARD, "mapLabel": "집 안",
         "phases": [{"seq": p["seq"], "key": p["key"], "name": p["name"], "min": p["min"],
                     "ap": p["ap"], "gm": p["gm"]} for p in PHASES],
         "characters": [],
