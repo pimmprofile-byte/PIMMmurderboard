@@ -848,8 +848,9 @@ def _roles_locked() -> bool:
     return bool(ROOM.get("started"))
 
 
-# 호스트가 이만큼 조용하면 자리를 비운 것으로 본다. 폴링이 1.5초라 넉넉히 잡아도 짧다.
-HOST_STALE_SEC = 45
+# 호스트가 이만큼 조용하면 자리를 비운 것으로 본다. 판 중에 한참 관망하는 사람이 있어서
+# 짧게 잡으면 멀쩡히 보고 있는 호스트를 빼앗게 된다.
+HOST_STALE_SEC = 300
 
 
 def _host_stale() -> bool:
