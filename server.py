@@ -752,6 +752,15 @@ def state(clientId: str = "", gm: int = 0):
             st["timeline"] = list(getattr(SC, "TIMELINE", []) or [])
             st["truthFull"] = getattr(SC, "TRUTH_FULL", "")
             st["culpritId"] = getattr(SC, "CULPRIT_ID", "")
+            # 시각표를 선으로 그리려면 구역 이름이 있어야 한다. 방 목록에서 그대로 끌어온다.
+            # 시각표에 loc 이 없는 시나리오는 선 그림을 건너뛰고 표만 그린다.
+            locs, seen = [], set()
+            for r in (getattr(SC, "ROOMS", []) or []):
+                k = r.get("key")
+                if k and k not in seen:
+                    seen.add(k)
+                    locs.append({"id": k, "name": r.get("name") or k})
+            st["timelineLocs"] = locs
         st["hasHost"] = ROOM.get("host") is not None
         # 내가 맡은 배역. 예전엔 클라이언트가 localStorage 기억만 보고 판단해서,
         # 잡은 직후나 새로고침 뒤에 자기 배역을 '참여 중'(남이 맡음)으로 그리곤 했다.

@@ -479,6 +479,17 @@
   .rv-x{grid-column:2;color:var(--sub);word-break:keep-all}
   .rv-r.key .rv-x{color:#ddd9d7}
   @media (max-width:430px){ .rv-r{grid-template-columns:46px 1fr} }
+  /* 그날 밤 동선 — 가로가 시각, 세로가 구역. 선이 겹친 자리가 같은 방에 있었던 순간이다.
+     도표를 읽히려는 게 아니라 「언제 누가 누구와 겹쳤나」만 눈에 걸리면 된다. */
+  .xline{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+    background:rgba(255,255,255,.02)}
+  .xl-lab{flex:0 0 auto;background:rgba(0,0,0,.28);border-right:1px solid var(--line)}
+  .xl-vp{flex:1 1 auto;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+  .xl-vp::-webkit-scrollbar{height:5px}
+  .xl-vp::-webkit-scrollbar-thumb{background:#3a3532;border-radius:3px}
+  .xl-leg{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:9px;font-size:11.5px;color:var(--sub)}
+  .xl-leg span{display:inline-flex;align-items:center;gap:5px}
+  .xl-leg i{width:14px;height:2px;border-radius:2px;display:inline-block}
   .pill.pair{font-family:inherit;cursor:pointer;color:var(--cold);border-color:#2f4a5c;
     background:rgba(90,140,180,.10);transition:.15s}
   .pill.pair:hover{filter:brightness(1.25)}
@@ -3997,6 +4008,79 @@ function keepGoalsHTML(){
 }
 /* 그날 밤을 분 단위로 편다. 알리바이가 이 장르의 뼈대라, 마지막에 표로 맞춰봐야
    흩어져 있던 카드들이 한 줄로 꿰인다. 진범이 움직인 자리는 따로 물들인다. */
+/* 그날 밤 동선. 세로가 구역, 가로가 시각, 인물마다 선 하나.
+   같은 방에 같은 시각에 있었으면 선이 한 칸에서 만난다 — 그 겹침만 보이면 된다.
+   시각표에 loc 이 없는 시나리오에서는 아무것도 그리지 않고 표만 남긴다. */
+function tlMin(t){ const m=/(\d{1,2}):(\d{2})/.exec(t||""); return m?(+m[1])*60+(+m[2]):null; }
+function crossHTML(){
+  const rows=(STATE.timeline||[]).filter(r=>r.loc&&tlMin(r.t)!==null);
+  if(rows.length<4) return "";
+  const named={}; (STATE.timelineLocs||[]).forEach(l=>named[l.id]=l.name);
+  named["-"]=named["-"]||"복도";
+  const order=(STATE.timelineLocs||[]).map(l=>l.id).concat(["-"]);
+  const used=[...new Set(rows.map(r=>r.loc))];
+  const lanes=order.filter(id=>used.includes(id)).concat(used.filter(id=>!order.includes(id)));
+  if(lanes.length<2) return "";
+  const li={}; lanes.forEach((id,i)=>li[id]=i);
+
+  const pts={};
+  rows.forEach(r=>{
+    const who=(r.who?[r.who]:[]).concat(r.with||[]);
+    who.forEach(w=>{ (pts[w]=pts[w]||[]).push({m:tlMin(r.t),y:li[r.loc],t:r.t,what:r.what,key:!!r.key}); });
+  });
+  const cast=Object.keys(pts).filter(w=>roleById(w)&&pts[w].length>1);
+  if(!cast.length) return "";
+  cast.forEach(w=>pts[w].sort((a,b)=>a.m-b.m));
+
+  const m0=Math.min(...rows.map(r=>tlMin(r.t))), m1=Math.max(...rows.map(r=>tlMin(r.t)));
+  const SC_=Math.max(2.6, Math.min(4.2, 620/Math.max(1,m1-m0)));
+  const PAD=22, TOP=24, LH=32;
+  const X=m=>PAD+(m-m0)*SC_, W=Math.round(PAD*2+(m1-m0)*SC_), H=TOP+lanes.length*LH+8;
+  // 같은 방에 같은 시각이면 선이 정확히 포개져 한 사람 것만 보인다. 인물마다 살짝 어긋내 둔다.
+  const Y=(i,k)=>TOP+i*LH+LH/2+(k===undefined?0:(k-(cast.length-1)/2)*2.6);
+
+  // 구역 이름은 따로 고정해 둔다 — 가로로 밀어도 어느 방인지 계속 보여야 한다.
+  const LW=Math.min(84, 30+Math.max(...lanes.map(id=>(named[id]||id).length))*12);
+  const bands=lanes.map((id,i)=>
+    `<rect x="0" y="${TOP+i*LH}" width="100%" height="${LH}" fill="${i%2?"rgba(255,255,255,.022)":"transparent"}"/>`).join("");
+  const labs=lanes.map((id,i)=>
+    `<text x="${LW-9}" y="${Y(i)+4}" text-anchor="end" font-size="11" fill="#8c8681">${esc(named[id]||id)}</text>`).join("");
+  const lab=`<svg class="xl-lab" width="${LW}" height="${H}" viewBox="0 0 ${LW} ${H}">${bands}${labs}</svg>`;
+
+  let grid="";
+  for(let m=Math.ceil(m0/30)*30; m<=m1; m+=30){
+    const x=X(m).toFixed(1), hh=String(Math.floor(m/60)%24).padStart(2,"0"), mm=String(m%60).padStart(2,"0");
+    grid+=`<line x1="${x}" y1="${TOP-6}" x2="${x}" y2="${H-6}" stroke="rgba(255,255,255,.07)"/>`
+        + `<text x="${x}" y="${TOP-11}" text-anchor="middle" font-size="10" fill="#6f6a66">${hh}:${mm}</text>`;
+  }
+  const cul=STATE.culpritId||"";
+  const lines=cast.map(w=>{
+    const c=roleById(w), p=pts[w];
+    const j=cast.indexOf(w);
+    let d=`M ${X(p[0].m).toFixed(1)} ${Y(p[0].y,j)}`;
+    for(let i=1;i<p.length;i++){
+      const x=X(p[i].m), px=X(p[i-1].m), k=Math.min(13,Math.max(3,(x-px)*0.4));
+      if(p[i].y===p[i-1].y) d+=` L ${x.toFixed(1)} ${Y(p[i].y,j)}`;
+      else d+=` L ${(x-k).toFixed(1)} ${Y(p[i-1].y,j)} L ${x.toFixed(1)} ${Y(p[i].y,j)}`;
+    }
+    const dots=p.map(q=>`<circle cx="${X(q.m).toFixed(1)}" cy="${Y(q.y,j)}" r="${q.key?3.4:2.2}"`
+      +` fill="${q.key?c.color:"#151311"}" stroke="${c.color}" stroke-width="1.4">`
+      +`<title>${esc(q.t)} · ${esc(c.name)}\n${esc(q.what||"")}</title></circle>`).join("");
+    return `<path d="${d}" fill="none" stroke="${c.color}" stroke-width="${w===cul?2.6:1.7}"`
+      +` stroke-linejoin="round" stroke-linecap="round" opacity="${w===cul?1:.82}"/>${dots}`;
+  }).join("");
+
+  const plot=`<div class="xl-vp"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
+    +lanes.map((id,i)=>`<rect x="0" y="${TOP+i*LH}" width="${W}" height="${LH}" fill="${i%2?"rgba(255,255,255,.022)":"transparent"}"/>`).join("")
+    +grid+lines+`</svg></div>`;
+  const leg=cast.map(w=>{ const c=roleById(w);
+    return `<span><i style="background:${c.color}"></i>${esc(c.name)}${w===cul?" · 진범":""}</span>`; }).join("");
+
+  return `<div class="card"><h2>그날 밤 · 동선</h2>
+    <div class="panel-note" style="margin-bottom:10px">가로가 시각, 세로가 구역입니다. 선이 같은 칸에서 만나는 자리가 그 시각 한방에 있었던 순간입니다.</div>
+    <div class="xline">${lab}${plot}</div>
+    <div class="xl-leg">${leg}</div></div>`;
+}
 function timelineHTML(){
   const rows=STATE.timeline||[]; if(!rows.length) return "";
   const cul=STATE.culpritId||"";
@@ -4018,7 +4102,7 @@ function renderReveal(p){
       +`<div class="rev-sol" style="margin-top:12px">${esc(e.desc)}\n\n─ 진상 ─\n${esc(e.truth)}</div>`
     : `<div class="panel-note">채점은 아직입니다. 먼저 그날 밤에 실제로 무슨 일이 있었는지부터 봅니다.</div>`;
   const truth=(!e&&STATE.truthFull)?`<div class="card"><h2>진상</h2><div class="rev-sol">${esc(STATE.truthFull)}</div></div>`:"";
-  p.innerHTML=`<div class="card"><h2>진상 공개</h2>${head}</div>`+timelineHTML()+truth+keepGoalsHTML();
+  p.innerHTML=`<div class="card"><h2>진상 공개</h2>${head}</div>`+crossHTML()+timelineHTML()+truth+keepGoalsHTML();
 }
 
 /* 채팅 */
