@@ -1417,6 +1417,7 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
         where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c.get("locName", "")
         ROOM["table"].append({"kind": "system", "broadcast": True,
                               "text": f'🔎 {nm}{_subj(nm)} 〈{where}〉{_obj(where)} 살펴봤습니다.'})
+        _auto_combine()
         bump()
     return None
 
@@ -1466,6 +1467,40 @@ def _publish_from(role_id: str, card_id: str) -> None:
         bump()
 
 
+def _auto_combine() -> None:
+    """반쪽 둘이 한자리에 모이면 조합 카드가 저절로 열린다.
+
+    맞물린다는 것을 눈으로 보고도 다시 조사 한 장을 써서 열어야 했는데, 그건 발견의
+    대가가 아니라 확인 절차다. 둘이 다 테이블에 있으면 테이블에서 열리고, 한 사람 손에
+    다 있으면 그 사람 손에 들어온다. 손패 상한은 그대로다 — 넘치면 넘친 채로 들어오고,
+    다른 카드를 내려놓아야 한다(사람은 경고를 보고, AI는 스스로 정리한다).
+    """
+    for c in getattr(SC, "CARDS", []) or []:
+        need = list(c.get("combo") or [])
+        if not need:
+            continue
+        cid = c["id"]
+        if cid in ROOM["revealed"] or _holder_of(cid):
+            continue
+        # 라운드 잠금은 걸지 않는다. 반쪽 둘을 모으는 것 자체가 이미 관문이고,
+        # 그걸 해내고도 라운드를 기다리라는 건 잠금을 두 번 거는 셈이다.
+        if all(x in ROOM["revealed"] for x in need):
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": f'🧩 테이블 위의 두 조각이 맞물렸습니다 — 「{c["title"]}」이(가) 드러납니다.'})
+            _publish(cid)
+            continue
+        for rid, hl in ROOM["hands"].items():
+            if all(x in hl for x in need):
+                hl.append(cid)
+                ROOM["checkedRound"].setdefault(rid, {})[cid] = current_round(ROOM["seq"])
+                nm = (SC.get_character(rid) or {}).get("name", rid)
+                ROOM["table"].append({"kind": "system", "broadcast": True,
+                                      "text": f'🧩 {nm}{_subj(nm)} 쥐고 있던 두 조각을 맞췄습니다 — 새 단서가 그 손에 들어왔습니다.'})
+                _ev("combine", roleId=rid, cardId=cid, title=c["title"])
+                break
+    bump()
+
+
 def _publish(card_id: str, by: str = "") -> None:
     """공개는 여기 한 곳으로 모인다 — 사건 기록도 여기서 낸다.
     호출 경로가 여럿이라(본인 공개·GM 공개·정리) 위쪽에서 내면 빠지는 길이 생긴다."""
@@ -1487,6 +1522,7 @@ def _publish(card_id: str, by: str = "") -> None:
                 title=c["title"], loc=c["loc"], locName=c["locName"], spot=c.get("spot", ""),
                 text=c.get("text", ""), hint=c.get("hint", ""))
         bump()
+        _auto_combine()
 
 
 def _ai_take_turn(rid: str) -> list:
