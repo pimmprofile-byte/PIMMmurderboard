@@ -371,7 +371,9 @@ def public_state() -> dict:
             "crisis": _crisis_public(),
             "sealed": list(ROOM.get("sealed") or []),
             "chat": {"on": CHAT["on"], "gap": CHAT["gap"]},
-            "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"]},
+            "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"],
+                      "quota": [{"label": b.get("label", ""), "locs": list(b.get("locs") or []),
+                                 "n": int(b.get("n", 0) or 0)} for b in _quota_for(seq)]},
             "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
             "table": table_tail(),
             "revealed": [SC.public_card(cid) for cid in ROOM["revealed"]],
@@ -379,6 +381,8 @@ def public_state() -> dict:
             "cuts": list(ROOM.get("cuts") or []),
             "checked": checked,
             "usedAP": used,
+            # 구역 몫을 쓰는 조사 페이즈에서, 배역별로 어느 구역을 몇 장 열었는지.
+            "quotaUsed": {rid: _quota_used(rid, cur) for rid in ROOM["roles"]},
             "handLimit": _hand_limit(),
             "pod": _pod_state(),
             # seq 8은 잠수정 기준의 매직넘버였다. 사건마다 막 수가 달라서 페이즈 키로 본다.
@@ -1027,6 +1031,58 @@ def _round_checks(role_id: str, rnd: int) -> int:
     return sum(1 for r in ROOM["checkedRound"].get(role_id, {}).values() if r == rnd)
 
 
+def _quota_for(seq: int) -> list:
+    """이번 조사 페이즈의 «구역 몫». 시나리오가 안 정했으면 빈 목록 — 그럼 아무 제한도 없다.
+
+    한 턴에 몇 장이냐(ap)와 «그 장을 어디에 써야 하느냐»는 다른 문제다. 쉘터 1차 조사는
+    두 장인데 한 장은 반드시 소지품, 한 장은 반드시 현장이다. ap만으로는 그걸 못 적는다.
+    """
+    return list(SC.phase_by_seq(seq).get("quota") or [])
+
+
+def _quota_used(role_id: str, rnd: int) -> dict:
+    """이번 라운드에 이 배역이 각 구역에서 몇 장을 열었는지 (loc → 장수)."""
+    out = {}
+    for cid, r in ROOM["checkedRound"].get(role_id, {}).items():
+        if r != rnd:
+            continue
+        c = SC.get_card(cid) or {}
+        loc = c.get("loc")
+        if loc:
+            out[loc] = out.get(loc, 0) + 1
+    return out
+
+
+def _quota_state(role_id: str, seq: int) -> list:
+    """화면에 그대로 뿌릴 수 있는 몫 현황. 없으면 빈 목록."""
+    q = _quota_for(seq)
+    if not q:
+        return []
+    used = _quota_used(role_id, current_round(seq))
+    out = []
+    for b in q:
+        locs = list(b.get("locs") or [])
+        out.append({"label": b.get("label", ""), "locs": locs, "n": int(b.get("n", 0) or 0),
+                    "used": sum(used.get(l, 0) for l in locs)})
+    return out
+
+
+def _quota_block(role_id: str, seq: int, loc: str) -> str | None:
+    """이 배역이 지금 이 구역을 열 수 있는가. 못 열면 사람이 읽을 이유를 돌려준다."""
+    st = _quota_state(role_id, seq)
+    if not st:
+        return None
+    for b in st:
+        if loc in b["locs"]:
+            if b["used"] >= b["n"]:
+                left = [x for x in st if x["used"] < x["n"]]
+                if left:
+                    return f'{b["label"]}은(는) 이번 턴 몫을 다 썼습니다 — 남은 건 「{left[0]["label"]}」입니다'
+                return f'{b["label"]}은(는) 이번 턴 몫을 다 썼습니다'
+            return None
+    return "이번 조사 턴에는 볼 수 없는 구역입니다"
+
+
 def _keep_goal_results() -> list:
     """'카드를 끝까지 쥐기' 목표를 쓰는 시나리오에서, 종막 시점 달성 여부를 계산한다."""
     fn = getattr(SC, "keep_goal_result", None)
@@ -1172,6 +1228,14 @@ def _card_needs(c: dict) -> list:
 
 def _openable_cards(role_id: str) -> list:
     cur = current_round(ROOM["seq"])
+    qst = _quota_state(role_id, ROOM["seq"])
+    full = set()
+    for b in qst:
+        if b["used"] >= b["n"]:
+            full.update(b["locs"])
+    quota_locs = set()
+    for b in qst:
+        quota_locs.update(b["locs"])
     mine = ROOM["hands"].get(role_id, [])
     seen = set(ROOM["revealed"])
     for cids in ROOM["hands"].values():
@@ -1182,9 +1246,15 @@ def _openable_cards(role_id: str) -> list:
             continue
         if _holder_of(c["id"]):          # 남이 이미 가져간 카드는 후보에서 제외
             continue
+        if qst and (c["loc"] in full or c["loc"] not in quota_locs):
+            continue
         if any(r not in seen for r in _card_needs(c)):
             continue
         out.append(c)
+    # 자기 것은 «남의 것이 하나라도 남아 있을 때만» 뺀다. 무조건 빼면 마지막 차례에
+    # 자기 카드만 남은 배역이 후보 0이 되어 턴을 그냥 흘린다 — 실제로 그랬다.
+    if any(c.get("owner") != role_id for c in out):
+        out = [c for c in out if c.get("owner") != role_id]
     return out
 
 
@@ -1470,6 +1540,18 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
             return f"지금은 {t.get('name', '다른 배역')} 차례예요 — 순서를 기다려 주세요"
         if _round_checks(role_id, cur) >= ap:
             return f"이번 조사 턴({cur}라운드)에 열 수 있는 {ap}장을 모두 사용했습니다"
+        qb = _quota_block(role_id, ROOM["seq"], c.get("loc", ""))
+        if qb:
+            return qb
+        if c.get("owner") == role_id:
+            # 남의 것이 하나라도 남아 있으면 자기 것은 못 연다. 마지막 사람이 자기 카드만
+            # 남은 채로 턴을 못 쓰는 일은 없어야 해서, 대안이 없을 때만 통과시킨다.
+            others = [x for x in SC.CARDS
+                      if x.get("loc") == c.get("loc") and x["round"] <= cur
+                      and x.get("owner") != role_id
+                      and x["id"] not in ROOM["revealed"] and not _holder_of(x["id"])]
+            if others:
+                return "자기 자신은 뒤질 수 없습니다 — 다른 사람을 고르세요"
     # 선행조건은 테이블 전체 기준 — 조사카드는 한 사람만 갖지만, 누군가 찾아낸 사실은
     # 대화로 공유되므로 그 뒤를 다른 사람이 이어 팔 수 있어야 한다.
     req = c.get("requires")
