@@ -85,6 +85,10 @@
   .rc{position:relative;display:block;padding:0 0 10px;overflow:hidden;text-align:left;
     background:var(--panel);border:1px solid var(--line);border-radius:14px;transition:border-color .16s,box-shadow .16s}
   .rc.off{opacity:.55}
+  .rc.tap{cursor:pointer}
+  .rc.tap:hover{border-color:var(--rc,var(--gold))}
+  .rc.tap:active{transform:scale(.985)}
+  .rc.tap:focus-visible{outline:2px solid var(--rc,var(--gold));outline-offset:2px}
   .rc.mine{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset,0 12px 34px -14px rgba(201,162,74,.5)}
   /* 인물 자리 — 사진이 있으면 사진, 없으면 이모지로 폴백(그 사이에도 안 깨진다) */
   .rc .por{position:relative;aspect-ratio:3/4;display:grid;place-items:center;overflow:hidden;
@@ -227,7 +231,10 @@
      「위에 뜬 것」이 아니다. 하단바는 그대로 남아 있어야 오갈 수 있다. */
   /* 하단바에서 여는 화면은 창이 아니라 탭이다 — 뒤가 비쳐 보이면 「위에 뜬 것」으로 읽힌다.
      바탕을 불투명하게 깔고, 페이드 없이 즉시 갈아치운다. 채팅앱에서 탭을 옮기는 그 느낌. */
-  .modal.overdock{top:var(--headh,60px);bottom:var(--dockh,64px);padding:0;background:var(--bg);align-items:stretch}
+  /* 하단바에서 여는 탭은 화면 맨 위부터 쓴다 — 사건 머리띠와 진행 띠는 조사화면의 것이다.
+     탭마다 자기 머리띠가 따로 있는데 그 위에 또 얹으면 층이 둘이 된다. */
+  .modal.overdock{top:0;bottom:var(--dockh,64px);padding:0;background:var(--bg);align-items:stretch}
+  .modal.overdock .mhead{padding-top:calc(12px + env(safe-area-inset-top))}
   .modal.overdock .box{max-width:none;width:100%;height:100%;max-height:none;
     border:0;border-radius:0;box-shadow:none;animation:none}
   .dock .dk.here{color:var(--gold-b)}
@@ -474,6 +481,14 @@
   .keeprow.ok .rs{color:var(--good);border-color:#2f6b48}
   .keeprow.no .rs{color:var(--bad);border-color:#6b2f2f}
   .keeprow .dt{flex-basis:100%;font-size:12px;color:var(--muted)}
+  /* 오프닝 아래 「다음 페이즈」 — 머리띠의 다음 막과 같은 금색을 쓴다 */
+  .nextblock{margin:18px 0 6px}
+  .nextbig{width:100%;justify-content:center;padding:14px 16px;font-size:15px;border-radius:12px;
+    box-shadow:0 10px 26px -12px rgba(201,162,74,.55)}
+  .nextbig b{font-weight:800}
+  .nextwait{text-align:center;font-size:13px;color:var(--muted);padding:13px 14px;
+    border:1px dashed var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:7px}
+  .nextwait b{color:var(--gold-b)}
   .handwarn{background:#3a1f10;border:1px solid #7a4520;color:#ffd9b0;border-radius:11px;padding:7px 9px 7px 13px;margin-bottom:10px;display:flex;align-items:center;gap:9px;font-size:13px;white-space:nowrap;overflow-x:auto;scrollbar-width:none}
   .handwarn b{color:#ffc078}
   .handwarn .btn{margin-left:auto}
@@ -679,14 +694,26 @@
     .sw-vp,.sw-track,.sw-slide{transition:none}
   }
   /* 화살표는 창 한가운데에 고정한다 — 글 길이나 스크롤 위치에 흔들리지 않는다. */
-  .sw-nav{position:fixed;top:calc(50% + var(--headh,60px)/2 - var(--dockh,64px)/2);transform:translateY(-50%);z-index:6;
+  /* 읽는 화면 위에 늘 떠 있는 물건이다. 평소엔 물러나 있고 손이 갈 때만 또렷해진다.
+     --p 는 커서가 얼마나 가까운가(0~1). 마우스가 있는 기기에서만 JS가 채운다. */
+  .sw-nav{position:fixed;top:calc(50% - var(--dockh,64px)/2);transform:translateY(-50%);z-index:6;
     width:30px;height:56px;padding:0;
-    background:rgba(10,9,8,.78);border:1px solid var(--line);backdrop-filter:blur(6px);
+    background:rgba(10,9,8,.5);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(4px);
     color:var(--ink);font-size:22px;line-height:1;display:grid;place-items:center;cursor:pointer;
-    transition:opacity .15s,border-color .15s,background .15s}
+    transition:opacity .18s,border-color .15s,background .15s}
+  /* 손가락으로 넘기는 기기 — 평소엔 아예 안 보이고, 끄는 동안에만 살짝 비친다. */
+  @media (hover:none){
+    .sw-nav{opacity:0;pointer-events:none}
+    .swipe.dragging .sw-nav{opacity:.3}
+  }
+  /* 커서가 있는 기기 — 가까워질수록 진해진다. */
+  @media (hover:hover){
+    .sw-nav{opacity:calc(.1 + .72 * var(--p,0))}
+    .swipe.dragging .sw-nav{opacity:.16}
+  }
   .sw-nav.prev{left:0;border-left:0;border-radius:0 10px 10px 0}
   .sw-nav.next{right:0;border-right:0;border-radius:10px 0 0 10px}
-  .sw-nav:hover:not(:disabled){border-color:var(--gold);color:#fff;background:rgba(10,9,8,.9)}
+  .sw-nav:hover:not(:disabled),.sw-nav:active:not(:disabled){opacity:1 !important;border-color:var(--gold);color:#fff;background:rgba(10,9,8,.9)}
   .sw-nav:disabled{opacity:0;pointer-events:none}
   /* 카드가 화면보다 길면 아래 끝은 아무도 못 본다 — 네비는 바닥에 붙어 따라온다. */
   .sw-ctrl{position:sticky;bottom:-1px;z-index:3;display:flex;align-items:center;justify-content:center;
@@ -712,12 +739,14 @@
      «어디까지 읽었나»가 잡히게 한다. */
   /* 표지 — 얼굴을 크게 세우고, 그 밑 세 줄로 «나는 누구인가»를 한 번에 박는다. */
   /* 내 정보 탭 — 슬라이드가 열 장을 넘기면 옆으로 넘기는 것만으로는 못 찾는다. */
-  /* 내 정보 머리띠 — 이름 한 줄, 탭 한 줄. 그 아래 카드와 왼쪽 끝을 맞춘다. */
+  /* 탭 머리띠 — 하단바에서 여는 화면은 전부 이 틀을 쓴다.
+     이름은 명조로 한 줄, 그 옆에 작은 설명 한 줄. 탭마다 글꼴이 달라 보이던 걸 여기로 모았다. */
   .sheeth{padding:11px 14px 10px;gap:0}
-  .sheeth .sh-id{flex-basis:100%;display:flex;align-items:baseline;gap:8px;min-width:0}
-  .sheeth .sh-id .ava{align-self:center}
-  .sheeth .sh-nm{font-family:"PIMM Myeongjo","Nanum Myeongjo",serif;font-size:19px;font-weight:800;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sheeth .sh-id{flex-basis:100%;display:flex;align-items:center;gap:8px;min-width:0}
+  .sheeth .sh-nm{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;
+    font-family:"PIMM Myeongjo","Nanum Myeongjo","AppleMyungjo",serif;font-size:19px;font-weight:800;
+    letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sheeth .sh-nm .ic{width:1em;height:1em;opacity:.85}
   .sheeth .sh-meta{flex:1 1 auto;min-width:0;font-size:12px;color:var(--muted);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .shtabs{flex-basis:100%;display:flex;gap:6px;margin-top:10px}
@@ -806,9 +835,6 @@
   .bc-goal{display:flex;gap:10px;font-size:15px;padding:9px 0;border-bottom:1px solid var(--line)}.bc-goal:last-child{border-bottom:0}.bc-goal .pt{margin-left:auto;color:var(--good);font-weight:700;font-family:"PIMM Myeongjo","Nanum Myeongjo",serif}
   /* 내 정보(배역 시트)는 한 번에 읽을 분량이 많다 — 팝업을 넓히고 본문을 키운다.
      본문 줄길이는 measure로 잡아, 넓어져도 한 줄이 지나치게 길어지지 않게 한다. */
-  #sheetModal{top:0}
-  #sheetModal .mhead{padding-top:calc(11px + env(safe-area-inset-top))}
-  #sheetModal .sw-nav{top:calc(50% - var(--dockh,64px)/2)}
   #sheetModal .box{max-width:760px;max-height:92vh;max-height:94svh}
   #sheetModal .mbody{padding:14px 14px 0}
   #sheetModal h2{font-size:22px}
@@ -1745,6 +1771,17 @@ function renderAiCall(){
   bar.innerHTML=h;
 }
 async function aiSay(id){ if(aiBusy)return; aiBusy=true; const r=await post("/api/ai-say",{roleId:id}); if(r&&r.error){ if(String(r.error).indexOf("말하는 중")<0) banner("AI 오류: "+r.error);} else banner(""); aiBusy=false; await poll(); }
+/* 오프닝은 읽고 나면 끝이다 — 그 자리에서 바로 다음 막으로 넘어갈 수 있게 한다.
+   머리띠의 「다음 막」과 같은 단추이고, 같은 금색 그라데이션을 쓴다. */
+function nextPhaseBlock(){
+  const nx=(SCEN.phases||[]).find(p=>p.seq===(STATE.seq||0)+1);
+  if(!nx) return "";
+  const can=STATE.isHost||gmOn||!STATE.hasHost;
+  return `<div class="nextblock">
+    ${can?`<button class="btn gold nextbig" onclick="advance()">다음 페이즈 진행 <b>(${esc(nx.name)}으로 이동)</b></button>`
+         :`<div class="nextwait">${ICO.next} 다음은 <b>${esc(nx.name)}</b>입니다 — 호스트가 넘깁니다</div>`}
+  </div>`;
+}
 /* 대화는 제 탭이 있다 — 조사화면에 미리보기를 겹쳐 두지 않는다.
    대신 안 읽은 말이 몇 마디인지만 하단바에 얹는다. */
 /* 대화창을 안 보고 있는 동안 쌓인 말 — 하단바에 숫자로 얹는다.
@@ -2287,9 +2324,9 @@ async function paintMini(loc){
    사실상 열람이다. 조사 페이즈에는 같은 화면이 이미 아래 패널에 떠 있어 버튼을 감춘다
    (#mapArt·#dash 아이디가 겹치는 것도 그래서 생기지 않는다). */
 function openLook(){
-  $("lookBox").innerHTML=`<div class="mhead">
-      <div class="mh-t"><span class="mh-eb">열람</span><h2>${ICO.map} 조사 화면</h2>
-        <span class="mh-sub">카드를 여는 건 조사 페이즈에만 됩니다</span></div>
+  $("lookBox").innerHTML=`<div class="mhead sheeth">
+      <div class="sh-id"><span class="sh-nm" style="color:var(--cold)">${ICO.map} 조사 화면</span>
+        <span class="sh-meta">카드를 여는 건 조사 페이즈에만 됩니다</span></div>
       </div>
     <div class="mbody"><div id="lookMap"></div></div>`;
   $("lookBox").style.setProperty("--mt","var(--cold)");
@@ -2394,8 +2431,10 @@ function roleCardState(c){
   else if(otherHuman){ badge=`<span class="badge hu">사람</span>`; btn=`<span class="rc-go off">참여 중</span>`; }
   else if(r.mode==="ai"){ badge=`<span class="badge ai">AI</span>`;
     btn=locked?`<span class="rc-go off">AI</span>`:`<button class="rc-go" onclick="setAI('${c.id}')">AI 해제</button>`; }
-  else { btn=locked?`<span class="rc-go off">-</span>`:`<button class="rc-go pick" onclick="claim('${c.id}')">선택</button>`; }
-  return {cls:"rc"+(mine?" mine":"")+(otherHuman?" off":""), badge, btn};
+  else { btn=locked?`<span class="rc-go off">-</span>`:`<span class="rc-go pick">선택</span>`; }
+  // 카드 전체가 곧 단추다 — 작은 「선택」만 노리게 하면 폰에서 몇 번씩 빗나간다.
+  const tap=locked?"":(mine?"" : (r.mode==="ai"?`setAI('${c.id}')`:(otherHuman?"":`claim('${c.id}')`)));
+  return {cls:"rc"+(mine?" mine":"")+(otherHuman?" off":"")+(tap?" tap":""), badge, btn, tap};
 }
 
 /* 카드 뼈대는 시나리오가 바뀔 때만 새로 만든다. 배역을 고를 때마다 통째로 다시 그리면
@@ -2408,7 +2447,7 @@ function renderLobby(force){
     lobbyBuilt=shape;
     host.innerHTML=`<div class="role-grid">${SCEN.characters.map(c=>{
       const st=roleCardState(c);
-      return `<div class="${st.cls}" data-rc="${c.id}" style="--rc:${c.color}">
+      return `<div class="${st.cls}" data-rc="${c.id}" style="--rc:${c.color}"${st.tap?` role="button" tabindex="0" onclick="${st.tap}"`:""}>
         <div class="por" data-emo="${esc(c.avatar||(c.name||"?").slice(0,1))}">${portraitHTML(c)}<span class="badgeslot">${st.badge}</span>
           <div class="scrim"><div class="nm">${esc(c.name)}</div><div class="jb">${esc(c.age)} · ${esc(c.job)}</div></div>
         </div>
@@ -2421,6 +2460,9 @@ function renderLobby(force){
     const el=host.querySelector(`.rc[data-rc="${c.id}"]`); if(!el) return;
     const st=roleCardState(c);
     if(el.className!==st.cls) el.className=st.cls;
+    // 상태가 바뀌면 누를 수 있는지도 바뀐다(고른 뒤엔 안 눌린다).
+    if(st.tap){ el.setAttribute("role","button"); el.setAttribute("tabindex","0"); el.setAttribute("onclick",st.tap); }
+    else { el.removeAttribute("role"); el.removeAttribute("tabindex"); el.removeAttribute("onclick"); }
     const bs=el.querySelector(".badgeslot"); if(bs&&bs.innerHTML!==st.badge) bs.innerHTML=st.badge;
     const bt=el.querySelector(".btnslot");   if(bt&&bt.innerHTML!==st.btn)   bt.innerHTML=st.btn;
   });
@@ -2706,7 +2748,8 @@ function renderPanel(ph){
     const introHTML=chunks.map((c,i)=>`<p class="cine-p" style="animation-delay:${(i*0.9+0.15).toFixed(2)}s">${esc(c).replace(/\n/g,"<br>")}</p>`).join("");
     p.innerHTML=`<div class="card"><div class="clue-h"><h2 style="margin:0">사건 · 공통지문</h2><button class="btn sm" onclick="replayVN()">${ICO.play} 오프닝 보기</button></div><div class="cine-intro">${introHTML}</div></div>
     <div class="card"><h2>피해자</h2>${victimCardHTML()}</div>
-    <div class="panel-note" style="text-align:center">사건 당시 <b>알리바이 대화록</b>은 대화창 맨 위에 남아 있습니다 — 언제든 올려서 다시 읽으세요.<br>각자 <b>내 정보</b>를 확인하고, 아래 대화창에서 배역으로 자기소개를 나누세요.</div>`;
+    <div class="panel-note" style="text-align:center">사건 당시 <b>알리바이 대화록</b>은 대화창 맨 위에 남아 있습니다 — 언제든 올려서 다시 읽으세요.<br>각자 <b>내 정보</b>를 확인하고, 대화창에서 배역으로 자기소개를 나누세요.</div>
+    ${nextPhaseBlock()}`;
     paintScene("#ppanel .viccard");
     // 오프닝은 GM 보드(호스트 화면)에서만 재생한다 — 16:9 큰 화면에 띄워 다 같이 보는 연출이라,
     // 각자 폰에서 따로 돌면 소리가 겹치고 진행이 흩어진다.
@@ -3452,9 +3495,9 @@ async function shareConfirm(){
 /* 대화창 — 독에서 열면 화면을 다 쓴다. 토론이 길어지면 인라인 창으로는 흐름이 안 보인다. */
 function showChatFull(){
   markChatSeen();
-  $("chatFullBox").innerHTML=`<div class="mhead">
-      <div class="mh-t"><span class="mh-eb">지금까지 오간 말</span><h2>${ICO.chat} 대화</h2>
-        <span class="mh-sub" id="chatFullSub"></span></div>
+  $("chatFullBox").innerHTML=`<div class="mhead sheeth">
+      <div class="sh-id"><span class="sh-nm" style="color:var(--gold-b)">${ICO.chat} 대화</span>
+        <span class="sh-meta" id="chatFullSub"></span></div>
       </div>
     <div class="chat" id="chatFull"></div>
     <div class="composer">
@@ -3896,19 +3939,36 @@ function renderChat(boxId){
   const vv=window.visualViewport; if(!vv) return;
   const stick=()=>{ const box=$("chatFull"); if(!box) return;
     if(box.scrollHeight-box.scrollTop-box.clientHeight<120) box.scrollTop=box.scrollHeight; };
-  // 자판이 올라오면 화면이 반으로 준다. 그 좁은 자리를 하단바가 또 먹으면 쓰던 말이 가려진다 —
-  // 치는 동안에는 물러나 있는다. 어차피 그때 누르고 싶은 건 전송뿐이다.
-  const kbd=()=>{
-    const up = (innerHeight - vv.height) > 140;
-    if(document.documentElement.classList.contains("kbd")===up) return;
-    document.documentElement.classList.toggle("kbd",up);
-    measureDock();
-  };
-  const tick=()=>{ kbd(); requestAnimationFrame(stick); setTimeout(stick,180); };
+  const tick=()=>{ requestAnimationFrame(stick); setTimeout(stick,180); };
   vv.addEventListener("resize",tick);
-  document.addEventListener("focusin",e=>{ if(e.target&&e.target.tagName==="TEXTAREA") setTimeout(tick,220); });
-  document.addEventListener("focusout",()=>setTimeout(tick,220));
 })();
+/* 자판이 올라와 있는 동안 하단바와 진행 띠는 물러난다. 화면이 반으로 주는데 그 좁은 자리를
+   또 먹으면 쓰던 말이 가려진다. 그때 누르고 싶은 건 전송뿐이다.
+   높이 차이로 재는 건 못 믿는다 — 자판이 열릴 때 innerHeight 도 같이 줄어드는 브라우저가 있어
+   차이가 0으로 나온다. 그냥 입력칸에 초점이 있는가로 판단한다. */
+function setKbd(up){
+  const h=document.documentElement;
+  if(h.classList.contains("kbd")===up) return;
+  h.classList.toggle("kbd",up);
+  measureDock();
+}
+document.addEventListener("focusin", e=>{
+  if(e.target && e.target.tagName==="TEXTAREA" && !e.target.disabled) setKbd(true);
+});
+document.addEventListener("focusout", e=>{
+  if(!(e.target && e.target.tagName==="TEXTAREA")) return;
+  // 전송 단추를 누른 것뿐이면 곧바로 초점이 돌아온다 — 한 박자 뒤에 확인한다.
+  setTimeout(()=>{ const a=document.activeElement;
+    if(!(a && a.tagName==="TEXTAREA" && !a.disabled)) setKbd(false); }, 120);
+});
+/* 대화 목록을 누르면 자판이 내려간다 — 읽으려고 누른 것이지 쓰려던 게 아니다. */
+document.addEventListener("pointerdown", e=>{
+  if(!document.documentElement.classList.contains("kbd")) return;
+  const t=e.target;
+  if(t.closest && (t.closest(".composer") || t.closest("textarea") || t.closest("button"))) return;
+  const a=document.activeElement;
+  if(a && a.tagName==="TEXTAREA") a.blur();
+}, true);
 /* 머리띠의 이름 한 줄과 하단바의 손패 표시 — 폴링마다 여기서 맞춘다. */
 function paintSeat(){
   const ok=myRoleValid(), c=ok?roleById(myRoleId):null;
@@ -4071,6 +4131,22 @@ function wireSwipe(box){
   track.addEventListener("touchend",drop,{passive:true});
   track.addEventListener("touchcancel",drop,{passive:true});
 
+  // 커서가 있는 기기에서만 — 화살표에 가까워질수록 진해진다. 손가락 기기는 CSS가 감춰둔다.
+  // 시트를 다시 그릴 때마다 wireSwipe 가 불리므로, 리스너는 언제나 하나만 살려둔다.
+  if(window.matchMedia && matchMedia("(hover:hover)").matches && [prev,next].filter(Boolean).length){
+    if(wireSwipe._offNear) wireSwipe._offNear();
+    const navs=[prev,next].filter(Boolean);
+    const NEAR=190;                        // 이만큼 안으로 들어오면 보이기 시작한다
+    const onMove=e=>navs.forEach(n=>{
+      const r=n.getBoundingClientRect();
+      const dx=Math.max(r.left-e.clientX, 0, e.clientX-r.right);
+      const dy=Math.max(r.top-e.clientY, 0, e.clientY-r.bottom);
+      const d=Math.hypot(dx,dy);
+      n.style.setProperty("--p", (d>=NEAR?0:1-d/NEAR).toFixed(3));
+    });
+    addEventListener("pointermove", onMove, {passive:true});
+    wireSwipe._offNear=()=>{ removeEventListener("pointermove", onMove); wireSwipe._offNear=null; };
+  }
   // 웹폰트·사진이 늦게 오면 높이가 나중에 잡힌다 — 지금 장의 높이만 다시 맞춘다.
   if(window.ResizeObserver){ const ro=new ResizeObserver(()=>{ if(!sw.classList.contains("dragging")) fit(); });
     slides.forEach(sl=>ro.observe(sl)); }
@@ -4310,10 +4386,6 @@ function measureDock(){
   const d=$("dock"); if(!d) return;
   const t=$("tline");
   document.documentElement.style.setProperty("--dockh", d.offsetHeight + "px");
-  // 진행 타임라인은 머리띠에 붙어 모든 탭 위에 늘 떠 있다 — 탭이 그 아래에서 시작한다.
-  const h=$("s-play")&&$("s-play").querySelector(".chead");
-  document.documentElement.style.setProperty("--headh",
-    ((h?h.offsetHeight:56) + (t&&t.offsetParent?t.offsetHeight:0)) + "px");
 }
 addEventListener("resize",measureDock);
 /* 하단바에서 연 창은 그 칸을 켜 둔다 — 지금 어느 화면에 있는지가 보여야 한다. */

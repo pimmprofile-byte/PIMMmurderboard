@@ -2711,16 +2711,22 @@ def reset(b: HostReq):
     return {"ok": True}
 
 
+# 화면은 매번 다시 물어보게 한다. ETag 만 보내고 Cache-Control 을 안 주면 브라우저가
+# 제멋대로 「아직 신선하다」고 판단해 옛 파일을 그대로 쓴다 — 고친 게 안 나온다는 신고의 대부분이 이것이었다.
+# no-cache 는 「쓰지 마라」가 아니라 「쓰기 전에 물어봐라」다. 안 바뀌었으면 304로 값싸게 끝난다.
+_NOCACHE = {"Cache-Control": "no-cache, must-revalidate"}
+
+
 @app.get("/")
 def landing():
     # 노아르 허브(로고·포스터·호스트/참가자) — 여기서 사건을 골라 /play 로 진입
     p = _HERE / "landing.html"
-    return FileResponse(p if p.exists() else _HERE / "index.html")
+    return FileResponse(p if p.exists() else _HERE / "index.html", headers=_NOCACHE)
 
 
 @app.get("/play")
 def play():
-    return FileResponse(_HERE / "index.html")
+    return FileResponse(_HERE / "index.html", headers=_NOCACHE)
 
 
 def lan_ip() -> str:
