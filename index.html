@@ -576,6 +576,9 @@
   .pchips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .pchips .pc-note{font-size:11.5px;color:var(--muted)}
   .pill.pair{display:inline-flex;align-items:center;gap:3px;padding-left:4px}
+  /* 짝이 눈앞에 있는 조각 — 채워서 「지금 맞춰볼 수 있다」를 알린다. */
+  .pill.pair.rdy{border-color:var(--good);color:var(--good);animation:pfit 2.4s ease-in-out infinite}
+  @keyframes pfit{0%,100%{box-shadow:0 0 0 0 rgba(126,176,110,0)}50%{box-shadow:0 0 0 3px rgba(126,176,110,.16)}}
   .pin.door{border-color:var(--gold);color:var(--gold-b)}
   .pin.door i{background:var(--gold);box-shadow:0 0 0 3px rgba(201,162,74,.22)}
   .mbody::-webkit-scrollbar{width:5px}
@@ -2580,7 +2583,10 @@ function renderPanel(ph){
     const pubc=(STATE.revealed||[]).filter(c=>!mineIds.has(c.id));
     const hcards=(myRoleValid()?myHand:[]).map(c=>({...c,_pub:false})).concat(pubc.map(c=>({...c,_pub:true})));
     p.innerHTML=`${handWarn()}<div class="clue-h"><h3>토론</h3><span class="pill" style="color:var(--gold-b)">내 손패 ${myHand.length}</span>${pubc.length?`<span class="pill" style="color:var(--cold)">전체공개 ${pubc.length}</span>`:""}</div><div class="panel-note">아래 대화창에서 서로를 취조하세요. <b>내 손패</b>는 알릴지 감출지 자유고, <b>전체공개</b> 카드는 이미 모두가 보고 있습니다.</div>
-    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"#5a4a2c"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,#221c14,#151413)"};cursor:pointer" onclick="openCard('${c.id}')"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span><div class="lead clip1">${esc(oneLine(c.text))}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px">${hcards.map(c=>`<div class="card" style="margin:0;padding:10px 12px;border-color:${c._pub?"#2f4a5c":"#5a4a2c"};background:${c._pub?"linear-gradient(160deg,#141d24,#111319)":"linear-gradient(160deg,#221c14,#151413)"};cursor:pointer" onclick="openCard('${c.id}')"><span class="pill" style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${c._pub?"전체공개":"내 손패"}</span> <b style="color:${c._pub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</b> <span class="pill">${esc(c.locName)}${c.spot?"·"+esc(c.spot):""}·R${c.round}</span>${pairsOf(c.id).map(k=>{
+        const rd=pairReady(k,c.id);
+        return `<button class="pill pair${rd?" rdy":""}" title="${rd?"짝이 지금 나와 있습니다 — 눌러서 맞춰보세요":"같은 조각을 단 카드를 찾으세요"}" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id,rd)}${rd?"맞물림":"조각"}</button>`;
+      }).join("")}<div class="lead clip1">${esc(oneLine(c.text))}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
     +interrogPanelHTML(); }
   else if(k==="final"){ renderFinal(p); }
   else if(k==="reveal"){ renderReveal(p); }
@@ -3056,6 +3062,13 @@ function pairOf(id){ return (SCEN.pairKeys||[]).find(k=>k.cards.includes(id))||n
 /* 한 장이 여러 조합의 반쪽일 수 있다 — A1은 흉기 둘 다에, A3는 장부와 값 양쪽에 걸린다.
    그래서 카드마다 「속한 조합 수」만큼 조각이 붙는다. */
 function pairsOf(id){ return (SCEN.pairKeys||[]).filter(k=>k.cards.includes(id)); }
+/* 내가 지금 볼 수 있는 카드들(내 손패 + 전체공개). 짝이 이 안에 있으면 바로 맞춰볼 수 있다. */
+function visibleIds(){ return new Set([...myHand.map(c=>c.id),...(STATE.revealed||[]).map(c=>c.id)]); }
+/* 이 조각의 짝이 지금 눈앞에 있는가 */
+function pairReady(k, id){
+  const vis=visibleIds();
+  return k.cards.some(x=>x!==id&&vis.has(x));
+}
 
 /* 조각의 생김새 — 색 셋 × 글리프 다섯. 같은 색·같은 글리프끼리만 맞는다.
    인물색은 일부러 쓰지 않는다. 조합에 인물색을 얹으면 「이 짝은 누구를 가리킨다」가
@@ -3073,16 +3086,16 @@ const PAIR_GLYPH=[
   '<path d="M0 -3.2 L1 -1 L3.2 -0.8 L1.5 .7 L2 3 L0 1.8 L-2 3 L-1.5 .7 L-3.2 -.8 L-1 -1 Z"/>',
 ];
 /* 왼쪽 조각은 혹이 튀어나오고, 오른쪽 조각은 그 자리가 파여 있다. 눈으로 맞물린다. */
-function pairChip(k, id){
+function pairChip(k, id, ready){
   const i=k.i||0, col=PAIR_COL[i%PAIR_COL.length];
   const gly=PAIR_GLYPH[i%PAIR_GLYPH.length];
   const left=k.cards[0]===id;
   const d=left ? "M3 2 h9 v3.4 a3.1 3.1 0 1 1 0 7.2 V16 H3 Z"
                : "M19 2 h-9 v3.4 a3.1 3.1 0 1 0 0 7.2 V16 h9 Z";
   const cx=left?7.2:14.8;
-  return `<svg class="pchip" viewBox="0 0 22 18" aria-hidden="true">
-    <path d="${d}" fill="${col}" fill-opacity=".22" stroke="${col}" stroke-width="1.2"/>
-    <g transform="translate(${cx} 9)" fill="${col}">${gly}</g></svg>`;
+  return `<svg class="pchip${ready?" rdy":""}" viewBox="0 0 22 18" aria-hidden="true">
+    <path d="${d}" fill="${col}" fill-opacity="${ready?".82":".22"}" stroke="${col}" stroke-width="1.2"/>
+    <g transform="translate(${cx} 9)" fill="${ready?"#0d0b0c":col}">${gly}</g></svg>`;
 }
 function showPairHint(id, pi){
   const c=[...myHand,...(STATE.revealed||[])].find(x=>x.id===id)||cardCat(id)||{};
@@ -3092,7 +3105,7 @@ function showPairHint(id, pi){
   const other=k.cards.filter(x=>x!==id);
   const got=other.filter(x=>known.has(x));
   $("cardBox").innerHTML=`<div class="mhead">
-      <div class="mh-t"><span class="mh-eb">조합 카드</span><h2>${pairChip(k,id)} 이건 반쪽입니다</h2>
+      <div class="mh-t"><span class="mh-eb">조합 카드</span><h2>${pairChip(k,id,got.length>0)} 이건 반쪽입니다</h2>
         <span class="mh-sub">${esc(c.title||"")}</span></div>
       <button class="mh-x" onclick="closeModal('cardModal')" aria-label="닫기">✕</button></div>
     <div class="mbody">
@@ -3105,7 +3118,7 @@ function showPairHint(id, pi){
           : "아직 아무도 못 찾았거나, 누군가 손에 쥐고 있습니다."}</span></div>
       </div>
       <div class="pb-r" style="border:0;padding-top:0"><span class="k">맞물릴 조각</span>
-        <span class="v">${pairChip(k,k.cards.find(x=>x!==id)||id)} <b>같은 색·같은 표시</b>를 단 카드입니다.
+        <span class="v">${pairChip(k,k.cards.find(x=>x!==id)||id,got.length>0)} <b>같은 색·같은 표시</b>를 단 카드입니다.
           혹과 홈이 맞물리는 쪽이 짝이에요.</span></div>
       ${ks.length>1?`<div class="panel-note" style="margin-top:10px">이 카드는 <b>${ks.length}개의 조합</b>에 걸쳐 있습니다 — 조각이 그만큼 붙어 있어요.</div>`:""}
       <div class="panel-note" style="margin-top:12px">어느 카드가 짝인지는 알려주지 않습니다. 그걸 찾아내는 게 이 판의 일이에요.</div>
@@ -3136,8 +3149,8 @@ function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const 
         <span class="mh-sub">${esc(c.locName)}${c.spot?" · "+esc(c.spot):""} · R${c.round}</span></div>
       <button class="mh-x" onclick="closeModal('cardModal')" aria-label="닫기">✕</button></div>
     <div class="mbody">${pairsOf(c.id).length?`<div class="pchips">${pairsOf(c.id).map(k=>
-        `<button class="pill pair" onclick="showPairHint('${c.id}',${k.i})">${pairChip(k,c.id)}조각</button>`).join("")}
-        <span class="pc-note">같은 조각을 단 카드와 맞물립니다</span></div>`:""}
+        `<button class="pill pair${pairReady(k,c.id)?" rdy":""}" onclick="showPairHint('${c.id}',${k.i})">${pairChip(k,c.id,pairReady(k,c.id))}${pairReady(k,c.id)?"맞물림":"조각"}</button>`).join("")}
+        <span class="pc-note">${pairsOf(c.id).some(k=>pairReady(k,c.id))?"<b style='color:var(--good)'>짝이 지금 나와 있습니다.</b> 맞춰보세요.":"같은 조각을 단 카드와 맞물립니다"}</span></div>`:""}
       <div class="sec"><div class="b" style="font-size:15px" id="cardText">${esc(c.text)}</div></div>${mynote(c.id)}${cnote(c)}</div>
     <div class="mfoot"><span class="mf-note">${inHand?"알리려면 대화로 말하세요 — 저절로 새어 나가지 않습니다.":"이미 모두가 보고 있는 단서입니다."}</span>
       <button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
@@ -3919,7 +3932,8 @@ function showMyHand(){
       return `<div class="bigcard clue${isPub?" pubclue":""}">
       <div class="bc-eyebrow">${isPub?"전체공개 · 모두가 봅니다":"손패 · 비공개"}</div>
       <div class="bc-title" style="color:${isPub?"var(--cold)":"var(--gold-b)"}">${esc(c.title)}</div>
-      <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${pairsOf(c.id).map(k=>`<button class="pill pair" title="같은 조각을 단 카드와 맞춰보세요" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id)}조각</button>`).join("")}</div>
+      <div class="bc-tags"><span class="pill">${esc(c.locName)}</span>${c.spot?`<span class="pill">${esc(c.spot)}</span>`:''}<span class="pill">R${c.round}</span>${pairsOf(c.id).map(k=>{const rd=pairReady(k,c.id);
+        return `<button class="pill pair${rd?" rdy":""}" title="${rd?"짝이 지금 나와 있습니다":"같은 조각을 단 카드와 맞춰보세요"}" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id,rd)}${rd?"맞물림":"조각"}</button>`;}).join("")}</div>
       <div class="bc-body">${esc(c.text)}</div>${mynote(c.id)}${cnote(c)}
       ${c.unlocks&&!isPub?`<div class="unlocknote">🔓 이 카드를 <b>전체공개</b>하면 무언가 밝혀질 수 있습니다.</div>`:""}</div>`; });
     h+=buildSwipe(slides); }
