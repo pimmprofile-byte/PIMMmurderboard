@@ -1311,8 +1311,15 @@ def _act_nudge(kind: str, fmt: dict) -> str:
         return tpl
 
 
-def _act_fallback(kind: str, fmt: dict, seed: str) -> str:
-    lines = (getattr(SC, "CHAT_FALLBACK", {}) or {}).get(kind) or []
+def _act_fallback(kind: str, fmt: dict, seed: str, role_id: str = "") -> str:
+    """모델이 없을 때 대신 나가는 한 줄.
+
+    예전에는 사건 전체가 세 줄을 돌려썼다. 여섯 사람이 번갈아 「저 혼자 이렇게 읽는 겁니까?」를
+    반복하니 사람이 아니라 장치라는 게 바로 보였다. 배역마다 자기 말투의 문장을 따로 두고,
+    없으면 공용으로 떨어진다.
+    """
+    by_role = (getattr(SC, "CHAT_FALLBACK_BY_ROLE", {}) or {}).get(role_id, {})
+    lines = by_role.get(kind) or (getattr(SC, "CHAT_FALLBACK", {}) or {}).get(kind) or []
     if not lines:
         return ""
     try:
@@ -1345,9 +1352,13 @@ def _ai_trim_hand(role_id: str) -> list:
         c = SC.get_card(drop)
         if c and ROOM["roles"].get(role_id, {}).get("mode") == "ai":
             # 제목만 넘기면 「이거 어떻게들 보세요」밖에 안 나온다. 본문과 손으로 써둔 해석을 같이 준다.
+            # 그 배역이 이 카드를 볼 줄 아는 사람이면 자기 눈으로 읽은 것을 말하게 한다.
+            # 카드에 딸린 일반 해석(hint)은 누가 말해도 똑같아서 금방 티가 난다.
+            eye = (c.get("insight") or {}).get(role_id) or ""
             _queue_act(role_id, "reveal", card=c["title"],
                        body=" ".join((c.get("text") or "").split()),
-                       hint=(c.get("hint") or "").strip())
+                       hint=" ".join((eye or c.get("hint") or "").split()),
+                       eye="1" if eye else "")
     return out
 
 
@@ -2411,7 +2422,7 @@ def _run_queued_act() -> bool:
             return False
         seed = f'{act["roleId"]}|{act["kind"]}|{len(ROOM["table"])}'
     _speak(act["roleId"], _act_nudge(act["kind"], act["fmt"]),
-           _act_fallback(act["kind"], act["fmt"], seed))
+           _act_fallback(act["kind"], act["fmt"], seed, act["roleId"]))
     return True
 
 
@@ -2428,7 +2439,7 @@ def _run_free_talk() -> bool:
         who = (SC.get_character(target) or {}).get("name", "")
         if who:
             fmt = {"who": who, "why": why, "why1": why1}
-            _speak(rid, _act_nudge("blame", fmt), _act_fallback("blame", fmt, f"{rid}|{n}"))
+            _speak(rid, _act_nudge("blame", fmt), _act_fallback("blame", fmt, f"{rid}|{n}", rid))
             return True
     _speak(rid, _pick_nudge(rid))
     return True
