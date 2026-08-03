@@ -798,6 +798,11 @@ def state(clientId: str = "", gm: int = 0):
             if now - t > 20:           # 폴링이 1.5초 간격이니 20초면 확실히 떠난 것이다
                 ROOM["gmSeats"].pop(cid, None)
         st["hasGM"] = bool(ROOM["gmSeats"])
+        # 자기가 이미 적었는지는 자기만 안다. 남이 무엇을 적었는지는 다 던진 뒤에 열린다.
+        if st.get("accuse1") is not None:
+            who = next((rid for rid, r in ROOM["roles"].items() if r["clientId"] and r["clientId"] == clientId), "")
+            st["accuse1"]["mineDone"] = who in ((ROOM.get("accuse1") or {}).get("picks") or {})
+            st["accuse1"]["mine"] = ((ROOM.get("accuse1") or {}).get("picks") or {}).get(who, "") if st["accuse1"]["done"] else ""
         # 밤의 선택지는 그 사람 것만 내려간다. 공개 상태에는 «누가 정했나»만 있다.
         if st.get("night") is not None:
             mine = next((rid for rid, r in ROOM["roles"].items() if r["clientId"] and r["clientId"] == clientId), "")
@@ -2471,8 +2476,14 @@ def _night_public(role_id: str = "") -> dict | None:
            "done": n.get("result") is not None}
     # 선택지는 그 사람 것만 내려간다 — 남이 무엇을 고를 수 있는지까지 보이면 밤이 아니다.
     if role_id:
-        out["options"] = (conf.get("options") or {}).get(role_id) or []
+        opts = (conf.get("options") or {}).get(role_id) or []
         out["mine"] = (n.get("picks") or {}).get(role_id, "")
+        # 시각은 정하고 나서야 알려준다. 고르기 전에는 «이르게/늦게/안 간다»까지다 —
+        # 몇 시인지를 미리 알면 그건 시간을 고르는 것이지 행동을 고르는 게 아니다.
+        if out["mine"]:
+            out["options"] = opts
+        else:
+            out["options"] = [{k: v for k, v in o.items() if k != "at"} for o in opts]
     if n.get("result"):
         r = n["result"]
         out["headline"] = r.get("headline", "")
@@ -2650,6 +2661,13 @@ def ask_pick(b: AskPick):
 
 
 # ── 중간 지목 — 판이 끝나기 전에 한 번 이름을 부른다 ─────────────────
+def _tally(picks: dict) -> dict:
+    out = {}
+    for t in picks.values():
+        out[t] = out.get(t, 0) + 1
+    return out
+
+
 def _accuse1_public() -> dict | None:
     """그 막에서 던진 표. 판정은 안 한다 — 이 표는 종막까지 그대로 따라간다."""
     ph = SC.phase_by_seq(ROOM["seq"])
@@ -2663,9 +2681,15 @@ def _accuse1_public() -> dict | None:
         tally[t] = tally.get(t, 0) + 1
     top = max(tally.values()) if tally else 0
     lead = sorted([t for t, v in tally.items() if v == top]) if top else []
-    return {"open": ph.get("key") == "accuse", "picks": picks, "tally": tally,
-            "lead": lead, "tie": len(lead) > 1,
-            "voters": len(humans), "done": bool(humans) and all(r in picks for r in humans)}
+    # 비밀투표다. 다 던지기 전에는 누가 누구를 적었는지도, 몇 표인지도 안 나간다 —
+    # 표를 세어가며 눈치껏 얹는 판이 되면 「동시에 편다」가 아무 뜻이 없다.
+    done = bool(humans) and all(r in picks for r in humans)
+    open_ = ph.get("key") == "accuse"
+    out = {"open": open_, "voters": len(humans), "voted": len(picks), "done": done,
+           "mineDone": False, "picks": {}, "tally": {}, "lead": [], "tie": False}
+    if done or not open_:
+        out.update({"picks": picks, "tally": tally, "lead": lead, "tie": len(lead) > 1})
+    return out
 
 
 @app.post("/api/accuse1")
@@ -2687,9 +2711,13 @@ def accuse_interim(b: VoteReq):
         a1["picks"][b.roleId] = b.targetRoleId
         nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
         tn = (SC.get_character(b.targetRoleId) or {}).get("name", b.targetRoleId)
-        if first:
+        # 무엇을 적었는지는 물론이고 «적었다»는 것도 안 알린다. 화면의 숫자로만 센다.
+        if first and all(r in a1["picks"] for r in _human_roles()):
+            rows = sorted(((SC.get_character(t) or {}).get("name", t), n)
+                          for t, n in _tally(a1["picks"]).items())
             ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": f"{nm} — 「{tn}」이라고 적었습니다."})
+                                  "text": "— 종이를 동시에 폈습니다.\n"
+                                          + "\n".join(f"    {t} — {n}표" for t, n in rows)})
         bump()
     return {"ok": True, "accuse1": _accuse1_public()}
 

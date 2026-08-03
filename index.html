@@ -1188,6 +1188,22 @@
     animation:vnStatic .5s steps(3) 3}
   #vn .vn-stage.fx-water .vn-flash{background:linear-gradient(0deg,rgba(46,90,172,.5),transparent 55%);
     animation:vnRise 1.9s ease-out 1}
+  /* 밤이 내려앉는다 — 그림이 천천히 꺼지고 그대로 어둠에 머문다.
+     글자는 위 칸(.vn-box)에 있어서 안 덮인다. 읽을 것은 계속 읽혀야 한다. */
+  #vn .vn-stage.fx-nightfall .vn-flash{background:#04060b;animation:vnNightfall 3.4s cubic-bezier(.35,0,.5,1) forwards}
+  #vn .vn-stage.fx-nightfall .vn-sprite{animation:vnFadeOut 3.4s cubic-bezier(.35,0,.5,1) forwards}
+  #vn .vn-stage.fx-nightfall .vn-bg{animation:vnCool 3.4s ease-out forwards}
+  /* 이미 어두워진 다음 컷 — 애니메이션 없이 그 자리에 머문다 */
+  #vn .vn-stage.fx-night .vn-flash{background:#04060b;opacity:.94}
+  #vn .vn-stage.fx-night .vn-bg{filter:saturate(.25) brightness(.55)}
+  @keyframes vnNightfall{0%{opacity:0}14%{opacity:.12}55%{opacity:.62}100%{opacity:.94}}
+  @keyframes vnFadeOut{0%{opacity:1}100%{opacity:0}}
+  @keyframes vnCool{0%{filter:none}100%{filter:saturate(.25) brightness(.55)}}
+  @media(prefers-reduced-motion:reduce){
+    #vn .vn-stage.fx-nightfall .vn-flash{animation:none;opacity:.94}
+    #vn .vn-stage.fx-nightfall .vn-sprite{animation:none;opacity:0}
+    #vn .vn-stage.fx-nightfall .vn-bg{animation:none;filter:saturate(.25) brightness(.55)}
+  }
   @keyframes vnAlarm{0%,100%{opacity:0}45%{opacity:1}}
   @keyframes vnBlack{0%{opacity:1}100%{opacity:0}}
   @keyframes vnStatic{0%,100%{opacity:0}50%{opacity:.85}}
@@ -1360,7 +1376,10 @@
   .nt-opt.on{border-color:var(--gold-b);background:rgba(180,140,60,.10)}
   .nt-opt.on .mk{background:var(--gold-b);border-color:var(--gold-b)}
   .nt-opt.locked{opacity:.55}
-  .nt-opt .at{margin-left:auto;font-size:11.5px;color:var(--cold);font-variant-numeric:tabular-nums}
+  .nt-opt .at{margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+    font-size:11.5px;color:var(--cold);font-variant-numeric:tabular-nums}
+  .nt-opt .at i{font-style:normal;font-size:9.5px;letter-spacing:.14em;font-weight:700;
+    color:var(--sub);border:1px solid var(--line);border-radius:3px;padding:2px 5px}
   .nt-opt .at.skip{color:var(--sub)}
   .nt-opt .nt-d{margin-top:6px;font-size:12.5px;line-height:1.75;color:var(--sub);white-space:pre-line;word-break:keep-all}
   .nt-foot{display:flex;align-items:center;gap:10px;margin-top:13px;padding-top:11px;border-top:1px solid var(--line)}
@@ -2135,7 +2154,10 @@ const VN_SFX={
   thud  (){ vnTone(140,.75,"sine",.30,38); vnNoise(.5,900,90,.22); },
   static(){ vnNoise(.75,5200,1400,.16); setTimeout(()=>vnNoise(.4,4000,900,.11),380); },
   water (){ vnNoise(2.0,260,1500,.24); },
-  rumble(){ vnTone(58,2.6,"sine",.24,34); vnNoise(2.4,320,70,.18); }
+  rumble(){ vnTone(58,2.6,"sine",.24,34); vnNoise(2.4,320,70,.18); },
+  // 등이 하나씩 꺼진다 — 낮은 음 하나가 길게 내려앉고, 그 위로 셋이 짧게 끊긴다
+  nightfall(){ vnTone(196,3.2,"sine",.16,74);
+    [0,620,1240].forEach((t,i)=>setTimeout(()=>vnTone(330-i*40,.26,"triangle",.07),t+240)); }
 };
 /* ── UI 효과음 ────────────────────────────────────────────────
    같은 합성기를 쓴다. 파일을 얹지 않으니 배포가 가볍고 라이선스가 얽히지 않는다.
@@ -2870,10 +2892,11 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
     const a=STATE.accuse1||{picks:{},tally:{}};
     const rows=Object.keys(a.tally||{}).sort((x,y)=>a.tally[y]-a.tally[x])
       .map(t=>`  ${nameOf(t)} — ${a.tally[t]}표`).join("\n");
-    return gmCinematic("1차 지목 · 이름을 부른다", (ph.gm||""), rows||"— 아직 아무도 안 적었습니다",
-      `각자 자기 기기에서 한 사람을 적습니다. <b>${Object.keys(a.picks||{}).length}/${a.voters}</b>명 적음.
+    return gmCinematic("1차 지목 · 비밀투표", (ph.gm||""),
+      a.done?rows:"— 아직 안 폈습니다. 다 적을 때까지 아무것도 안 보입니다.",
+      `각자 자기 기기에서 몰래 적습니다. <b>${a.voted}/${a.voters}</b>명 적음.
        <div style="margin-top:8px">이 표는 <b>지워지지 않습니다</b> — 종막까지 따라갑니다.
-       다 적었으면 동시에 펴고, <b>다음 페이즈 ›</b>로 넘기세요.</div>`);
+       ${a.done?"결과를 낭독하고 <b>다음 페이즈 ›</b>로 넘기세요.":"전원이 적으면 그 자리에서 동시에 펴집니다."}</div>`);
   }
   if(k==="decision"){
     const d=STATE.decision||{};
@@ -3063,7 +3086,7 @@ function renderPanel(ph){
   const sig=JSON.stringify([k,STATE.seq,STATE.round,STATE.turn,ph.ap,myRoleId,myHand.map(c=>c.id),STATE.revealedIds,STATE.usedAP,STATE.grades,STATE.ending&&STATE.ending.name,STATE.interrogate,STATE.checked,STATE.crisis&&[STATE.crisis.open,STATE.crisis.solved,STATE.crisis.answered],crAns.join(""),STATE.flood,
     STATE.night&&[STATE.night.open,STATE.night.done,STATE.night.mine,(STATE.night.picked||[]).join("")],
     STATE.ask&&[STATE.ask.open,STATE.ask.turn,(STATE.ask.asked||[]).map(r=>r.by+r.q).join("")],askSel,
-    STATE.accuse1&&JSON.stringify(STATE.accuse1.picks)]);
+    STATE.accuse1&&[STATE.accuse1.voted,STATE.accuse1.done,STATE.accuse1.mineDone,acSel]]);
   if(sig===renderPanel._sig) return;
   renderPanel._sig=sig;
   if(k==="open"){
@@ -4264,7 +4287,9 @@ function renderNight(p){
   const mine=n.mine||"";
   const opts=(n.options||[]).map(o=>`<button class="nt-opt${nightPick===o.id?" on":""}${mine===o.id?" locked":""}"
       ${mine?"disabled":""} onclick="nightSel('${o.id}')">
-      <div class="nt-h"><span class="mk"></span><b>${esc(o.label)}</b>${o.at?`<span class="at">${esc(o.at)}</span>`:`<span class="at skip">안 간다</span>`}</div>
+      <div class="nt-h"><span class="mk"></span><b>${esc(o.label)}</b>${o.at
+        ?`<span class="at"><i>행동시간</i>${esc(o.at)}</span>`
+        :`<span class="at${o.skip?" skip":""}">${esc(o.tier||"")}</span>`}</div>
       <div class="nt-d">${esc(o.desc||"")}</div></button>`).join("");
   p.innerHTML=`<div class="card nightcard">
     <div class="nt-kick">${esc(n.kick||"밤")}</div>
@@ -4288,31 +4313,47 @@ async function nightSend(){
 }
 async function nightClose(){ await post("/api/night/close",{clientId,key:gmKey}); await poll(); }
 
-/* 1차 지목 — 판정은 없다. 여기서 부른 이름은 종막까지 그대로 따라간다. */
+/* 1차 지목 — 비밀투표다. 고르고, 확인을 눌러야 던져진다.
+   전원이 던지기 전에는 누가 무엇을 적었는지도 몇 표인지도 안 보인다 —
+   표를 세어가며 눈치껏 얹으면 「동시에 편다」가 아무 뜻이 없다. */
+let acSel="";
 function renderAccuse(p){
   const a=(STATE&&STATE.accuse1)||{picks:{},tally:{}};
-  const mine=(a.picks||{})[myRoleId]||"";
+  const mineDone=!!a.mineDone;
+  const can=myRoleValid()&&a.open&&!mineDone;
+  if(!can) acSel="";
   const targets=(SCEN.characters||[]).filter(c=>c.id!==myRoleId);
-  const btns=targets.map(c=>`<button class="ac-opt${mine===c.id?" on":""}" style="--rc:${c.color}"
-      onclick="accuse1('${c.id}')"><span class="mk"></span><b>${esc(c.name)}</b>
+  const btns=targets.map(c=>`<button class="ac-opt${acSel===c.id?" on":""}" style="--rc:${c.color}"
+      ${can?`onclick="acSel1('${c.id}')"`:"disabled"}><span class="mk"></span><b>${esc(c.name)}</b>
       <span class="jb">${esc(c.job||"")}</span></button>`).join("");
   const rows=Object.keys(a.tally||{}).sort((x,y)=>a.tally[y]-a.tally[x])
     .map(t=>`<div class="ac-row"><span>${esc(nameOf(t))}</span><b>${a.tally[t]}표</b></div>`).join("");
+  const shown=a.done&&rows;
   p.innerHTML=`<div class="card accusecard">
-    <div class="nt-kick">1차 지목</div>
-    <h2>지금, 한 사람의 이름을 적는다</h2>
-    <div class="nt-intro">여기서 부른 이름은 지워지지 않습니다. 종막까지 그대로 따라갑니다.
-      바꾸고 싶으면 지금 바꾸세요 — 이 막이 끝나면 못 고칩니다.</div>
-    ${myRoleValid()?btns:`<div class="panel-note" style="margin-top:12px">관전 중 — 배역을 맡은 사람만 적습니다.</div>`}
-    ${rows?`<div class="ac-tally"><div class="w">지금까지 나온 이름</div>${rows}</div>`:""}
-    <div class="nt-foot"><span class="tally">${Object.keys(a.picks||{}).length}/${a.voters} 적음${
-      a.tie?" · 표가 갈렸습니다":""}</span></div></div>${nextPhaseBlock()}`;
+    <div class="nt-kick">1차 지목 · 비밀투표</div>
+    <h2>${a.done?"동시에 폈다":"지금, 한 사람의 이름을 적는다"}</h2>
+    <div class="nt-intro">${a.done
+      ? "여기서 부른 이름은 지워지지 않습니다. 종막까지 그대로 따라갑니다."
+      : "각자 몰래 적습니다. 전원이 적으면 그때 동시에 폅니다 —\n그 전까지는 누가 누구를 적었는지도, 몇 표인지도 안 보입니다.\n★ 이 표는 지워지지 않습니다. 종막까지 그대로 따라갑니다."}</div>
+    ${(a.open&&!a.done)?(myRoleValid()
+      ? (mineDone?`<div class="panel-note" style="margin-top:12px">적었습니다. 나머지를 기다립니다.</div>`:btns)
+      : `<div class="panel-note" style="margin-top:12px">관전 중 — 배역을 맡은 사람만 적습니다.</div>`):""}
+    ${shown?`<div class="ac-tally"><div class="w">펴본 결과</div>${rows}
+      ${a.tie?`<div class="panel-note" style="margin-top:9px">표가 갈렸습니다 — 한 사람으로 안 모였어요.</div>`:""}
+      ${a.mine?`<div class="panel-note" style="margin-top:9px">내가 적은 이름은 <b>${esc(nameOf(a.mine))}</b>였습니다.</div>`:""}
+      </div>`:""}
+    <div class="nt-foot"><span class="tally">${a.voted}/${a.voters} 적음${
+      a.done?" · 다 폈습니다":""}</span>
+      ${can?`<button class="btn primary sm"${acSel?"":" disabled"} onclick="acSend()">이 이름으로 적는다</button>`:""}
+    </div></div>${a.done?nextPhaseBlock():""}`;
 }
-async function accuse1(t){
+function acSel1(t){ acSel=(acSel===t?"":t); renderPanel._sig=null; applyState(); }
+async function acSend(){
+  if(!acSel) return;
   if(!myRoleValid()){ banner("배역을 맡아야 적을 수 있어요"); return; }
-  const r=await post("/api/accuse1",{roleId:myRoleId,clientId,targetRoleId:t});
+  const r=await post("/api/accuse1",{roleId:myRoleId,clientId,targetRoleId:acSel});
   if(r&&r.error){ banner(r.error); return; }
-  banner(""); await poll();
+  banner(""); acSel=""; await poll();
 }
 function renderFinal(p){
   const g=myRoleId?STATE.grades[myRoleId]:null; const mine=myRoleValid();
@@ -5076,7 +5117,9 @@ async function showMySheet(){
   // 잃은 기억이 없다. 거기서 늘어나는 건 이제 꺼내기로 한 말이다.
   const fragL=(SCEN&&SCEN.fragLabel)||"기억의 파편", fragE=(SCEN&&SCEN.fragEyebrow)||"떠오른 기억";
   if(frags.length){ const fh=frags.map((f,i,arr)=>{ const isNew=(f.when===curPhase&&i===arr.length-1); return `<div class="frag${isNew?" newfrag":""}"><div class="w">${esc(fragL)} · ${esc(f.when)}${isNew?" · NEW":""}</div>${esc(f.text)}</div>`; }).join("");
-    slides.push({tab:"sum", html:`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">${esc(fragE)}</div><div class="bc-title" style="font-size:18px">${esc(fragL)}</div><div style="margin-top:14px">${fh}</div></div>`}); }
+    // 판이 도는 동안 «늘어나는» 글이다. 훑는 자리(한눈에)가 아니라
+    // 판 위에서 쓰는 자리(추가 정보)에 둔다 — 새로 생긴 것을 여기서 찾게 된다.
+    slides.push({tab:"extra", html:`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">${esc(fragE)}</div><div class="bc-title" style="font-size:18px">${esc(fragL)}</div><div style="margin-top:14px">${fh}</div></div>`}); }
   // 5) 배치도 — 전원이 갖는다. 포드는 아는 사람 지도에만 그려진다.
   if(s.hasMap){
     const svg=await loadMapSVG();
