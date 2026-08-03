@@ -89,9 +89,16 @@
       <text class="z-cnt" id="cnt-A" x="428" y="140" text-anchor="end">0/0</text>
     </g>
     <g id="zone-B" data-loc="B">
-      <rect class="zone-fill" x="456" y="82" width="224" height="66" rx="6"/>
-      <text class="z-name" x="472" y="112">복도</text>
-      <text class="z-cnt" id="cnt-B" x="664" y="140" text-anchor="end">0/0</text>
+      <rect class="zone-fill" x="456" y="82" width="118" height="66" rx="6"/>
+      <text class="z-name" x="470" y="112">복도</text>
+      <text class="z-cnt" id="cnt-B" x="560" y="140" text-anchor="end">0/0</text>
+    </g>
+    <!-- 꼭대기층 서재. 금고가 여기 있다. 복도를 지나야만 닿는다는 것이
+         이 배치의 전부다 — 그래서 복도 바로 옆에 붙여 놓았다. -->
+    <g id="zone-I" data-loc="I">
+      <rect class="zone-fill" x="586" y="82" width="94" height="66" rx="6"/>
+      <text class="z-name" x="600" y="112">서재</text>
+      <text class="z-cnt" id="cnt-I" x="668" y="140" text-anchor="end">0/0</text>
     </g>
     <!-- 외벽은 방이 아니라 «면»이다. 그래서 세로로 길게 선다 —
          이 띠를 타고 오르면 복도를 한 번도 밟지 않고 당주의 방 창에 닿는다. -->
@@ -135,7 +142,9 @@
        실선: 정문 → 관리실 앞 → 이층 → 복도 → 방. 누구나 아는 길.
        점선: 마당 → 외벽 → 창. 복도를 지나지 않는 길. -->
   <g class="trim">
-    <path class="way" d="M690 209 H628 V115 H454"/>
+    <path class="way" d="M690 209 H700 V115 H682"/>
+    <path class="way" d="M584 115 H576"/>
+    <path class="way" d="M454 115 H444"/>
     <path d="M452 115 l12 -6 v12 Z" fill="#dfe7e4" stroke="none" opacity=".55"/>
     <path class="acc-way" d="M220 180 H268 V106 H288"/>
     <path d="M292 106 l-12 -6 v12 Z" fill="#e0663c" stroke="none" opacity=".9"/>
