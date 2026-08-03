@@ -798,6 +798,11 @@ def state(clientId: str = "", gm: int = 0):
         if st.get("night") is not None:
             mine = next((rid for rid, r in ROOM["roles"].items() if r["clientId"] and r["clientId"] == clientId), "")
             st["night"] = _night_public(mine)
+            # 그 사람의 밤은 그 사람 화면에서만 돈다. 방이 다 같이 보는 컷 목록에는
+            # 못 넣는다 — 넣는 순간 누가 무엇을 했는지가 통째로 새어 나간다.
+            mc = (st["night"] or {}).get("mineCuts") or []
+            if mc:
+                st["cuts"] = [{"id": f"night:mine:{mine}", "cuts": mc}] + list(st.get("cuts") or [])
         # 종막에는 답안을 모두가 볼 수 있어야 한다. 진행석이 없으면 누구든 한 덩어리로 묶어
         # 클로드에 물어보러 가야 하는데, 여태 그 답안은 AGENT_KEY로 잠긴 /api/gm에만 있었다.
         # 각자 자기 것만 들고 있으면 판이 흩어진 방에서는 아무도 전체를 못 만든다.
@@ -2468,6 +2473,7 @@ def _night_public(role_id: str = "") -> dict | None:
         out["outcome"] = list(r.get("public") or [])
         if role_id:
             out["mineOutcome"] = (r.get("private") or {}).get(role_id, "")
+            out["mineCuts"] = list((r.get("vn") or {}).get(role_id) or [])
     return out
 
 

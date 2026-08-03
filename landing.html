@@ -355,7 +355,7 @@ const SCEN=[
    img:"/assets/poster_graduation.jpg",glow:"rgba(169,155,214,.30)",tagline:"초대받지 못한 자"},
   {id:"submarine",title:"잠수정",sub:"심연의 정원 · 적색 경보",tone:"밀실 스릴러 · 이중미션",diff:"★★★★",players:"5~6인",
    img:"/assets/poster_submarine.jpg",glow:"rgba(74,152,166,.30)",tagline:"침몰하는 진실"},
-  {id:"snooze",title:"스누즈",sub:"SNOOZE · 한 번 미뤄진 죽음",tone:"안도 · 그리고 뒤집힘",diff:"★★★",players:"5인",
+  {id:"snooze",title:"자명종",sub:"잠든 당주의 알람소리",tone:"고전 저택 · 블랙코미디",diff:"★★",players:"3인 (+NPC 2)",
    img:"/assets/poster_snooze.jpg",glow:"rgba(226,96,74,.28)",tagline:"알람은 꺼진 게 아니다"},
   {id:"carousel",title:"회전목마",sub:"CAROUSEL · 한 바퀴 돌면 제자리",tone:"괴담 · 형광색",diff:"★★★★",players:"5인",
    img:"/assets/poster_carousel.jpg",glow:"rgba(120,214,198,.28)",tagline:"한 바퀴 돌면 제자리"},
@@ -569,7 +569,30 @@ const ADMINDOC={
     rule:"정식 운영 · 정본: scenarios/subway.py"},
   graduation:{stage:"졸업사진 · 초대받지 못한 자", theme:"명단에서 지워진 이름",
     spoiler:"한 장의 졸업사진과 초대받지 못한 자. 상세 대본·조사카드는 플레이 빌드에서 열람.",
-    rule:"정식 운영 · 정본: scenarios/graduation.py"}
+    rule:"정식 운영 · 정본: scenarios/graduation.py"},
+  snooze:{stage:"솔베니아 섬 솔베인 관 · 이틀에 걸친 두 번의 아침", theme:'"범인 잡는 척하면서 나는 무엇을 건지나"',
+    spoiler:"손이 <b>둘</b>이다. <b>어제 아침</b>의 손은 집사 <b>바질 코트</b> — 베개로 눌렀고, 안 죽었다(미수). "
+      +"왕진의 마시가 2막에서 <b>소생</b>시키면서 판이 뒤집힌다. "
+      +"<b>오늘 새벽</b>의 손은 <b>원고에 없다</b> — 「밤」 페이즈에서 셋이 각자 하나를 고르고, 그 조합이 정한다. "
+      +"먼저 닿은 사람이 죽인 사람이고, 늦게 닿은 사람은 이미 식은 몸에 자기 방법을 한 번 더 얹는다. "
+      +"방법: 넬=찬장의 그 약(모두 앞에서 마시가 「오늘은 독」이라 경고) / 키어런=나이프(우물에 버려 아침상 물이 붉다) / "
+      +"바질=허리띠 교살(아침에 허리띠가 두 칸 헐겁다). 셋 다 안 가면 그는 그냥 숨이 멎는다. "
+      +"넬은 어제 아침의 범인을 <b>마부 토마스</b>로 오해하고 끝까지 그를 지킨다. "
+      +"토마스는 결백하고 관심도 없다 — 무효표를 던지되, <b>돈봉투(P1)</b>가 테이블에 오르면 반드시 키어런을 찍는다.",
+    rule:"10페이즈 · 손패 상한 1(3장 보고 2장 공개) · 1차 지목 표가 종막까지 누적 · "
+      +"「밤」 선택 분기(27조합→15갈래, 인물별 비공개 비주얼노벨) · 조사카드 24장(R1 현장9 / R2 질문3 / R3 소지품3+현장9). "
+      +"정본: scenarios/snooze.py"},
+  shelter:{stage:"대피소 · 문 하나를 사이에 둔 결재", theme:"살릴 사람을 고른다는 것",
+    spoiler:"결재 페이즈(DECISION)로 끝난다 — 범인 지목보다 <b>결정문에 무엇을 적었는가</b>가 채점된다. "
+      +"상세 대본·조사카드는 플레이 빌드에서 열람.",
+    rule:"정식 운영 · 결재 페이즈 · 정본: scenarios/shelter.py"},
+  karma_mirror:{stage:"업경대 앞 · 되찾는 기억", theme:"자기가 무엇을 했는지 마지막에 안다",
+    spoiler:"자기지목형 — 기억의 파편이 막마다 늘어나고, 마지막에 각자 자기 죄를 확인한다. "
+      +"상세 대본·조사카드는 플레이 빌드에서 열람.",
+    rule:"정식 운영 · 정본: scenarios/karma_mirror.py"},
+  carousel:{stage:"폐원 유원지 회전목마 · 한 바퀴 돌면 제자리", theme:"괴담 · 형광색",
+    spoiler:"상세 대본·조사카드는 플레이 빌드에서 열람.",
+    rule:"정본: scenarios/carousel.py"}
 };
 function toggleAdmin(){ if(admin){ showAdminPanel(); } else { openPw(); } }
 function openPw(){
