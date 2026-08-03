@@ -185,6 +185,8 @@ def fresh_room() -> dict:
         "accuse1": {"seq": None, "picks": {}},
         # 밤 — 각자 몰래 한 가지를 고르고, 그 조합이 그날 밤에 실제로 일어난 일을 정한다.
         "night": {"open": False, "picks": {}, "result": None},
+        # 질문지 — 순서대로 하나씩 묻는다. 안 물어진 것이 남는 게 이 막의 요점이다.
+        "ask": {"open": False, "asked": [], "turn": None},
         "dest": {},               # roleId -> 향한 곳. 종막에서 각자 정하고, 다 정해야 열린다
         # 결재 결정문 — 자리마다 한 문장씩 고른다. 범인으로 지목된 사람은 결재권을 잃고
         # 그 칸은 남은 사람들의 투표로 찬다. picks 는 최종값, votes 는 잃은 칸의 표다.
@@ -405,10 +407,12 @@ def public_state() -> dict:
             "flood": int(ROOM.get("flood", 0)),
             "crisis": _crisis_public(),
             "night": _night_public(),
+            "ask": _ask_public(),
             "accuse1": _accuse1_public(),
             "sealed": list(ROOM.get("sealed") or []),
             "chat": {"on": CHAT["on"], "gap": CHAT["gap"]},
             "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"],
+                      "noMap": bool(ph.get("noMap")),
                       "quota": [{"label": b.get("label", ""), "locs": list(b.get("locs") or []),
                                  "n": int(b.get("n", 0) or 0)} for b in _quota_for(seq)]},
             "roles": {rid: {"mode": r["mode"], "claimed": r["clientId"] is not None} for rid, r in ROOM["roles"].items()},
@@ -1040,10 +1044,12 @@ def sheet(role_id: str, clientId: str = ""):
     except TypeError:                      # 위기 개념이 없는 시나리오
         s["fragments"] = SC.memory_up_to(role_id, seq)
     # 그날 밤 자기가 한 일은 미리 적어둘 수가 없다 — 고른 다음에야 생긴다.
-    nm = getattr(SC, "night_memory", None)
-    if nm:
+    for hook, key in ((getattr(SC, "night_memory", None), "night"),
+                      (getattr(SC, "ask_memory", None), "ask")):
+        if not hook:
+            continue
         try:
-            s["fragments"] = list(s["fragments"]) + list(nm(role_id, ROOM.get("night") or {}, seq) or [])
+            s["fragments"] = list(s["fragments"]) + list(hook(role_id, ROOM.get(key) or {}, seq) or [])
         except Exception:                  # noqa: BLE001
             pass
     return s
@@ -2516,6 +2522,133 @@ def night_close(b: HostReq):
         return {"ok": True, "night": _night_public()}
 
 
+
+# ── 질문지 — 고갯짓 둘로만 답이 오는 막 ──────────────────────────
+def _ask_conf():
+    return getattr(SC, "ASK_SHEET", None)
+
+
+def _ask_order() -> list:
+    return [rid for rid in SC.__dict__.get("CHARACTERS", [])] if False else [
+        c["id"] for c in SC.CHARACTERS
+        if (ROOM["roles"].get(c["id"]) or {}).get("mode") in ("human", "ai")]
+
+
+def _ask_open() -> None:
+    conf = _ask_conf()
+    if not conf:
+        return
+    a = ROOM.setdefault("ask", {"open": False, "asked": [], "turn": None})
+    if a.get("open") or a.get("asked"):
+        return
+    order = _ask_order()
+    a["open"] = True
+    a["asked"] = []
+    a["turn"] = order[0] if order else None
+    ROOM["table"].append({"kind": "system", "broadcast": True,
+                          "text": conf.get("notice", "질문지가 침대 발치에 놓였습니다 — 순서대로 하나씩 고르세요.")})
+    _ev("ask", state="open")
+    _ask_step()
+
+
+def _ask_step() -> None:
+    """차례를 넘긴다. AI 배역이면 그 자리에서 자기 몫을 고른다."""
+    conf = _ask_conf()
+    a = ROOM.get("ask") or {}
+    if not conf or not a.get("open"):
+        return
+    order = _ask_order()
+    done = {r["by"] for r in a["asked"]}
+    left = [rid for rid in order if rid not in done]
+    if not left:
+        a["open"] = False
+        a["turn"] = None
+        ROOM["table"].append({"kind": "system", "broadcast": True,
+                              "text": "— 질문지가 덮였습니다. 남은 것은 아무도 묻지 않았습니다."})
+        _ev("ask", state="done")
+        bump()
+        return
+    a["turn"] = left[0]
+    if (ROOM["roles"].get(a["turn"]) or {}).get("mode") == "ai":
+        rem = _ask_remaining()
+        try:
+            qid = SC.ask_ai_pick(a["turn"], rem)
+        except Exception:                                # noqa: BLE001
+            qid = rem[0] if rem else ""
+        if qid:
+            _ask_record(a["turn"], qid)
+            return
+    bump()
+
+
+def _ask_remaining() -> list:
+    conf = _ask_conf() or {}
+    used = {r["q"] for r in (ROOM.get("ask") or {}).get("asked", [])}
+    return [q["id"] for q in conf.get("questions", []) if q["id"] not in used]
+
+
+def _ask_record(role_id: str, qid: str) -> None:
+    conf = _ask_conf() or {}
+    q = next((x for x in conf.get("questions", []) if x["id"] == qid), None)
+    if not q:
+        return
+    a = ROOM["ask"]
+    a["asked"].append({"by": role_id, "q": qid})
+    nm = (SC.get_character(role_id) or {}).get("name", role_id)
+    ans = conf.get("nod", "끄덕") if q["a"] == "nod" else conf.get("shake", "도리")
+    ROOM["table"].append({"kind": "system", "broadcast": True,
+                          "text": f'{nm} — 「{q["q"]}」\n    …{ans}.'})
+    _ev("ask", by=role_id, q=qid, a=q["a"])
+    _ask_step()
+
+
+def _ask_public(role_id: str = "") -> dict | None:
+    conf = _ask_conf()
+    if not conf:
+        return None
+    a = ROOM.get("ask") or {}
+    if not a.get("open") and not a.get("asked"):
+        return None
+    used = {r["q"]: r["by"] for r in a.get("asked", [])}
+    qs = []
+    for q in conf.get("questions", []):
+        askedby = used.get(q["id"])
+        qs.append({"id": q["id"], "q": q["q"], "askedBy": askedby or "",
+                   "a": (q["a"] if askedby else "")})
+    return {"open": bool(a.get("open")), "turn": a.get("turn") or "",
+            "kick": conf.get("kick", ""), "title": conf.get("title", ""),
+            "intro": conf.get("intro", ""), "prompt": conf.get("prompt", ""),
+            "nod": conf.get("nod", "끄덕"), "shake": conf.get("shake", "도리"),
+            "questions": qs, "asked": list(a.get("asked", [])),
+            "total": len(_ask_order()), "done": not a.get("open") and bool(a.get("asked"))}
+
+
+class AskPick(BaseModel):
+    roleId: str
+    clientId: str
+    qid: str
+
+
+@app.post("/api/ask")
+def ask_pick(b: AskPick):
+    with LOCK:
+        if not _ask_conf():
+            return JSONResponse({"error": "이 사건에는 질문지가 없습니다"}, status_code=409)
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "그 배역으로 물을 수 없습니다"}, status_code=403)
+        a = ROOM.setdefault("ask", {"open": False, "asked": [], "turn": None})
+        if not a.get("open"):
+            return JSONResponse({"error": "질문지가 덮여 있습니다"}, status_code=409)
+        if a.get("turn") != b.roleId:
+            return JSONResponse({"error": "아직 당신 차례가 아닙니다"}, status_code=409)
+        if b.qid not in _ask_remaining():
+            return JSONResponse({"error": "이미 물어본 질문이거나 없는 질문입니다"}, status_code=409)
+        _ask_record(b.roleId, b.qid)
+        bump()
+        return {"ok": True, "ask": _ask_public(b.roleId)}
+
+
 # ── 중간 지목 — 판이 끝나기 전에 한 번 이름을 부른다 ─────────────────
 def _accuse1_public() -> dict | None:
     """그 막에서 던진 표. 판정은 안 한다 — 이 표는 종막까지 그대로 따라간다."""
@@ -2642,6 +2775,10 @@ def interrogate(b: Interrogate):
         # 사람을 찌를 때는 그 배역의 «정체» 항목을 쓴다. 실토해도 한 겹만 벗겨진다.
         entry = ((getattr(SC, "INTERROGATE_SELF", {}) or {}).get(b.targetRoleId) if selfmode
                  else (getattr(SC, "INTERROGATE", {}) or {}).get(b.targetRoleId, {}).get(b.cardId))
+        # 사건이 정체 답변을 한 줄로만 적어둔 경우가 있다. 그대로 두면 아래에서
+        # 문자열을 사전처럼 다루다 500 이 나고, 화면에는 「network」만 뜬다.
+        if isinstance(entry, str):
+            entry = {"evasive": entry, "truth": entry, "rebuttal": ""}
 
         # 같은 자리를 몇 번 찔렸는가. 한 번 얼버무렸다고 그 정보가 닫히면 안 된다 —
         # 얼버무림은 「여기가 아프다」는 신호이고, 계속 밀면 결국 분다.
@@ -3094,6 +3231,8 @@ def _advance():
                 _crisis_open()
             if ph.get("key") == "night":
                 _night_open()
+            if ph.get("key") == "ask":
+                _ask_open()
             ROOM["flood"] = _flood_for(seq)
             bump()
         return {"seq": ROOM["seq"]}

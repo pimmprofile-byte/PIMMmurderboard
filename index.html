@@ -1331,6 +1331,19 @@
 
   /* ── 침수 대응 퍼즐 ─────────────────────────────────────────
      조사 화면 맨 위를 차지한다. 이걸 넘기고 조사부터 하면 안 되니까 눈에 걸리게. */
+  .asklist{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+  .ask-q{display:block;width:100%;text-align:left;padding:12px 13px;cursor:pointer;font:inherit;color:inherit;
+    border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.02)}
+  .ask-q:disabled{cursor:default}
+  .ask-q .ask-t{font-size:14px;line-height:1.6;color:#eef2f6;word-break:keep-all}
+  .ask-q .ask-a{margin-top:7px;font-size:13px;color:var(--sub);display:flex;align-items:center;gap:8px}
+  .ask-q .ask-a .by{margin-left:auto;font-size:11.5px;opacity:.75}
+  .ask-q .ask-a.wait{color:var(--gold-b);font-weight:700}
+  .ask-q:disabled .ask-a.wait{color:var(--sub);font-weight:400}
+  .ask-q.done{background:rgba(255,255,255,.04)}
+  .ask-q.done .ask-t{color:var(--sub)}
+  .ask-q.nod{border-color:#4e8a6a}   .ask-q.nod .ask-a{color:#8fd6ae}
+  .ask-q.shake{border-color:#8a5a4e} .ask-q.shake .ask-a{color:#e8a89b}
   .nightcard,.accusecard{border:1px solid var(--line);border-radius:13px;padding:15px 16px}
   .nightcard{background:linear-gradient(168deg,rgba(9,12,20,.96),rgba(12,14,18,.98))}
   .nt-kick{font-size:11px;letter-spacing:.26em;color:var(--cold);font-weight:700;margin-bottom:5px}
@@ -2278,6 +2291,11 @@ function openVN(force){
   $("vnMute").innerHTML=(vnMuted?ICO.mute:ICO.sound)+' <span class="vn-ml">소리</span>';
   $("vn").classList.add("on"); vnArmAudio(); vnRender();
 }
+/* 피해자는 배역도 NPC도 아니라 따로 세운다. 이름은 피해자 카드에서 가져온다. */
+function vnVictimSpeaker(){
+  const v=(SCEN&&SCEN.victimCard)||{};
+  return {id:"victim", name:v.name||"피해자", job:"", color:"#b9a98f", avatar:""};
+}
 function vnRender(){
   const cut=vnCuts[vnAt]; if(!cut) return;
   const sid=(STATE&&STATE.scenarioId)||"";
@@ -2297,7 +2315,9 @@ function vnRender(){
   }
 
   // 화자 — 스프라이트·이름표·강조색
-  const ch=cut.who ? (SCEN.characters||[]).find(c=>c.id===cut.who) : null;
+  const ch=cut.who ? (((SCEN.characters||[]).find(c=>c.id===cut.who))
+                     || ((SCEN.npcs||[]).find(c=>c.id===cut.who))
+                     || (cut.who==="victim" ? vnVictimSpeaker() : null)) : null;
   const root=$("vn");
   root.classList.toggle("speak",!!ch);
   sp.classList.remove("show"); emo.classList.remove("show");
@@ -2824,6 +2844,15 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
       `각자 자기 기기에서 서술로 답합니다. 답은 이 진행석으로 모입니다.
        <div class="gm-ans" id="gmAnswers"><div class="gm-note">답안을 불러오는 중…</div></div>`);
   }
+  if(k==="ask"){
+    const a=STATE.ask||{};
+    const rows=(a.questions||[]).map((q,i)=>`  ${i+1}. 「${q.q}」${q.askedBy
+      ? `\n     — ${q.a==="nod"?a.nod:a.shake}   (${nameOf(q.askedBy)})` : "\n     — 아직 안 물음"}`).join("\n");
+    return gmCinematic("질문지 · 예 아니면 아니오", rows, a.open?`${nameOf(a.turn)}의 차례입니다.`:"질문지가 덮혔습니다.",
+      `당주는 <b>끄덕이거나 젓는 것</b>뿐입니다. 각자 순서대로 하나씩 고릅니다.
+       <div style="margin-top:8px"><b>${(a.asked||[]).length}/${a.total}</b>명 물음.
+       ${a.open?"":"남은 질문은 아무도 묻지 않았습니다 — <b>다음 페이즈 ›</b>로 넘기세요."}</div>`);
+  }
   if(k==="night"){
     const n=STATE.night||{};
     if(n.done) return gmCinematic("밤이 지났다", (n.outcome||[]).join("\n"), n.headline||"",
@@ -3030,6 +3059,7 @@ function renderPanel(ph){
   // 실제로 바뀐 게 있을 때만 다시 그린다.
   const sig=JSON.stringify([k,STATE.seq,STATE.round,STATE.turn,ph.ap,myRoleId,myHand.map(c=>c.id),STATE.revealedIds,STATE.usedAP,STATE.grades,STATE.ending&&STATE.ending.name,STATE.interrogate,STATE.checked,STATE.crisis&&[STATE.crisis.open,STATE.crisis.solved,STATE.crisis.answered],crAns.join(""),STATE.flood,
     STATE.night&&[STATE.night.open,STATE.night.done,STATE.night.mine,(STATE.night.picked||[]).join("")],
+    STATE.ask&&[STATE.ask.open,STATE.ask.turn,(STATE.ask.asked||[]).map(r=>r.by+r.q).join("")],
     STATE.accuse1&&JSON.stringify(STATE.accuse1.picks)]);
   if(sig===renderPanel._sig) return;
   renderPanel._sig=sig;
@@ -3050,8 +3080,12 @@ function renderPanel(ph){
       p.innerHTML=crisisHTML();
       paintCrisisBoard();
     }else{
-      p.innerHTML=`${crisisHTML()}${handWarn()}${turnBar()}<div id="cmap"></div>`;
-      renderMap($("cmap")); paintCrisisBoard();
+      // 당주에게 묻는 막처럼 조사할 «자리»가 없는 조사 페이즈에서는 지도를 안 깐다 —
+      // 고를 것이 질문지뿐인데 배치도가 화면 절반을 먹으면 그게 방해다.
+      const noMap=!!(STATE.phase||{}).noMap;
+      p.innerHTML=`${crisisHTML()}${handWarn()}${turnBar()}${noMap?"":`<div id="cmap"></div>`}`;
+      if(!noMap) renderMap($("cmap"));
+      paintCrisisBoard();
     } }
   else if(k==="talk"){
     const mineIds=new Set(myHand.map(c=>c.id));
@@ -3063,6 +3097,7 @@ function renderPanel(ph){
         return `<button class="pill pair${rd?" rdy":""}" title="${rd?"짝이 지금 나와 있습니다 — 눌러서 맞춰보세요":"같은 조각을 단 카드를 찾으세요"}" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id,rd)}${rd?"맞물림":"조각"}</button>`;
       }).join("")}<div class="lead clip1">${esc(oneLine(c.text))}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
     +interrogPanelHTML()+nextPhaseBlock(); }
+  else if(k==="ask"){ renderAsk(p); }
   else if(k==="night"){ renderNight(p); }
   else if(k==="accuse"){ renderAccuse(p); }
   else if(k==="final"){ renderFinal(p); }
@@ -4165,6 +4200,37 @@ async function swapConfirm(){
       않은 답을 낸 것으로 보였다. 이제는 클로드에 그대로 붙여넣을 한 덩어리 글을 만들어
       준다 — 그걸 들고 클로드 세션에 물어보면 그 자리가 진행석이 된다. */
 function finalRoute(){ return backendOn()?"ai":((gmOn||(STATE&&STATE.hasGM))?"gm":"claude"); }
+/* 질문지 — 당주는 끄덕이거나 젓는 것뿐이다. 여섯 장에 셋이 하나씩 물으니
+   셋은 끝내 안 물어진다. 무엇을 «안 묻기로 했는가»가 이 막에 남는 기록이다. */
+function renderAsk(p){
+  const a=(STATE&&STATE.ask)||null;
+  if(!a){ p.innerHTML=`<div class="card"><div class="panel-note">질문지가 덮였습니다.</div></div>${nextPhaseBlock()}`; return; }
+  const mine=a.turn===myRoleId&&a.open&&myRoleValid();
+  const rows=(a.questions||[]).map(q=>{
+    const done=!!q.askedBy;
+    const ans=q.a==="nod"?a.nod:a.shake;
+    return `<button class="ask-q${done?" done":""}${done&&q.a==="nod"?" nod":""}${done&&q.a==="shake"?" shake":""}"
+      ${(mine&&!done)?`onclick="askPick('${q.id}')"`:"disabled"}>
+      <div class="ask-t">「${esc(q.q)}」</div>
+      ${done?`<div class="ask-a">…${esc(ans)}.<span class="by">${esc(nameOf(q.askedBy))}가 물었다</span></div>`
+            :`<div class="ask-a wait">${mine?"이걸 묻는다 ›":"— 아직 안 물었다"}</div>`}</button>`;}).join("");
+  const turnName=a.turn?nameOf(a.turn):"";
+  p.innerHTML=`<div class="card nightcard askcard">
+    <div class="nt-kick">${esc(a.kick||"질문지")}</div>
+    <h2>${esc(a.title||"")}</h2>
+    <div class="nt-intro">${esc(a.intro||"")}</div>
+    <div class="nt-prompt">${a.open?(mine?esc(a.prompt||""):`${esc(turnName)}의 차례입니다.`):"질문지가 덮혔습니다."}</div>
+    <div class="asklist">${rows}</div>
+    <div class="nt-foot"><span class="tally">${(a.asked||[]).length}/${a.total} 물음${
+      a.open?"":" · 남은 것은 아무도 묻지 않았습니다"}</span></div>
+  </div>${a.open?"":nextPhaseBlock()}`;
+}
+async function askPick(qid){
+  if(!myRoleValid()){ banner("배역을 맡아야 물을 수 있어요"); return; }
+  const r=await post("/api/ask",{roleId:myRoleId,clientId,qid});
+  if(r&&r.error){ banner(r.error); return; }
+  banner(""); await poll();
+}
 /* 밤 — 각자 하나를 고르고, 그 조합이 그날 밤에 실제로 일어난 일을 정한다.
    무엇을 골랐는지는 서로 안 보인다. 「정했다」까지만 보인다. */
 let nightPick="";
@@ -4177,8 +4243,8 @@ function renderNight(p){
       <h2>${esc(n.headline||"")}</h2>
       ${(n.outcome||[]).map(t=>`<div class="nt-out">${esc(t)}</div>`).join("")}
       ${n.mineOutcome?`<div class="nt-mine"><div class="w">그날 밤 · 내가 한 일</div>${esc(n.mineOutcome)}</div>`:""}
-      <div class="panel-note" style="margin-top:12px">아침입니다. <b>다음 페이즈 ›</b>로 마지막 조사를 여세요.</div>
-    </div>`;
+      <div class="panel-note" style="margin-top:12px">아침입니다.</div>
+    </div>${nextPhaseBlock()}`;
     return;
   }
   const mine=n.mine||"";
@@ -4196,7 +4262,7 @@ function renderNight(p){
       <span class="tally">${(n.picked||[]).length}/${n.total} 정함${mine?" · 내 선택 잠김":""}</span>
       ${myRoleValid()&&!mine?`<button class="btn primary sm"${nightPick?"":" disabled"} onclick="nightSend()">이걸로 간다</button>`:""}
       ${(STATE.isHost||gmOn)?`<button class="btn quiet sm" onclick="nightClose()">지금 넘기기</button>`:""}
-    </div></div>`;
+    </div></div>${nextPhaseBlock()}`;
 }
 function nightSel(id){ nightPick=id; renderPanel._sig=null; applyState(); }
 async function nightSend(){
@@ -4226,7 +4292,7 @@ function renderAccuse(p){
     ${myRoleValid()?btns:`<div class="panel-note" style="margin-top:12px">관전 중 — 배역을 맡은 사람만 적습니다.</div>`}
     ${rows?`<div class="ac-tally"><div class="w">지금까지 나온 이름</div>${rows}</div>`:""}
     <div class="nt-foot"><span class="tally">${Object.keys(a.picks||{}).length}/${a.voters} 적음${
-      a.tie?" · 표가 갈렸습니다":""}</span></div></div>`;
+      a.tie?" · 표가 갈렸습니다":""}</span></div></div>${nextPhaseBlock()}`;
 }
 async function accuse1(t){
   if(!myRoleValid()){ banner("배역을 맡아야 적을 수 있어요"); return; }
