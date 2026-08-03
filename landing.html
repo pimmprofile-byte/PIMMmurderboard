@@ -514,7 +514,15 @@ function pips(id){
 }
 function pickScenario(id){
   const s=SCEN.find(x=>x.id===id);
-  if(s.locked && !admin){ note(`《${s.title}》은 아직 준비 중이에요.`); return; }
+  // 준비 중인 사건 — 한 번은 여느 때처럼 막고, 곧바로 한 번 더 누르면 관리자 문을 연다.
+  // 만드는 사람이 자기 판을 열어보려고 매번 메인으로 돌아가지 않게.
+  if(s.locked && !admin){
+    const t=Date.now();
+    if(lockTap.id===id && t-lockTap.at<2600){ lockTap={id:"",at:0}; admAfter=id; openPw(); return; }
+    lockTap={id, at:t};
+    note(`《${s.title}》은 아직 준비 중이에요. 한 번 더 누르면 관리자로 열어봅니다.`);
+    return;
+  }
   // 고른 포스터는 가운데로 온다. 다시 그리는 쪽이 보던 자리를 되돌린 «뒤에» 밀어야
   // 하므로 뜻만 남겨두고, 다시 안 그렸으면 여기서 바로 민다.
   me.pick=id; sfxPick(); railWant=id; render();
@@ -567,7 +575,7 @@ function posterHTML(s,c){
         <span class="sel">${s.locked?"준비중":(me.pick===s.id?"● 내가 고름":"고르기")}</span></div>
     </button>`;
 }
-let railCopies=3, railJump=false, railSig="", railWant=null, railRedrew=false;
+let railCopies=5, railJump=false, railSig="", railWant=null, railRedrew=false, railIdle=0;
 /* 한 벌의 폭 — 다음 벌 첫 장까지의 거리다(사이 간격까지 들어간다) */
 function railPeriod(){
   const rail=$("rail"), n=railList().length;
@@ -586,16 +594,21 @@ function renderRail(){
   const first=!railSig, keep=rail.scrollLeft;
   railSig=sig; rail.innerHTML=sig;
   if(!rail.dataset.wired){ rail.dataset.wired="1";
-    rail.addEventListener("scroll",()=>{ if(!railJump) railWrap(); },{passive:true}); }
+    // 손가락이 «멈춘 뒤에» 되돌린다. 미는 도중에 scrollLeft 를 건드리면 그 자리에서
+    // 관성이 죽어버려서 「막혔다」로 읽힌다. 벌을 넉넉히 깔아 그동안 끝이 안 나오게 한다.
+    rail.addEventListener("scroll",()=>{ if(railJump) return;
+      clearTimeout(railIdle); railIdle=setTimeout(railWrap,140);
+      railGuard();                       // 진짜 끝이 코앞이면 그때는 도중에라도 되돌린다
+    },{passive:true}); }
   requestAnimationFrame(()=>{
     const one=railPeriod(); if(!one) return;
-    // 한 벌이 화면보다 좁으면 벌을 더 깐다. 가운데 벌에 머물러도 오른쪽이 안 비게.
-    const need=Math.max(3, Math.ceil(rail.clientWidth/one)+2);
+    // 한 벌이 화면보다 좁으면 벌을 더 깐다. 가운데 벌에 머물러도 바깥이 안 비게.
+    const need=Math.max(5, Math.ceil(rail.clientWidth/one)+4);
     if(need!==railCopies){ railCopies=need; railSig=""; renderRail(); return; }
     if(first){
       // 처음에는 가운데 벌에 세운다. 0 에 두면 왼쪽으로 밀 자리가 없어서
       // 되돌릴 기회조차 안 생기고 그대로 왼쪽 끝에 갇힌다.
-      railJump=true; rail.scrollLeft=one; railJump=false;
+      railJump=true; rail.scrollLeft=railHome(); railJump=false;
       railCenter(me.pick||list[0].id,false);
       return;
     }
@@ -623,16 +636,26 @@ function railCenter(id, smooth){
   if(smooth) railCenter._t=setTimeout(()=>{ railJump=false; railWrap(); }, 620);
   else railJump=false;
 }
-/* 가운데 한 벌 [0.5벌, 1.5벌) 안에 머물게 한다. 양옆에 반 벌씩 여유를 두는 건
-   가운데로 세우는 계산이 경계에 딱 붙었을 때 곧바로 되돌리지 않게 하려는 것이다. */
+/* 제자리 — 가운데 벌의 머리 */
+function railHome(){ return Math.floor(railCopies/2)*railPeriod(); }
+/* 제자리에서 «네 벌의 삼》 넘게 멀어지면 한 벌씩 당겨 제자리 쪽으로 돌려놓는다.
+   한 벌 단위라 그림은 똑같은 자리에 서고, 되돌린 뒤에도 제자리에서 4분의 1 벌 안이라
+   스냅이 반 장쯤 밀어도 다시 문턱에 안 닿는다.
+   문턱을 반 벌로 잡았을 때는 되돌린 자리를 스냅이 밖으로 밀어내고, 그걸 또 되돌리고 —
+   그렇게 왼쪽에서 핑퐁이 나서 한 발짝도 못 갔다. */
 function railWrap(){
   const rail=$("rail"), one=railPeriod(); if(!one) return;
-  const x=rail.scrollLeft, lo=one*0.5;
-  if(x<lo||x>=lo+one){
-    railJump=true;
-    rail.scrollLeft = lo + ((x-lo)%one + one)%one;
-    railJump=false;
-  }
+  const home=railHome(), lim=one*0.75, x=rail.scrollLeft;
+  let nx=x;
+  while(nx < home-lim) nx+=one;
+  while(nx > home+lim) nx-=one;
+  if(Math.abs(nx-x)>=1){ railJump=true; rail.scrollLeft=nx; railJump=false; }
+}
+/* 진짜 끝이 코앞이면 손이 아직 안 멈췄어도 되돌린다 — 막다른 벽보다는 한 번 덜컹이는 게 낫다 */
+function railGuard(){
+  const rail=$("rail"), one=railPeriod(); if(!one) return;
+  const x=rail.scrollLeft, max=rail.scrollWidth-rail.clientWidth;
+  if(x<one*0.5 || x>max-one*0.5) railWrap();
 }
 addEventListener("resize",()=>{ if($("rail")&&$("rail").children.length){ railSig=""; renderRail(); } });
 function renderBar(){
@@ -683,7 +706,9 @@ const ADMINDOC={
     spoiler:"상세 대본·조사카드는 플레이 빌드에서 열람.",
     rule:"정본: scenarios/carousel.py"}
 };
-function toggleAdmin(){ if(admin){ showAdminPanel(); } else { openPw(); } }
+/* 준비 중인 포스터를 두 번 눌러 들어온 경우, 비밀번호가 풀리면 그 사건을 바로 고른다 */
+let lockTap={id:"",at:0}, admAfter="";
+function toggleAdmin(){ admAfter=""; if(admin){ showAdminPanel(); } else { openPw(); } }
 function openPw(){
   $("adcard").className="adcard";
   $("adcard").innerHTML=`<h3>관리자 · 열람 모드</h3><div class="adsub">TEST / ADMIN ACCESS</div>
@@ -701,6 +726,13 @@ function submitAdmin(){
     loadTextLoads().then(()=>{ if($("admask").classList.contains("on")) showAdminPanel(); });
     const b=$("adminbtn"); b.classList.add("on"); b.textContent="● 관리자 ON";
     if($("scr-scenarios").classList.contains("on")) render();
+    if(admAfter){
+      // 포스터에서 들어온 길이다 — 열람 패널 대신 그 사건을 고른 채로 돌려보낸다.
+      const id=admAfter; admAfter="";
+      closeAdmin(); pickScenario(id);
+      note("관리자 모드 ON — 준비 중인 사건도 열어볼 수 있어요.");
+      return;
+    }
     showAdminPanel();
     note("관리자 모드 ON — 잠긴 사건도 열어서 내용을 확인할 수 있어요.");
   } else {

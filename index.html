@@ -316,7 +316,10 @@
     border-radius:2px 10px 10px 2px;padding:8px 12px}
   .gmsay .g{flex:0 0 auto;color:var(--gold);font-size:10px;letter-spacing:.08em;font-weight:800;margin-top:3px}
   .gmsay .t{flex:1 1 auto;min-width:0;font-size:13px;line-height:1.72;color:#e8e2d4;word-break:keep-all}
-  .msg{display:flex;gap:8px;max-width:90%}.msg.own{align-self:flex-end;flex-direction:row-reverse}
+  /* 남의 말은 예외 없이 왼쪽에 붙는다. align-self 를 안 적어두면 기본값이 stretch 라
+     기기에 따라 줄이 늘어나 말풍선이 가운데로 밀려 보였다. 내 말만 오른쪽이다. */
+  .msg{display:flex;gap:8px;max-width:90%;align-self:flex-start}
+  .msg.own{align-self:flex-end;flex-direction:row-reverse}
   /* 얼굴 아바타 — 초상을 동그랗게 자른다. 초상이 없으면 .noimg가 붙고 이름 첫 글자가 대신 뜬다. */
   .ava{display:inline-grid;place-items:center;overflow:hidden;border-radius:50%;flex:0 0 auto;
     vertical-align:middle;background:var(--panel);border:1px solid var(--ac,var(--line));position:relative}
@@ -429,6 +432,12 @@
     border:1px solid var(--line);border-radius:20px;padding:0 7px;white-space:nowrap}
   .alb-bub{border-left:2px solid var(--gold);background:var(--bg2);color:#d8d6d4;
     border-radius:2px 10px 10px 10px;font-size:13.5px;line-height:1.75}
+  /* 내 배역이 한 말은 조서에서도 내 쪽이다 — 오른쪽에 붙고 글자가 금색이다.
+     내 말은 채우지 않는다. 조서는 «옮겨 적은 것»이라 결이 조용해야 한다. */
+  .alb-msg.own .nm{justify-content:flex-end}
+  .alb-msg.own .alb-bub{border-left:0;border-right:2px solid var(--gold);
+    border-radius:10px 2px 10px 10px;color:var(--gold-b);
+    background:var(--bg2)}
   .panel-note{color:var(--sub);font-size:13.5px;line-height:1.8}
 
   /* 카드맵 */
@@ -1370,19 +1379,44 @@
   .dropnote .dn-t i{font-style:normal;font-size:11.5px;color:var(--sub);
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dropnote .dn-go{margin-left:auto;font-size:12px;color:var(--gold-b);font-weight:700;white-space:nowrap}
+  /* 지금은 안 볼 사람을 위한 자리. 알림은 누를 때까지 안 사라지니까 나갈 문이 있어야 한다. */
+  .dropnote .dn-x{flex:0 0 auto;width:26px;height:26px;padding:0;display:grid;place-items:center;
+    background:none;border:0;border-left:1px solid var(--line);margin-left:2px;color:var(--muted);cursor:pointer}
+  .dropnote .dn-x svg{width:14px;height:14px}
+  .dropnote .dn-x:hover{color:var(--ink)}
   /* 알림이 내려와 있는 동안 뒤를 한 겹 죽인다 — 눌러야 하는 건 알림이 아니라서 통과시킨다 */
   .dropdim{position:fixed;inset:0;z-index:69;pointer-events:none;background:#05060a;
     opacity:0;transition:opacity .34s ease}
   .dropdim.on{opacity:.42}
   @media(prefers-reduced-motion:reduce){ .dropnote{transition:opacity .2s} .dropdim{transition:opacity .15s} }
   .dashhead{display:flex;align-items:center;gap:10px}
-  .dashhead .dfilt{margin-left:auto}
-  .dashhead .dfilt select{appearance:none;-webkit-appearance:none;
-    background:rgba(255,255,255,.04) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2 4.5 6 8.5 10 4.5' fill='none' stroke='%238a95a3' stroke-width='1.5' stroke-linecap='round'/></svg>") no-repeat right 8px center/11px;
-    color:var(--sub);border:1px solid var(--line);border-radius:6px;
-    font:600 11.5px/1 inherit;letter-spacing:.02em;padding:7px 26px 7px 10px;cursor:pointer}
-  .dashhead .dfilt select:focus-visible{outline:2px solid var(--cold);outline-offset:2px}
-  .dashhead .dfilt select option{background:#11151c;color:#e8eef5}
+  .dashhead .dh-t{flex:0 0 auto}
+  /* 거르개 — 「필터」라고 적어둔다. 상자 하나만 놓아뒀더니 그게 거르개인 줄을 몰랐다. */
+  .dfilt{margin-left:auto;display:inline-flex;align-items:center;gap:6px;max-width:62%;
+    background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:8px;
+    padding:6px 10px;color:var(--sub);font-family:inherit;font-size:11.5px;cursor:pointer;transition:.13s}
+  .dfilt:hover{border-color:var(--cold);color:var(--ink)}
+  .dfilt .fi{display:flex;color:var(--muted)}
+  .dfilt .fi svg{width:13px;height:13px}
+  .dfilt .fk{font-weight:800;letter-spacing:.08em;color:var(--muted);flex:0 0 auto}
+  .dfilt .fv{font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dfilt.on{border-color:var(--cold);background:rgba(60,110,150,.14)}
+  .dfilt.on .fi,.dfilt.on .fk{color:var(--cold)}
+  /* 하나 고르는 창 — 안내창과 같은 틀 안에 줄로 세운다 */
+  .pickone{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+  .po{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font-family:inherit;
+    background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;
+    color:var(--ink);cursor:pointer;transition:.13s}
+  .po:hover{border-color:var(--cold)}
+  .po.on{border-color:var(--cold);background:rgba(60,110,150,.16)}
+  .po .po-k{flex:0 0 18px;display:flex;color:var(--muted)}
+  .po.on .po-k{color:var(--cold)}
+  .po .po-k svg{width:15px;height:15px}
+  .po .po-w{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .po .po-w b{font-size:14px;font-weight:700}
+  .po .po-w i{font-style:normal;font-size:11.5px;color:var(--sub);word-break:keep-all}
+  .po .po-n{flex:0 0 auto;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .po.on .po-n{color:var(--cold)}
   .nqlist{margin-top:12px;display:flex;flex-direction:column;gap:7px}
   .nq{border:1px solid var(--line);border-left-width:3px;border-radius:8px;padding:10px 12px;
     background:rgba(255,255,255,.02)}
@@ -1819,6 +1853,7 @@ const ICO={
   pin:    _S('<path d="M12 21s6.4-6.2 6.4-10.4A6.4 6.4 0 0 0 5.6 10.6C5.6 14.8 12 21 12 21Z"/><circle cx="12" cy="10.4" r="2.4"/>'),
   torch:  _S('<path d="M8.4 3.4h7.2v3.8l1.6 2.2v11.2H6.8V9.4L8.4 7.2Z"/><path d="M6.8 12.4h10.4"/><path d="M12 14.6v3"/>'),
   search: _S('<circle cx="10.8" cy="10.8" r="6.2"/><path d="M15.4 15.4 20 20"/>'),
+  filter: _S('<path d="M3.6 5.4h16.8L14 12.6v5.6l-4 2.4v-8L3.6 5.4Z"/>'),
   vote:   _S('<path d="M3.6 13.4 12 4.6l8.4 8.8"/><path d="M4.6 13.4v6h14.8v-6"/><path d="M9 13.4h6"/>'),
   speak:  _S('<path d="M4 5.6h16v9.2H9.8L5.4 18.4v-3.6H4Z"/><path d="M8 9h8M8 12h5"/>'),
   swirl:  _S('<path d="M12 4.6a7.4 7.4 0 1 1-7.2 9.2"/><path d="M12 8.4a3.6 3.6 0 1 0 3.5 4.4"/>'),
@@ -3584,36 +3619,61 @@ function discoveredIds(){
 }
 /* 조사 현황 거르개. 구역이 아홉이라 목록이 길어지면 「지금 열 수 있는 게 뭐였더라」가
    화면 밖으로 밀린다. 카드 제목은 어차피 안 뜨므로 걸러도 새는 것이 없다. */
-const DASH_FILTERS=[["all","전부"],["open","안 열린 카드"],["can","확인할 수 있는 카드"],["hand","손패에 있는 카드"]];
+/* 거르개 — [값, 이름, 한 줄 설명, 아무것도 안 걸렸을 때 할 말] */
+const DASH_FILTERS=[
+  ["all",  "전부",             "구역별로 스물몇 장을 다 편다",              "카드가 없습니다."],
+  ["open", "안 열린 카드",     "아직 아무도 안 뒤진 자리",                  "안 열린 카드가 없습니다 — 다 열렸습니다."],
+  ["can",  "지금 조사할 수 있는 카드","내 차례에 이번 턴으로 열 수 있는 것", "지금 조사할 수 있는 카드가 없습니다."],
+  ["hand", "누군가 쥔 카드",   "나와 남들이 손에 들고 안 내놓은 것",        "아무도 손에 쥐고 있지 않습니다."],
+  ["pub",  "전체공개된 카드",  "테이블에 올라와 다 같이 읽는 것",           "아직 전체공개된 카드가 없습니다."],
+];
 let dashFilter="all";
 function dashPass(c){
   if(dashFilter==="all") return true;
   const k=cardState(c).k;
   if(dashFilter==="open") return k==="open"||k==="lock";
   if(dashFilter==="can")  return k==="open";
-  if(dashFilter==="hand") return k==="hand";
+  // 손패는 내 것만이 아니다 — 남이 쥔 것도 「누군가 쥐고 있는 카드」다.
+  if(dashFilter==="hand") return k==="hand"||k==="taken";
+  if(dashFilter==="pub")  return k==="pub";
   return true;
 }
-function setDashFilter(v){ dashFilter=v; const d=$("dash"); if(d) d.innerHTML=dashHTML(); }
+/* 거르개마다 몇 장이 걸리는지 — 고르기 전에 보여준다. 눌러보고 텅 비는 게 제일 답답하다. */
+function dashCounts(){
+  const all=((SCEN.map)||[]).flatMap(z=>zoneCards(z.loc));
+  const n={}; const was=dashFilter;
+  for(const [v] of DASH_FILTERS){ dashFilter=v; n[v]=all.filter(dashPass).length; }
+  dashFilter=was; return n;
+}
+function setDashFilter(v){
+  if(v===dashFilter) return;
+  dashFilter=v;
+  // 거르면 목록 길이가 확 바뀐다 — 읽던 자리를 잃지 않게 붙들어 둔다.
+  keepScroll();
+  const d=$("dash"); if(d) d.innerHTML=dashHTML();
+}
+async function openDashFilter(){
+  const n=dashCounts();
+  const v=await pickOne({title:"조사 현황 거르개", value:dashFilter,
+    options:DASH_FILTERS.map(([v,t,d])=>({v,t,d,n:n[v]}))});
+  if(v!=null) setDashFilter(v);
+}
 function dashHTML(){
-  let shown=0;
   const blocks=((SCEN.map)||[]).map(z=>{
     const cards=zoneCards(z.loc); if(!cards.length) return "";
     const done=cards.filter(c=>{ const k=cardState(c).k; return k!=="open"&&k!=="lock"; }).length;
-    const list=cards.filter(dashPass); shown+=list.length;
+    const list=cards.filter(dashPass);
     if(!list.length) return "";
     return `<div class="dz">
       <button class="dz-h" onclick="openZone('${z.loc}')">${esc(z.name||z.loc)}
         <span class="n">${done}/${cards.length}</span><span class="go">들어가기 ›</span></button>
       <div class="dcards">${list.map(dashCard).join("")}</div></div>`;
   }).join("");
-  const opts=DASH_FILTERS.map(([v,l])=>`<option value="${v}"${v===dashFilter?" selected":""}>${l}</option>`).join("");
-  return `<div class="dashhead">조사 현황
-      <span class="dfilt"><select aria-label="조사 현황 거르개" onchange="setDashFilter(this.value)">${opts}</select></span>
-    </div>${blocks||`<div class="panel-note" style="margin-top:10px">${
-      dashFilter==="hand"?"손에 쥔 카드가 없습니다."
-      :dashFilter==="can"?"지금 확인할 수 있는 카드가 없습니다."
-      :"해당하는 카드가 없습니다."}</div>`}`;
+  const f=DASH_FILTERS.find(x=>x[0]===dashFilter)||DASH_FILTERS[0];
+  return `<div class="dashhead"><span class="dh-t">조사 현황</span>
+      <button class="dfilt${dashFilter==="all"?"":" on"}" onclick="openDashFilter()">
+        <span class="fi">${ICO.filter}</span><span class="fk">필터</span><span class="fv">${esc(f[1])}</span></button>
+    </div>${blocks||`<div class="panel-note" style="margin-top:10px">${esc(f[3])}</div>`}`;
 }
 /* ── 심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다(예산 소모, 그 자리에서 공개) ── */
 function heldCardsOf(roleId){ return ((STATE.checked||{})[roleId]||[]).map(id=>cardCat(id)).filter(Boolean); }
@@ -4931,7 +4991,7 @@ function chatRow(m){
     return s; }
   if(m.kind==="alibi"){
     const c=roleById(m.roleId)||{};
-    const d=document.createElement("div"); d.className="msg alb-msg";
+    const d=document.createElement("div"); d.className="msg alb-msg"+(m.roleId===myRoleId?" own":"");
     d.innerHTML=`<div class="av">${avaHTML(c,"sm")}</div><div><div class="nm" style="color:${c.color||"#999"}">${esc(m.speaker)}`
       +`<span class="alb-j">${esc(c.job||"")}</span><span class="alb-t">${esc(m.at||"")}</span></div>`
       +`<div class="bub alb-bub">${esc(m.text)}</div></div>`;
@@ -5075,13 +5135,40 @@ function dialog(o){
     sfx(o.tone==="danger"?"buzzer":"book");
   });
 }
+/* 여럿 중 하나 고르기. 브라우저 기본 select 는 기기마다 생김새가 달라 이 화면과
+   안 맞고, 무엇을 고르는 중인지도 안 보인다 — 무엇보다 그게 «거르개»라는 걸 모른다. */
+function pickOne(o){
+  return new Promise(res=>{
+    const m=document.createElement("div");
+    m.className="modal dlg on";
+    const done=v=>{ m.remove(); document.removeEventListener("keydown",key); res(v); };
+    const key=e=>{ if(e.key==="Escape") done(null); };
+    m.innerHTML=`<div class="box" style="--mt:var(--cold)">
+      <div class="mhead"><span class="dlg-ic">${ICO.filter}</span>
+        <div class="mh-t"><h2>${esc(o.title||"")}</h2></div></div>
+      <div class="mbody"><div class="pickone">${(o.options||[]).map(x=>
+        `<button class="po${x.v===o.value?" on":""}" data-v="${esc(x.v)}">
+           <span class="po-k">${x.v===o.value?ICO.check:ICO.dot}</span>
+           <span class="po-w"><b>${esc(x.t)}</b>${x.d?`<i>${esc(x.d)}</i>`:""}</span>
+           ${x.n==null?"":`<span class="po-n">${x.n}장</span>`}</button>`).join("")}</div></div>
+      <div class="mfoot"><button class="btn" data-x>닫기</button></div></div>`;
+    m.onclick=e=>{ if(e.target===m) done(null); };
+    m.querySelectorAll(".po").forEach(b=>b.onclick=()=>done(b.dataset.v));
+    m.querySelector("[data-x]").onclick=()=>done(null);
+    document.addEventListener("keydown",key);
+    document.body.appendChild(m);
+    sfx("open");
+  });
+}
 const ask=o=>dialog(o);
 const say=o=>dialog({...o,kind:"say"});
 const askText=o=>dialog({...o,kind:"text"});
 
 let bannerT=null;
-/* 위에서 내려왔다가 올라가며 사라지는 알림. 「추가 정보가 늘었다」처럼
-   지금 손을 멈출 필요는 없지만 놓치면 안 되는 것에 쓴다. */
+/* 위에서 내려와 «누를 때까지» 머무는 알림. 「추가 정보가 늘었다」처럼
+   지금 손을 멈출 필요는 없지만 놓치면 안 되는 것에 쓴다.
+   저절로 걷어가지 않는다 — 몇 초 뒤에 사라지면 화면을 안 보고 있던 사람에게는
+   안 알린 것과 같다. 다만 뒤를 죽이는 건 한 박자만이다. 계속 어두우면 판을 못 본다. */
 let dropT=null;
 function dropNote(title, sub){
   let dim=$("dropDim");
@@ -5089,16 +5176,18 @@ function dropNote(title, sub){
     document.body.appendChild(dim); }
   let el=$("dropNote");
   if(!el){ el=document.createElement("div"); el.id="dropNote"; el.className="dropnote";
-    el.onclick=()=>{ dropHide(); sheetTab="extra"; showMySheet(); };
+    el.onclick=e=>{ if(e.target.closest(".dn-x")){ dropHide(); return; }
+                    dropHide(); sheetTab="extra"; showMySheet(); };
     document.body.appendChild(el); }
   el.innerHTML=`<span class="dn-i">${ICO.card||""}</span>
     <span class="dn-t"><b>${esc(title)}</b>${sub?`<i>${esc(sub)}</i>`:""}</span>
-    <span class="dn-go">열기 ›</span>`;
+    <span class="dn-go">열기 ›</span>
+    <button class="dn-x" aria-label="닫기">${ICO.close}</button>`;
   clearTimeout(dropT);
   el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
   dim.classList.add("on");
   try{ sfx("ping"); }catch(e){}
-  dropT=setTimeout(dropHide, 4900);
+  dropT=setTimeout(()=>{ const d=$("dropDim"); if(d) d.classList.remove("on"); }, 1500);
 }
 function dropHide(){
   clearTimeout(dropT);
