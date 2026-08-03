@@ -906,9 +906,12 @@ def _seed_alibi() -> None:
     ROOM["table"].append({"kind": "system", "broadcast": True,
                           "text": "사건 당시 · 알리바이 대화록 — " + head})
     for a in log:
-        c = SC.get_character(a.get("who", "")) or {}
-        ROOM["table"].append({"kind": "alibi", "roleId": a.get("who", ""),
-                              "speaker": c.get("name", a.get("who", "")),
+        # 배역이 아닌 사람도 이 자리에 선다 — 마부도 왕진의도 그날 아침 어디 있었는지를 말한다.
+        who = a.get("who", "")
+        getnpc = getattr(SC, "get_npc", None)
+        c = SC.get_character(who) or (getnpc(who) if getnpc else None) or {}
+        ROOM["table"].append({"kind": "alibi", "roleId": who,
+                              "speaker": c.get("name", who),
                               "at": a.get("t", ""), "text": a.get("line") or a.get("say", "")})
     note = getattr(SC, "ALIBI_NOTE", "")
     if note:
