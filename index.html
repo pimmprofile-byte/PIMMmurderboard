@@ -902,6 +902,10 @@
   .story p.lede{font-size:17px;line-height:1.8;color:#fff;font-weight:700}
   #sheetModal .story p{font-size:16.5px;line-height:2.0;max-width:34em}
   #sheetModal .story p.lede{font-size:18.5px}
+  /* 아직 아무것도 안 쌓인 자리. 채워질 자리라는 게 보이되 읽을 것이 있는 척은 안 한다. */
+  .bigcard.k-empty{border-style:dashed;background:none}
+  .bigcard.k-empty .bc-title{color:var(--muted)}
+  .bigcard.k-empty .bc-body{color:var(--sub)}
   /* 들키면 위험한 사실 — 판 중에 제일 급하게 다시 꺼내 보는 목록이다. 한눈에 세지게. */
   .bigcard.k-hide{border-color:color-mix(in srgb,var(--ember) 45%,var(--line))}
   .hidelist{margin-top:15px;display:flex;flex-direction:column;gap:2px;counter-reset:hd}
@@ -5388,6 +5392,14 @@ async function showMySheet(){
       <div class="bc-eyebrow">한눈에</div><div class="bc-title" style="font-size:18px">이 배역, 이렇게 굴린다</div>
       <div class="tiplist">${s.tips.map(t=>`<div class="tipitem">${esc(t)}</div>`).join("")}</div></div>`});
   }
+  // 「추가 정보」는 아직 빈 판에서도 자리를 지킨다. 판이 도는 중에 탭이 생겼다 없어졌다 하면
+  // 탭 줄의 모양이 바뀌고, 어제까지 한 번이면 닿던 자리가 오늘은 두 번이 된다.
+  if(!slides.some(x=>x.tab==="extra")){
+    slides.push({tab:"extra", html:`<div class="bigcard role k-empty" style="--rc:${s.color}">
+      <div class="bc-eyebrow">${esc(fragE)}</div>
+      <div class="bc-title" style="font-size:18px">아직 비어 있다</div>
+      <div class="bc-body">${esc("판이 도는 동안 여기가 채워진다.\n내 눈에만 들어온 것, 내가 한 일, 내가 들은 답 — 그런 것들이 하나씩 쌓인다.\n새로 생기면 화면 위에서 알려준다.")}</div></div>`});
+  }
   // 슬라이드가 열 장 넘으면 옆으로 넘기는 것만으로는 못 찾는다. 성격이 다른 셋으로 나눈다 —
   // 읽는 것(메인) · 판 위에서 쓰는 것(추가정보) · 훑는 것(요약).
   sheetSlides=slides; sheetRole=s;
@@ -5422,10 +5434,17 @@ function sheetGo(t,at){ sheetTab=t; sheetStart=(at==null?0:at); markTabSeen(t); 
 /* 지금 그려져 있는 탭들 — 슬라이드가 하나도 없는 탭은 애초에 안 나온다 */
 function sheetTabList(){ return SHEET_TABS.filter(([k])=>sheetSlides.some(x=>x.tab===k)).map(([k])=>k); }
 function sheetHasEdge(d){ const a=sheetTabList(), k=a.indexOf(sheetTab)+d; return k>=0&&k<a.length; }
-/* 마지막 장에서 더 밀면 옆 탭으로. 왼쪽으로 건너가면 그쪽 마지막 장에 선다. */
+/* 마지막 장에서 더 밀면 옆 탭으로. 왼쪽으로 건너가면 그쪽 마지막 장에 선다.
+   건넌 직후 한 박자는 또 안 건넌다 — 한 장짜리 탭을 지나갈 때 「따닥」 하고
+   두 칸이 지나가버려서, 가운데 탭이 뭐였는지 볼 새가 없었다.
+   그래도 true 를 돌려준다. false 면 그 스와이프가 장 넘김으로 새서 화면이 튄다. */
+let sheetEdgeAt=0;
 function sheetEdge(d){
+  const now=(window.performance&&performance.now)?performance.now():0;
+  if(now-sheetEdgeAt<480) return true;
   const a=sheetTabList(), k=a.indexOf(sheetTab)+d;
   if(a.indexOf(sheetTab)<0||k<0||k>=a.length) return false;
+  sheetEdgeAt=now;
   sheetGo(a[k], d<0?"end":0);
   try{ sfx("tap"); }catch(e){}
   return true;
