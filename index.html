@@ -2170,7 +2170,7 @@ function vnArmAudio(){
 let vnCuts=[], vnAt=0, vnTimer=null, vnTyping=false, vnIsEvent=false;
 function vnBuildCuts(){
   const cuts=(SCEN&&SCEN.openingCuts)||[];
-  if(cuts.length) return cuts.map(c=>({img:c.img||"",who:c.who||"",fx:c.fx||"",lines:c.lines||[]}));
+  if(cuts.length) return cuts.map(c=>({img:c.img||"",who:c.who||"",fx:c.fx||"",lines:c.lines||[],focus:c.focus||""}));
   const ls=String((SCEN&&SCEN.intro)||"").split("\n").map(s=>s.trim()).filter(Boolean);
   const out=[]; for(let i=0;i<ls.length;i+=2) out.push({img:"",who:"",fx:"",lines:ls.slice(i,i+2)});
   return out;
@@ -2203,7 +2203,7 @@ function cutMarkSeen(id){ cutSeen.add(id); try{ localStorage.setItem(cutKey(id),
 function playCuts(cuts){
   if($("vn").classList.contains("on")) return false;   // 오프닝이 도는 중엔 끼어들지 않는다
   if(!cuts||!cuts.length) return false;
-  vnCuts=cuts.map(c=>({img:c.img||"",who:c.who||"",fx:c.fx||"",lines:c.lines||[]}));
+  vnCuts=cuts.map(c=>({img:c.img||"",who:c.who||"",fx:c.fx||"",lines:c.lines||[],focus:c.focus||""}));
   vnAt=0; vnIsEvent=true;
   $("vnMute").innerHTML=(vnMuted?ICO.mute:ICO.sound)+' <span class="vn-ml">소리</span>';
   $("vn").classList.add("on"); vnArmAudio(); vnRender();
@@ -2244,6 +2244,9 @@ function vnRender(){
 
   bg.className="vn-bg "+(cut.img||"");
   bg.style.backgroundImage="";
+  // 16:9 원본을 세로 화면에 깔면 좌우가 잘린다. 컷이 focus 를 주면 그쪽을 남긴다.
+  bg.style.backgroundPosition=({left:"20% center",right:"80% center",
+                                top:"center 20%",bottom:"center 80%"}[cut.focus])||"center";
   bg.classList.remove("show"); void bg.offsetWidth; bg.classList.add("show");
   if(sid&&cut.img){
     // 이미지가 실제로 있을 때만 덧입힌다(없으면 위의 그라데이션이 그대로 남는다)
