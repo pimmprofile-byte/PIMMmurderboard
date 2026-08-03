@@ -5127,9 +5127,12 @@ function banner(m){ const b=$("banner");
 }
 
 /* ── 스와이프 카드 캐러셀 (실물카드처럼 옆으로 넘겨보기) ── */
-function buildSwipe(slides){
+/* always — 장이 하나뿐이어도 점과 화살표를 그린다. 탭을 건너뛸 수 있는 자리라면
+   장이 한 장이라는 것과 «여기가 끝이 아니라는 것»이 같이 보여야 한다.
+   여기 틀을 통째로 안 그렸더니 한 장짜리 탭이 막다른 길처럼 보였다. */
+function buildSwipe(slides, always){
   const track=slides.map(x=>`<div class="sw-slide">${x}</div>`).join("");
-  if(slides.length<2) return `<div class="swipe"><div class="sw-vp"><div class="sw-track">${track}</div></div></div>`;
+  if(slides.length<2&&!always) return `<div class="swipe"><div class="sw-vp"><div class="sw-track">${track}</div></div></div>`;
   const dots=slides.map((_,i)=>`<span class="sw-dot${i===0?" on":""}" data-i="${i}"></span>`).join("");
   return `<div class="swipe">
     <button class="sw-nav prev" aria-label="이전">‹</button>
@@ -5464,7 +5467,7 @@ function renderSheetTabs(){
         <span class="sh-nm" style="color:${s.color}">${esc(s.name)}</span>
         <span class="sh-meta">${esc(meta)}</span></div>
       <div class="shtabs">${tabs}</div></div>
-    <div class="mbody">${buildSwipe(cur)}</div>`;
+    <div class="mbody">${buildSwipe(cur, true)}</div>`;
   const start=sheetStart; sheetStart=0;
   wireSwipe($("sheetBox"), {start, onEdge:sheetEdge, hasEdge:sheetHasEdge});
 }
