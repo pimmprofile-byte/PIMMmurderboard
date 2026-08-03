@@ -911,6 +911,24 @@
   .story p.lede{font-size:17px;line-height:1.8;color:#fff;font-weight:700}
   #sheetModal .story p{font-size:16.5px;line-height:2.0;max-width:34em}
   #sheetModal .story p.lede{font-size:18.5px}
+  /* ── 그날 밤 한 장 ─────────────────────────────────────────
+     내가 한 일이 위, 남들에게서 눈에 걸린 것이 아래. 둘은 성격이 다르다 —
+     위는 «내가 아는 것»이고 아래는 «본 것»뿐이라 결을 갈라놓는다. */
+  .bigcard.k-night{border-color:color-mix(in srgb,var(--cold) 40%,var(--line))}
+  .ntx{margin-top:14px;padding:13px 15px;border-radius:11px;background:var(--bg2);
+    border-left:2px solid var(--rc,var(--gold));
+    font-size:15.5px;line-height:1.85;color:#e1e0df;white-space:pre-wrap;word-break:keep-all}
+  .eyes{margin-top:18px;padding-top:15px;border-top:1px solid var(--line)}
+  .eyes-h{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;
+    letter-spacing:.06em;color:var(--cold);margin-bottom:11px}
+  .eyes-h svg{width:15px;height:15px}
+  .eye{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .eye:last-of-type{border-bottom:0;padding-bottom:2px}
+  .eye-a{flex:0 0 auto}
+  .eye-w{flex:1 1 auto;min-width:0}
+  .eye-n{font-size:13px;font-weight:800;color:var(--ec);display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+  .eye-n i{font-style:normal;font-size:10.5px;font-weight:400;color:var(--muted)}
+  .eye-t{margin-top:4px;font-size:14.5px;line-height:1.75;color:#dcdbda;word-break:keep-all}
   /* 아직 아무것도 안 쌓인 자리. 채워질 자리라는 게 보이되 읽을 것이 있는 척은 안 한다. */
   .bigcard.k-empty{border-style:dashed;background:none}
   .bigcard.k-empty .bc-title{color:var(--muted)}
@@ -2392,10 +2410,21 @@ function cutWasSeen(id){
   try{ return !!localStorage.getItem(cutKey(id)); }catch(e){ return false; }
 }
 function cutMarkSeen(id){ cutSeen.add(id); try{ localStorage.setItem(cutKey(id),"1"); }catch(e){} }
+/* 이 묶음에서 쓸 배경과 얼굴을 미리 받아둔다.
+   findAsset 은 받아온 주소를 기억하므로, 컷이 넘어갈 때는 이미 캐시에 있다.
+   안 그러면 첫 컷에서 그림이 뒤늦게 얹히면서 흔들림 연출과 겹쳐 화면이 툭툭 끊긴다. */
+function vnPrefetch(){
+  const sid=(STATE&&STATE.scenarioId)||""; if(!sid) return;
+  const imgs=new Set(), who=new Set();
+  for(const c of vnCuts){ if(c.img) imgs.add(c.img); if(c.who) who.add(c.who); }
+  imgs.forEach(x=>findAsset(`/assets/${sid}_opening_${x}`,()=>{}));
+  who.forEach(x=>findAsset(`/assets/${sid}_portrait_${x}`,()=>{}));
+}
 function playCuts(cuts){
   if($("vn").classList.contains("on")) return false;   // 오프닝이 도는 중엔 끼어들지 않는다
   if(!cuts||!cuts.length) return false;
   vnCuts=cuts.map(c=>({img:c.img||"",who:c.who||"",fx:c.fx||"",lines:c.lines||[],focus:c.focus||""}));
+  vnPrefetch();                                        // 그림을 미리 받아둔다 — 첫 컷이 덜컹이지 않게
   vnAt=0; vnIsEvent=true;
   $("vnMute").innerHTML=(vnMuted?ICO.mute:ICO.sound)+' <span class="vn-ml">소리</span>';
   $("vn").classList.add("on"); vnArmAudio(); vnRender();
@@ -3218,7 +3247,8 @@ function renderPanel(ph){
   // 매 폴링마다 통째로 다시 그리면 방 카드 애니메이션이 계속 재생돼 '깜빡임'이 생긴다.
   // 실제로 바뀐 게 있을 때만 다시 그린다.
   const sig=JSON.stringify([k,STATE.seq,STATE.round,STATE.turn,ph.ap,myRoleId,myHand.map(c=>c.id),STATE.revealedIds,STATE.usedAP,STATE.grades,STATE.ending&&STATE.ending.name,STATE.interrogate,STATE.checked,STATE.crisis&&[STATE.crisis.open,STATE.crisis.solved,STATE.crisis.answered],crAns.join(""),STATE.flood,
-    STATE.night&&[STATE.night.open,STATE.night.done,STATE.night.mine,(STATE.night.picked||[]).join("")],
+    // 아침 이야기를 봤는지도 이 화면을 바꾼다 — 다 보고 나서야 밤의 결과가 열린다.
+    STATE.night&&[STATE.night.open,STATE.night.done,STATE.night.mine,(STATE.night.picked||[]).join(""),cutWasSeen("night:done")],
     STATE.ask&&[STATE.ask.open,STATE.ask.turn,(STATE.ask.asked||[]).map(r=>r.by+r.q).join("")],askSel,
     STATE.accuse1&&[STATE.accuse1.voted,STATE.accuse1.done,STATE.accuse1.mineDone,acSel]]);
   if(sig===renderPanel._sig) return;
@@ -4474,6 +4504,16 @@ function renderNight(p){
   const n=(STATE&&STATE.night)||null;
   if(!n){ p.innerHTML=`<div class="card"><div class="panel-note">밤이 지나갔습니다.</div></div>`; return; }
   if(n.done){
+    // 아침 이야기(비주얼노벨)를 아직 안 봤으면 결과부터 들이밀지 않는다.
+    // 「밤 · 지나갔다」가 먼저 뜨고 그 뒤에 이야기가 나오면 순서가 뒤집힌 것으로 읽힌다.
+    if(((STATE&&STATE.cuts)||[]).some(c=>c.id==="night:done"&&!cutWasSeen(c.id))){
+      p.innerHTML=`<div class="card nightcard">
+        <div class="nt-kick">${esc(n.kick||"밤")}</div>
+        <h2>${esc(n.title||"")}</h2>
+        <div class="panel-note" style="margin-top:12px">밤이 지나갔습니다. 아침이 오는 것을 먼저 봅니다…</div>
+      </div>`;
+      return;
+    }
     p.innerHTML=`<div class="card nightcard done">
       <div class="nt-kick">${esc(n.kick||"밤")} · 지나갔다</div>
       <h2>${esc(n.headline||"")}</h2>
@@ -5422,6 +5462,25 @@ async function showMySheet(){
       <div class="knownote" style="margin-top:14px">답은 끄덕이거나 젓는 것뿐이었다.
         <b>안 물어진 것</b>은 이 판에서 영영 안 열린다.</div></div>`});
   }
+  // 4-c) 그날 밤 — 내가 한 일과, 아침에 남들에게서 눈에 걸린 것.
+  //       조각에 줄글로 섞여 있던 것을 제 자리로 뺐다. 밤은 이 판에서 제일 무거운 하루라
+  //       다른 기록에 묻히면 안 된다. 늘어나는 것들 뒤, 늘 있는 것(배치도) 앞이다.
+  const nr=s.nightReport;
+  if(nr&&(nr.mine||(nr.eyes||[]).length)){
+    slides.push({tab:"extra", html:`<div class="bigcard role k-night" style="--rc:${s.color}">
+      <div class="bc-eyebrow">${esc(nr.kick||"밤이 지나고")}</div>
+      <div class="bc-title" style="font-size:18px">${esc(nr.title||"그날 밤, 나는")}</div>
+      ${nr.mine?`<div class="ntx">${esc(nr.mine)}</div>`:""}
+      ${(nr.eyes||[]).length?`<div class="eyes">
+        <div class="eyes-h">${ICO.eye} ${esc(nr.eyesLabel||"아침에 눈에 걸린 것")}</div>
+        ${nr.eyes.map(e=>`<div class="eye" style="--ec:${e.color||"var(--line)"}">
+          <div class="eye-a">${avaHTML(e,"sm")}</div>
+          <div class="eye-w"><div class="eye-n">${esc(e.name)}<i>${esc(e.job||"")}</i></div>
+            <div class="eye-t">${esc(e.text)}</div></div></div>`).join("")}
+        <div class="knownote" style="margin-top:12px">달라진 것이 눈에 들어왔을 뿐이다.
+          <b>왜 그런지는 안 적혀 있다.</b></div></div>`:""}
+    </div>`});
+  }
   // 5) 배치도 — 전원이 갖는다. 포드는 아는 사람 지도에만 그려진다.
   if(s.hasMap){
     const svg=await loadMapSVG();
@@ -5665,8 +5724,11 @@ function popMyLine(){
   if(!mine.length) return;
   myLineSeen=seq;
   const ph=(STATE.phase||{}).name||"";
-  say({title:`${ph} — 내가 꺼낸 말`,
-       body:mine.map(m=>`「${m.text}」`).join("\n\n")+"\n\n대화창에 그대로 올라갔습니다. 여기서부터 이어서 말하세요."});
+  // 확인을 누르면 대화창으로 데려간다 — 「여기서부터 이어서 말하라」고 해놓고
+  // 그 자리를 직접 찾아가게 하면 안 된다.
+  say({title:`${ph} — 내가 꺼낸 말`, ok:"대화창으로",
+       body:mine.map(m=>`「${m.text}」`).join("\n\n")+"\n\n대화창에 그대로 올라갔습니다. 여기서부터 이어서 말하세요."})
+    .then(()=>{ if(scr==="play") showChatFull(); });
 }
 /* 발사창이 열렸다. 코드를 못 넣은 채 표를 받았으면 여기서 10초 안에 넣어야 한다. */
 let podLaunchBox=null;

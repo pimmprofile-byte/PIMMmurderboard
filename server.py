@@ -1066,6 +1066,13 @@ def sheet(role_id: str, clientId: str = ""):
         s["fragments"] = SC.memory_up_to(role_id, seq, _cs)
     except TypeError:                      # 위기 개념이 없는 시나리오
         s["fragments"] = SC.memory_up_to(role_id, seq)
+    # 그날 밤은 줄글 조각이 아니라 제 자리를 갖는다 — 시트가 한 장으로 세운다.
+    nr = getattr(SC, "night_report", None)
+    if nr:
+        try:
+            s["nightReport"] = nr(role_id, ROOM.get("night") or {})
+        except Exception:                  # noqa: BLE001
+            s["nightReport"] = None
     # 그날 밤 자기가 한 일은 미리 적어둘 수가 없다 — 고른 다음에야 생긴다.
     for hook, key in ((getattr(SC, "night_memory", None), "night"),
                       (getattr(SC, "ask_memory", None), "ask")):

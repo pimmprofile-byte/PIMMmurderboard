@@ -2223,15 +2223,51 @@ def night_resolve(picks: dict) -> dict:
             "headline": head, "public": pub, "private": priv, "vn": vn, "cards": cards}
 
 
-def night_memory(role_id: str, night: dict, seq: int) -> list:
-    """그날 밤 내가 실제로 무엇을 했는지. 고르기 전에는 적을 수가 없는 글이다."""
+# 밤이 지난 아침, 남들에게서 «달라진 것». 진상이 아니라 눈에 걸리는 것뿐이다 —
+# 움직인 사람에게는 움직인 자국이, 안 움직인 사람에게는 안 움직인 티가 난다.
+# 이건 조사카드가 아니라 아침의 인상이라, 조사턴을 안 써도 눈에 들어온다.
+_NIGHT_LOOK = {
+    "basil": {
+        "go":   "허리춤의 벨트가 풀려 있다. 아침 내내 그대로 두고 있다.",
+        "skip": "오늘따라 홀가분한 표정이다.",
+    },
+    "nell": {
+        "go":   "손이 튼 것처럼 보인다. 가까이 서면 손에서 약 냄새가 난다.",
+        "skip": "아까부터 마굿간 쪽을 자꾸 신경 쓰는 눈치다.",
+    },
+    "kieran": {
+        "go":   "어제까지 꽁꽁 싸매고 있던 외투를 벗었다. 허리춤의 빈 칼집이 눈에 띈다.",
+        "skip": "저 사람 외투에 묻은 그으름이 아까부터 거슬린다. 탄내가 은은히 난다.",
+    },
+}
+
+
+def night_report(role_id: str, night: dict) -> dict | None:
+    """「그날 밤」 한 장. 내가 한 일과, 남들에게서 아침에 눈에 걸린 것.
+
+    조각(알게 된 것)에 줄글로 섞으면 밤 이야기가 다른 기록에 묻힌다 —
+    이건 자기 자리를 갖는다.
+    """
     res = (night or {}).get("result") or {}
     if not res:
-        return []
-    t = (res.get("private") or {}).get(role_id)
-    if not t:
-        return []
-    return [{"seq": seq, "when": "그날 밤 · 내가 한 일", "text": t}]
+        return None
+    mine = (res.get("private") or {}).get(role_id) or ""
+    went = {x["role"] for x in (res.get("order") or [])}
+    eyes = []
+    for c in CHARACTERS:
+        cid = c["id"]
+        if cid == role_id:
+            continue
+        look = _NIGHT_LOOK.get(cid)
+        if not look:
+            continue
+        eyes.append({"id": cid, "name": c["name"], "job": c.get("job", ""),
+                     "color": c.get("color", ""), "avatar": c.get("avatar", ""),
+                     "text": look["go"] if cid in went else look["skip"]})
+    if not mine and not eyes:
+        return None
+    return {"kick": "밤이 지나고", "title": "그날 밤, 나는", "mine": mine,
+            "eyesLabel": "아침에 눈에 걸린 것", "eyes": eyes}
 
 
 # 방 상태를 사건 모듈이 곁눈질하는 자리. 서버가 매 갱신마다 넣어준다 —
