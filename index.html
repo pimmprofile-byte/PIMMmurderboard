@@ -1347,6 +1347,17 @@
 
   /* ── 침수 대응 퍼즐 ─────────────────────────────────────────
      조사 화면 맨 위를 차지한다. 이걸 넘기고 조사부터 하면 안 되니까 눈에 걸리게. */
+  .nqlist{margin-top:12px;display:flex;flex-direction:column;gap:7px}
+  .nq{border:1px solid var(--line);border-left-width:3px;border-radius:8px;padding:10px 12px;
+    background:rgba(255,255,255,.02)}
+  .nq .nq-q{font-size:13.5px;line-height:1.6;color:#eef2f6;word-break:keep-all}
+  .nq .nq-a{margin-top:6px;display:flex;align-items:center;gap:8px;font-size:12.5px}
+  .nq .nq-a .by{margin-left:auto;color:var(--sub);font-size:11.5px}
+  .nq.nod{border-left-color:#4e8a6a}   .nq.nod .nq-a b{color:#8fd6ae}
+  .nq.shake{border-left-color:#8a5a4e} .nq.shake .nq-a b{color:#e8a89b}
+  .nq.off{border-left-color:var(--line);opacity:.5}
+  .nq.off .nq-q{color:var(--sub)}
+  .nq-sep{margin-top:16px;font-size:11px;letter-spacing:.2em;font-weight:700;color:var(--sub)}
   .asklist{margin-top:12px;display:flex;flex-direction:column;gap:8px}
   .ask-q{display:block;width:100%;text-align:left;padding:12px 13px;cursor:pointer;font:inherit;color:inherit;
     border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.02)}
@@ -1785,7 +1796,18 @@ const ICO={
 };
 
 const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-const roleById=id=>SCEN.characters.find(c=>c.id===id);
+// 배역이 아닌 사람도 대화창에 앉는다 — 마부도 왕진의도 말은 한다.
+const roleById=id=>(SCEN.characters||[]).find(c=>c.id===id)
+                 ||(SCEN.npcs||[]).find(c=>c.id===id)
+                 ||(id==="victim"?victimAsPerson():null);
+/* 피해자도 이름이 있는 사람이다. 지목표에는 그도 오른다 — 스스로 그랬을 수도 있으니까. */
+function victimAsPerson(){
+  const v=(SCEN&&SCEN.victimCard)||{};
+  return {id:"victim", name:v.name||"피해자", job:v.job||"", color:"#b9a98f", avatar:""};
+}
+function allPersons(){
+  return [...(SCEN.characters||[]), ...(SCEN.npcs||[]), victimAsPerson()];
+}
 const cardCat=id=>SCEN.cardCatalog.find(c=>c.id===id);
 const myRoleValid=()=>myRoleId&&STATE&&STATE.roles[myRoleId]&&STATE.roles[myRoleId].mode==="human";
 
@@ -2893,10 +2915,11 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
     const rows=Object.keys(a.tally||{}).sort((x,y)=>a.tally[y]-a.tally[x])
       .map(t=>`  ${nameOf(t)} — ${a.tally[t]}표`).join("\n");
     return gmCinematic("1차 지목 · 비밀투표", (ph.gm||""),
-      a.done?rows:"— 아직 안 폈습니다. 다 적을 때까지 아무것도 안 보입니다.",
+      a.done?"— 봉투가 닫혔습니다. 이 표는 종막에서 열립니다."
+            :"— 각자 적는 중입니다. 결과는 여기서 안 엽니다.",
       `각자 자기 기기에서 몰래 적습니다. <b>${a.voted}/${a.voters}</b>명 적음.
-       <div style="margin-top:8px">이 표는 <b>지워지지 않습니다</b> — 종막까지 따라갑니다.
-       ${a.done?"결과를 낭독하고 <b>다음 페이즈 ›</b>로 넘기세요.":"전원이 적으면 그 자리에서 동시에 펴집니다."}</div>`);
+       <div style="margin-top:8px">이 표는 <b>지워지지 않고, 여기서는 안 열립니다</b> — 종막에서 열립니다.
+       ${a.done?"<b>다음 페이즈 ›</b>로 넘기세요.":""}</div>`);
   }
   if(k==="decision"){
     const d=STATE.decision||{};
@@ -3819,6 +3842,7 @@ function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const 
         <span class="pc-note">${pairsOf(c.id).some(k=>pairReady(k,c.id))?"<b style='color:var(--good)'>짝이 지금 나와 있습니다.</b> 맞춰보세요.":"같은 조각을 단 카드와 맞물립니다"}</span></div>`:""}
       <div class="sec"><div class="b" style="font-size:15px" id="cardText">${esc(c.text)}</div></div>${mynote(c.id)}${cnote(c)}</div>
     <div class="mfoot"><span class="mf-note">${inHand?"알리려면 대화로 말하세요 — 저절로 새어 나가지 않습니다.":"이미 모두가 보고 있는 단서입니다."}</span>
+      ${(inHand&&overLimit()>0)?`<button class="btn ember" onclick="dropFromCard('${c.id}')">손패에서 내려놓기</button>`:""}
       <button class="btn" onclick="closeModal('cardModal')">닫기</button></div>`;
   paintCardArt(c.id);
   const box=$("cardBox");
@@ -3827,6 +3851,20 @@ function openCard(id){ const pub=(STATE.revealed||[]).find(c=>c.id===id); const 
   void box.offsetWidth;
   box.classList.add("reveal", c.id==="A5"?"shock":(c.bait?"bait":"clue"));
   openModal("cardModal");
+}
+/* 손패가 넘칠 때는 카드를 읽는 그 자리에서 바로 내려놓을 수 있어야 한다.
+   「정리하기」로 목록을 다시 열어 같은 카드를 또 찾는 걸음이 하나 더 있었다. */
+async function dropFromCard(id){
+  const c=myHand.find(x=>x.id===id); if(!c) return;
+  const w=c.locName+(c.spot?" · "+c.spot:"");
+  if(!await ask({title:"이 카드를 전체공개합니다", body:`「${c.title}」\n\n${w}`,
+                 warn:`손패는 ${handLimit()}장까지만 쥘 수 있습니다. 공개한 카드는 되돌릴 수 없습니다.`,
+                 ok:"공개", cancel:"쥐고 있기", tone:"danger"})) return;
+  closeModal("cardModal");
+  const r=await post("/api/publish",{cardId:id,roleId:myRoleId,clientId});
+  if(r&&r.error){ banner(r.error); return; }
+  await poll();
+  banner(overLimit()>0?`아직 ${overLimit()}장 더 내려놔야 합니다.`:"공개했습니다.");
 }
 async function publish(id){ closeModal("cardModal"); const r=await post("/api/publish",{cardId:id,roleId:myRoleId,clientId}); if(r&&r.error)banner(r.error); await poll(); }
 
@@ -4322,28 +4360,24 @@ function renderAccuse(p){
   const mineDone=!!a.mineDone;
   const can=myRoleValid()&&a.open&&!mineDone;
   if(!can) acSel="";
-  const targets=(SCEN.characters||[]).filter(c=>c.id!==myRoleId);
+  const targets=allPersons();
   const btns=targets.map(c=>`<button class="ac-opt${acSel===c.id?" on":""}" style="--rc:${c.color}"
       ${can?`onclick="acSel1('${c.id}')"`:"disabled"}><span class="mk"></span><b>${esc(c.name)}</b>
       <span class="jb">${esc(c.job||"")}</span></button>`).join("");
-  const rows=Object.keys(a.tally||{}).sort((x,y)=>a.tally[y]-a.tally[x])
-    .map(t=>`<div class="ac-row"><span>${esc(nameOf(t))}</span><b>${a.tally[t]}표</b></div>`).join("");
-  const shown=a.done&&rows;
   p.innerHTML=`<div class="card accusecard">
     <div class="nt-kick">1차 지목 · 비밀투표</div>
-    <h2>${a.done?"동시에 폈다":"지금, 한 사람의 이름을 적는다"}</h2>
+    <h2>${a.done?"봉투에 넣었다":"지금, 한 사람의 이름을 적는다"}</h2>
     <div class="nt-intro">${a.done
-      ? "여기서 부른 이름은 지워지지 않습니다. 종막까지 그대로 따라갑니다."
-      : "각자 몰래 적습니다. 전원이 적으면 그때 동시에 폅니다 —\n그 전까지는 누가 누구를 적었는지도, 몇 표인지도 안 보입니다.\n★ 이 표는 지워지지 않습니다. 종막까지 그대로 따라갑니다."}</div>
+      ? "종이는 접힌 채로 봉투에 들어갔습니다.\n★ 이 표는 지워지지 않습니다 — 종막에서 열립니다."
+      : "각자 몰래 적습니다. 무엇을 적었는지는 아무에게도 안 알립니다.\n★ 이 표는 지워지지 않습니다 — 그리고 여기서는 안 열립니다. 종막에서 열립니다."}</div>
     ${(a.open&&!a.done)?(myRoleValid()
       ? (mineDone?`<div class="panel-note" style="margin-top:12px">적었습니다. 나머지를 기다립니다.</div>`:btns)
       : `<div class="panel-note" style="margin-top:12px">관전 중 — 배역을 맡은 사람만 적습니다.</div>`):""}
-    ${shown?`<div class="ac-tally"><div class="w">펴본 결과</div>${rows}
-      ${a.tie?`<div class="panel-note" style="margin-top:9px">표가 갈렸습니다 — 한 사람으로 안 모였어요.</div>`:""}
-      ${a.mine?`<div class="panel-note" style="margin-top:9px">내가 적은 이름은 <b>${esc(nameOf(a.mine))}</b>였습니다.</div>`:""}
-      </div>`:""}
+    ${a.mine?`<div class="ac-tally"><div class="w">내가 적은 이름</div>
+      <div class="ac-row"><span>${esc(nameOf(a.mine))}</span><b>봉인됨</b></div>
+      <div class="panel-note" style="margin-top:9px">해당 투표는 종막에서 밝혀집니다.</div></div>`:""}
     <div class="nt-foot"><span class="tally">${a.voted}/${a.voters} 적음${
-      a.done?" · 다 폈습니다":""}</span>
+      a.done?" · 봉투가 닫혔습니다":""}</span>
       ${can?`<button class="btn primary sm"${acSel?"":" disabled"} onclick="acSend()">이 이름으로 적는다</button>`:""}
     </div></div>${a.done?nextPhaseBlock():""}`;
 }
@@ -4368,7 +4402,7 @@ function renderFinal(p){
     const rows=Object.keys(a1.tally).sort((x,y)=>a1.tally[y]-a1.tally[x])
       .map(t=>`<div class="ac-row"><span>${esc(nameOf(t))}</span><b>${a1.tally[t]}표</b></div>`).join("");
     h+=`<div class="card accusecard" style="margin-bottom:12px">
-      <div class="nt-kick">1차에서 부른 이름</div>
+      <div class="nt-kick">1차 지목 · 봉투를 열었다</div>
       <div class="ac-tally" style="margin-top:0;padding-top:0;border-top:0">${rows}</div>
       <div class="panel-note" style="margin-top:10px">이 표는 그대로 남아 있습니다.
         ${a1.tie?"표가 갈렸습니다 — 아직 한 사람으로 모이지 않았어요.":`지금까지 이 판의 이름은 <b>${esc(nameOf(a1.lead[0]))}</b>입니다.`}</div></div>`;
@@ -5120,6 +5154,25 @@ async function showMySheet(){
     // 판이 도는 동안 «늘어나는» 글이다. 훑는 자리(한눈에)가 아니라
     // 판 위에서 쓰는 자리(추가 정보)에 둔다 — 새로 생긴 것을 여기서 찾게 된다.
     slides.push({tab:"extra", html:`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">${esc(fragE)}</div><div class="bc-title" style="font-size:18px">${esc(fragL)}</div><div style="margin-top:14px">${fh}</div></div>`}); }
+  // 4-b) 고갯짓 — 질문지의 결과. 줄글로 적으면 여섯 줄이 뭉개져서 한 장으로 세운다.
+  //       물은 것과 «아무도 안 물은 것»이 같은 무게로 보여야 한다 — 안 물어진 쪽이 이 막의 기록이다.
+  const ask=(STATE&&STATE.ask)||null;
+  if(ask&&(ask.asked||[]).length){
+    const done=(ask.questions||[]).filter(q=>q.askedBy), left=(ask.questions||[]).filter(q=>!q.askedBy);
+    const qh=q=>`<div class="nq ${q.a==="nod"?"nod":"shake"}">
+      <div class="nq-q">「${esc(q.q)}」</div>
+      <div class="nq-a"><b>${esc(q.a==="nod"?ask.nod:ask.shake)}</b>
+        <span class="by">${esc(nameOf(q.askedBy))}${subjOf(nameOf(q.askedBy))} 물었다</span></div></div>`;
+    const lh=q=>`<div class="nq off"><div class="nq-q">「${esc(q.q)}」</div></div>`;
+    slides.push({tab:"extra", html:`<div class="bigcard role" style="--rc:${s.color}">
+      <div class="bc-eyebrow">2차 사건 · 질문지</div>
+      <div class="bc-title" style="font-size:18px">고갯짓 ${done.length}번</div>
+      <div class="nqlist">${done.map(qh).join("")}</div>
+      ${left.length?`<div class="nq-sep">아무도 안 물은 것 ${left.length}</div>
+        <div class="nqlist">${left.map(lh).join("")}</div>`:""}
+      <div class="knownote" style="margin-top:14px">답은 끄덕이거나 젓는 것뿐이었다.
+        <b>안 물어진 것</b>은 이 판에서 영영 안 열린다.</div></div>`});
+  }
   // 5) 배치도 — 전원이 갖는다. 포드는 아는 사람 지도에만 그려진다.
   if(s.hasMap){
     const svg=await loadMapSVG();

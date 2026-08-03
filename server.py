@@ -801,8 +801,9 @@ def state(clientId: str = "", gm: int = 0):
         # 자기가 이미 적었는지는 자기만 안다. 남이 무엇을 적었는지는 다 던진 뒤에 열린다.
         if st.get("accuse1") is not None:
             who = next((rid for rid, r in ROOM["roles"].items() if r["clientId"] and r["clientId"] == clientId), "")
+            # 내가 무엇을 적었는지는 언제든 나만 볼 수 있다. 남의 표는 종막까지 안 열린다.
             st["accuse1"]["mineDone"] = who in ((ROOM.get("accuse1") or {}).get("picks") or {})
-            st["accuse1"]["mine"] = ((ROOM.get("accuse1") or {}).get("picks") or {}).get(who, "") if st["accuse1"]["done"] else ""
+            st["accuse1"]["mine"] = ((ROOM.get("accuse1") or {}).get("picks") or {}).get(who, "")
         # 밤의 선택지는 그 사람 것만 내려간다. 공개 상태에는 «누가 정했나»만 있다.
         if st.get("night") is not None:
             mine = next((rid for rid, r in ROOM["roles"].items() if r["clientId"] and r["clientId"] == clientId), "")
@@ -2683,11 +2684,14 @@ def _accuse1_public() -> dict | None:
     lead = sorted([t for t, v in tally.items() if v == top]) if top else []
     # 비밀투표다. 다 던지기 전에는 누가 누구를 적었는지도, 몇 표인지도 안 나간다 —
     # 표를 세어가며 눈치껏 얹는 판이 되면 「동시에 편다」가 아무 뜻이 없다.
+    # 봉인된 표다. 그 막에서는 결과도 안 연다 — 둘이 하는 판에서 표가 그 자리에서
+    # 열리면 누가 누구를 적었는지가 그냥 드러난다. 봉투는 종막에서 뜯는다.
     done = bool(humans) and all(r in picks for r in humans)
     open_ = ph.get("key") == "accuse"
-    out = {"open": open_, "voters": len(humans), "voted": len(picks), "done": done,
-           "mineDone": False, "picks": {}, "tally": {}, "lead": [], "tie": False}
-    if done or not open_:
+    shown = ph.get("key") in ("final", "reveal")
+    out = {"open": open_, "shown": shown, "voters": len(humans), "voted": len(picks),
+           "done": done, "mineDone": False, "picks": {}, "tally": {}, "lead": [], "tie": False}
+    if shown:
         out.update({"picks": picks, "tally": tally, "lead": lead, "tie": len(lead) > 1})
     return out
 
@@ -2701,23 +2705,21 @@ def accuse_interim(b: VoteReq):
             return JSONResponse({"error": "그 배역으로 지목할 수 없습니다"}, status_code=403)
         if SC.phase_by_seq(ROOM["seq"]).get("key") != "accuse":
             return JSONResponse({"error": "지목 페이즈에서만 할 수 있습니다"}, status_code=409)
-        if b.targetRoleId not in ROOM["roles"]:
-            return JSONResponse({"error": "없는 배역"}, status_code=404)
-        if b.targetRoleId == b.roleId:
-            return JSONResponse({"error": "자기 이름은 적을 수 없습니다"}, status_code=409)
+        # 이 집 사람이면 누구든 적을 수 있다 — 배역도, 앉을 수 없는 자리도, 당주 본인도.
+        # 자기 이름도 막지 않는다. 그렇게 적을 이유가 있는 판이다.
+        ok = set(ROOM["roles"]) | {n["id"] for n in (getattr(SC, "NPCS", []) or [])} | {"victim"}
+        if b.targetRoleId not in ok:
+            return JSONResponse({"error": "이 집 사람이 아닙니다"}, status_code=404)
         a1 = ROOM.setdefault("accuse1", {"seq": None, "picks": {}})
         first = b.roleId not in a1["picks"]
         a1["seq"] = ROOM["seq"]
         a1["picks"][b.roleId] = b.targetRoleId
         nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
-        tn = (SC.get_character(b.targetRoleId) or {}).get("name", b.targetRoleId)
-        # 무엇을 적었는지는 물론이고 «적었다»는 것도 안 알린다. 화면의 숫자로만 센다.
+        # 무엇을 적었는지도, 결과도 그 자리에서는 안 연다. 종막에서 봉투를 뜯는다.
         if first and all(r in a1["picks"] for r in _human_roles()):
-            rows = sorted(((SC.get_character(t) or {}).get("name", t), n)
-                          for t, n in _tally(a1["picks"]).items())
             ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": "— 종이를 동시에 폈습니다.\n"
-                                          + "\n".join(f"    {t} — {n}표" for t, n in rows)})
+                                  "text": "— 모두 적었습니다. 종이는 접힌 채로 봉투에 들어갔습니다.\n"
+                                          "    이 표는 종막에서 열립니다."})
         bump()
     return {"ok": True, "accuse1": _accuse1_public()}
 
@@ -3178,27 +3180,6 @@ def advance(b: HostReq):
     return _advance()
 
 
-def _seed_npc_lines(seq: int) -> None:
-    """배역이 아닌 사람도 말은 한다.
-
-    《자명종》의 마부가 그렇다. 그는 결백하고, 결백한 사람은 숨길 게 없다 —
-    그래서 자기가 본 것을 그냥 대화창에 쏟는다. 다만 관심이 사건에 없어서
-    말하는 김에 자기 돈 이야기부터 한다. 아무도 그 말을 진지하게 안 듣는다.
-
-    NPC_LINES 가 없는 사건에서는 아무 일도 안 일어난다.
-    """
-    for ln in (getattr(SC, "NPC_LINES", {}) or {}).get(seq, []) or []:
-        who = ln.get("who", "")
-        # 배역이 받아치는 자리도 있다 — NPC 목록에 없으면 배역에서 찾는다.
-        n = ((SC.get_npc(who) if hasattr(SC, "get_npc") else None)
-             or (SC.get_character(who) if hasattr(SC, "get_character") else None) or {})
-        nm = n.get("name", who)
-        job = n.get("job", "")
-        head = f"{nm}({job})" if job else nm
-        ROOM["table"].append({"kind": "system", "broadcast": True,
-                              "text": f"{head} — 「{ln.get('say','')}」"})
-
-
 def _seed_phase_lines(seq: int) -> None:
     """이 막에서 각자가 꺼내기로 한 말을 대화창에 그대로 올린다.
     예전에는 «내 정보 · 지금 할 말»에 조용히 붙어 있었다 — 열어보지 않으면 그 밤이
@@ -3220,6 +3201,29 @@ def _seed_phase_lines(seq: int) -> None:
             if f.get("when") == when and f.get("text"):
                 ROOM["table"].append({"kind": "ai", "roleId": rid, "speaker": c["name"],
                                       "text": f["text"], "auto": True, "seq": seq})
+
+
+def _seed_npc_lines(seq: int) -> None:
+    """배역이 아닌 사람도 말은 한다.
+
+    《자명종》의 마부가 그렇다. 그는 결백하고, 결백한 사람은 숨길 게 없다 —
+    그래서 자기가 본 것을 그냥 대화창에 쏟는다. 다만 관심이 사건에 없어서
+    말하는 김에 자기 돈 이야기부터 한다. 아무도 그 말을 진지하게 안 듣는다.
+
+    공지가 아니라 «말»이므로 대화 말풍선으로 들어간다. 배역이 받아치는 자리도
+    있어서, NPC 목록에 없으면 배역에서 찾는다.
+
+    NPC_LINES 가 없는 사건에서는 아무 일도 안 일어난다.
+    """
+    for ln in (getattr(SC, "NPC_LINES", {}) or {}).get(seq, []) or []:
+        who = ln.get("who", "")
+        n = ((SC.get_npc(who) if hasattr(SC, "get_npc") else None)
+             or (SC.get_character(who) if hasattr(SC, "get_character") else None) or {})
+        say = (ln.get("say") or "").strip()
+        if not say:
+            continue
+        ROOM["table"].append({"kind": "ai", "roleId": who, "speaker": n.get("name", who),
+                              "text": say, "auto": True, "seq": seq})
 
 
 def _advance():
