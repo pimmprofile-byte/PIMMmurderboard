@@ -139,6 +139,14 @@ def _parse_json(raw: str) -> dict:
 
 
 def current_round(seq: int) -> int:
+    # 사건이 페이즈에 라운드를 적어두면 그것을 따른다. 막 수가 사건마다 다른데
+    # 여기서 seq 로 잘라 쓰면, 막을 하나 끼워 넣는 순간 조사 라운드가 통째로 밀린다.
+    try:
+        r = SC.phase_by_seq(seq).get("round")
+    except Exception:                                   # noqa: BLE001
+        r = None
+    if r is not None:
+        return int(r)
     if seq >= 6:
         return 3
     if seq >= 4:
@@ -172,6 +180,11 @@ def fresh_room() -> dict:
         "gmSeats": {},            # clientId -> 마지막으로 진행석을 켜둔 시각. 방에 진행자가 있는지 판단용
         "podVotes": {},           # roleId -> 태울 사람. 최종 토론에서 사람이 던진 표만 담는다
         "accuse": {},             # roleId -> 지목한 사람. 종막의 범인 지목, 사람 표만
+        # 중간 지목 — 판이 끝나기 전에 한 번 이름을 부르는 사건이 있다. 그 표는 사라지지
+        # 않고 종막까지 따라간다. seq 를 같이 적어두는 건 그 막에서만 고칠 수 있게 하려고다.
+        "accuse1": {"seq": None, "picks": {}},
+        # 밤 — 각자 몰래 한 가지를 고르고, 그 조합이 그날 밤에 실제로 일어난 일을 정한다.
+        "night": {"open": False, "picks": {}, "result": None},
         "dest": {},               # roleId -> 향한 곳. 종막에서 각자 정하고, 다 정해야 열린다
         # 결재 결정문 — 자리마다 한 문장씩 고른다. 범인으로 지목된 사람은 결재권을 잃고
         # 그 칸은 남은 사람들의 투표로 찬다. picks 는 최종값, votes 는 잃은 칸의 표다.
@@ -210,8 +223,25 @@ def use_scenario(sid: str) -> bool:
     return True
 
 
+def _sync_scenario_state() -> None:
+    """방이 쥔 상태를 사건 모듈에 «알려만» 준다.
+
+    밤의 결과에 따라 조사 카드의 글이 달라지는 사건이 있다. 그렇다고 카드 함수마다
+    방을 인자로 끌고 다니면 모든 사건이 그 인자를 받아야 한다 — 상태는 여전히 방이
+    쥐고, 모듈에는 «지금 방이 이렇다»만 넣어준다. 안 받는 사건에서는 아무 일도 없다.
+    """
+    fn = getattr(SC, "set_room_state", None)
+    if not fn:
+        return
+    try:
+        fn({"night": dict(ROOM.get("night") or {}), "seq": ROOM.get("seq", 1)})
+    except Exception:                                   # noqa: BLE001
+        pass
+
+
 def bump():
     ROOM["rev"] += 1
+    _sync_scenario_state()
 
 
 def _ev(kind: str, **fields) -> None:
@@ -374,6 +404,8 @@ def public_state() -> dict:
             "podLaunch": _pod_launch_public(),
             "flood": int(ROOM.get("flood", 0)),
             "crisis": _crisis_public(),
+            "night": _night_public(),
+            "accuse1": _accuse1_public(),
             "sealed": list(ROOM.get("sealed") or []),
             "chat": {"on": CHAT["on"], "gap": CHAT["gap"]},
             "phase": {"seq": ph["seq"], "key": ph["key"], "name": ph["name"], "gm": ph["gm"], "ap": ap, "min": ph["min"],
@@ -762,6 +794,10 @@ def state(clientId: str = "", gm: int = 0):
             if now - t > 20:           # 폴링이 1.5초 간격이니 20초면 확실히 떠난 것이다
                 ROOM["gmSeats"].pop(cid, None)
         st["hasGM"] = bool(ROOM["gmSeats"])
+        # 밤의 선택지는 그 사람 것만 내려간다. 공개 상태에는 «누가 정했나»만 있다.
+        if st.get("night") is not None:
+            mine = next((rid for rid, r in ROOM["roles"].items() if r["clientId"] and r["clientId"] == clientId), "")
+            st["night"] = _night_public(mine)
         # 종막에는 답안을 모두가 볼 수 있어야 한다. 진행석이 없으면 누구든 한 덩어리로 묶어
         # 클로드에 물어보러 가야 하는데, 여태 그 답안은 AGENT_KEY로 잠긴 /api/gm에만 있었다.
         # 각자 자기 것만 들고 있으면 판이 흩어진 방에서는 아무도 전체를 못 만든다.
@@ -998,6 +1034,13 @@ def sheet(role_id: str, clientId: str = ""):
         s["fragments"] = SC.memory_up_to(role_id, seq, _cs)
     except TypeError:                      # 위기 개념이 없는 시나리오
         s["fragments"] = SC.memory_up_to(role_id, seq)
+    # 그날 밤 자기가 한 일은 미리 적어둘 수가 없다 — 고른 다음에야 생긴다.
+    nm = getattr(SC, "night_memory", None)
+    if nm:
+        try:
+            s["fragments"] = list(s["fragments"]) + list(nm(role_id, ROOM.get("night") or {}, seq) or [])
+        except Exception:                  # noqa: BLE001
+            pass
     return s
 
 
@@ -2344,6 +2387,174 @@ def _arrest_state():
     return res
 
 
+# ── 밤 — 각자 하나를 고르고, 그 조합이 그날 밤을 정한다 ──────────────
+# 이 기믹이 있는 사건은 «누가 범인인가»가 판 시작 시점에 안 정해져 있다.
+# 사건 모듈이 NIGHT_ACTS(선택지)와 night_resolve(조합→결과)를 갖고 있으면 열린다.
+def _night_conf():
+    return getattr(SC, "NIGHT_ACTS", None)
+
+
+def _night_open() -> None:
+    conf = _night_conf()
+    if not conf:
+        return
+    n = ROOM.setdefault("night", {"open": False, "picks": {}, "result": None})
+    if n.get("open") or n.get("result"):
+        return
+    n["open"] = True
+    n["picks"] = {}
+    # 사람이 안 앉은 배역은 그 자리에서 제 성격대로 고른다. 밤은 기다려주지 않는다.
+    for rid, r in ROOM["roles"].items():
+        if r["mode"] == "ai":
+            try:
+                n["picks"][rid] = SC.night_ai_pick(rid)
+            except Exception:                           # noqa: BLE001
+                pass
+    ROOM["table"].append({"kind": "system", "broadcast": True,
+                          "text": conf.get("notice", "밤이 되었습니다 — 각자 화면에서 오늘 밤 무엇을 할지 고르세요.")})
+    _fire_cut("night:open")
+    _ev("night", state="open")
+    _night_try_resolve()
+
+
+def _night_try_resolve() -> None:
+    """전원이 고른 뒤에만 판정한다. 진행석은 /api/night/close 로 앞당길 수 있다."""
+    n = ROOM.get("night") or {}
+    if not n.get("open"):
+        return
+    assigned = [rid for rid, r in ROOM["roles"].items() if r["mode"] in ("human", "ai")]
+    if assigned and any(rid not in n["picks"] for rid in assigned):
+        return
+    _night_resolve()
+
+
+def _night_resolve() -> None:
+    conf = _night_conf()
+    n = ROOM.get("night") or {}
+    if not conf or not n.get("open"):
+        return
+    n["open"] = False
+    try:
+        n["result"] = SC.night_resolve(dict(n.get("picks") or {}))
+    except Exception:                                   # noqa: BLE001
+        n["result"] = {"killer": "", "order": [], "public": [], "headline": ""}
+    for line in (n["result"].get("public") or []):
+        ROOM["table"].append({"kind": "system", "broadcast": True, "text": line})
+    _fire_cut("night:done")
+    _ev("night", state="done", killer=n["result"].get("killer", ""))
+    bump()
+
+
+def _night_public(role_id: str = "") -> dict | None:
+    conf = _night_conf()
+    if not conf:
+        return None
+    n = ROOM.get("night") or {}
+    if not n.get("open") and not n.get("result"):
+        return None
+    assigned = [rid for rid, r in ROOM["roles"].items() if r["mode"] in ("human", "ai")]
+    out = {"open": bool(n.get("open")), "seq": int(conf.get("seq", 0) or 0),
+           "kick": conf.get("kick", ""), "title": conf.get("title", ""),
+           "intro": conf.get("intro", ""), "prompt": conf.get("prompt", ""),
+           "picked": sorted(n.get("picks") or {}), "total": len(assigned),
+           "done": n.get("result") is not None}
+    # 선택지는 그 사람 것만 내려간다 — 남이 무엇을 고를 수 있는지까지 보이면 밤이 아니다.
+    if role_id:
+        out["options"] = (conf.get("options") or {}).get(role_id) or []
+        out["mine"] = (n.get("picks") or {}).get(role_id, "")
+    if n.get("result"):
+        r = n["result"]
+        out["headline"] = r.get("headline", "")
+        out["outcome"] = list(r.get("public") or [])
+        if role_id:
+            out["mineOutcome"] = (r.get("private") or {}).get(role_id, "")
+    return out
+
+
+class NightPick(BaseModel):
+    roleId: str
+    clientId: str
+    optId: str
+
+
+@app.post("/api/night")
+def night_pick(b: NightPick):
+    with LOCK:
+        conf = _night_conf()
+        if not conf:
+            return JSONResponse({"error": "이 사건에는 밤이 없습니다"}, status_code=409)
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "그 배역으로 정할 수 없습니다"}, status_code=403)
+        n = ROOM.setdefault("night", {"open": False, "picks": {}, "result": None})
+        if not n.get("open"):
+            return JSONResponse({"error": "지금은 밤이 아닙니다"}, status_code=409)
+        opts = [o["id"] for o in ((conf.get("options") or {}).get(b.roleId) or [])]
+        if b.optId not in opts:
+            return JSONResponse({"error": "없는 선택지"}, status_code=404)
+        n["picks"][b.roleId] = b.optId
+        # 무엇을 골랐는지는 안 적는다. 누가 «정했다»까지만 알린다.
+        nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
+        ROOM["table"].append({"kind": "system", "broadcast": True, "text": f"{nm} — 방에 불이 꺼졌습니다."})
+        bump()
+        _night_try_resolve()
+        return {"ok": True, "night": _night_public(b.roleId)}
+
+
+@app.post("/api/night/close")
+def night_close(b: HostReq):
+    with LOCK:
+        if ROOM.get("host") not in (None, b.clientId) and not _agent_ok(b.key):
+            return JSONResponse({"error": "host"}, status_code=403)
+        _night_resolve()
+        return {"ok": True, "night": _night_public()}
+
+
+# ── 중간 지목 — 판이 끝나기 전에 한 번 이름을 부른다 ─────────────────
+def _accuse1_public() -> dict | None:
+    """그 막에서 던진 표. 판정은 안 한다 — 이 표는 종막까지 그대로 따라간다."""
+    ph = SC.phase_by_seq(ROOM["seq"])
+    a1 = ROOM.get("accuse1") or {"seq": None, "picks": {}}
+    if ph.get("key") != "accuse" and not a1.get("picks"):
+        return None
+    humans = _human_roles()
+    picks = dict(a1.get("picks") or {})
+    tally = {}
+    for t in picks.values():
+        tally[t] = tally.get(t, 0) + 1
+    top = max(tally.values()) if tally else 0
+    lead = sorted([t for t, v in tally.items() if v == top]) if top else []
+    return {"open": ph.get("key") == "accuse", "picks": picks, "tally": tally,
+            "lead": lead, "tie": len(lead) > 1,
+            "voters": len(humans), "done": bool(humans) and all(r in picks for r in humans)}
+
+
+@app.post("/api/accuse1")
+def accuse_interim(b: VoteReq):
+    """중간 지목. 종막의 /api/accuse 와 달리 판정이 없고, 표는 지워지지 않는다."""
+    with LOCK:
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId or r["mode"] != "human":
+            return JSONResponse({"error": "그 배역으로 지목할 수 없습니다"}, status_code=403)
+        if SC.phase_by_seq(ROOM["seq"]).get("key") != "accuse":
+            return JSONResponse({"error": "지목 페이즈에서만 할 수 있습니다"}, status_code=409)
+        if b.targetRoleId not in ROOM["roles"]:
+            return JSONResponse({"error": "없는 배역"}, status_code=404)
+        if b.targetRoleId == b.roleId:
+            return JSONResponse({"error": "자기 이름은 적을 수 없습니다"}, status_code=409)
+        a1 = ROOM.setdefault("accuse1", {"seq": None, "picks": {}})
+        first = b.roleId not in a1["picks"]
+        a1["seq"] = ROOM["seq"]
+        a1["picks"][b.roleId] = b.targetRoleId
+        nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
+        tn = (SC.get_character(b.targetRoleId) or {}).get("name", b.targetRoleId)
+        if first:
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": f"{nm} — 「{tn}」이라고 적었습니다."})
+        bump()
+    return {"ok": True, "accuse1": _accuse1_public()}
+
+
 @app.post("/api/interrogate/vote")
 def interrogate_vote(b: InterrogateVote):
     """토론 페이즈 추가 심문 1회 신청 — 과반수(2인이면 만장일치) 찬성 시 부여된다."""
@@ -2857,6 +3068,8 @@ def _advance():
                 ROOM["table"].append({"kind": "gm", "broadcast": True, "text": ph["gm"]})
             _seed_phase_lines(seq)
             _seed_npc_lines(seq)
+            # 막이 바뀔 때 틀 컷. 없는 사건에서는 아무 일도 안 일어난다.
+            _fire_cut(f"phase:{seq}")
             _ev("phase", name=ph["name"], key=ph.get("key", ""), min=ph.get("min", 0),
                 ap=int(ph.get("ap", 0) or 0), gm=ph.get("gm", ""), interlude=il or "")
             _reset_turn_for_seq(seq)   # 조사 페이즈면 순번 초기화
@@ -2864,6 +3077,8 @@ def _advance():
             conf = _crisis_conf()
             if conf and seq == conf["seq"]:
                 _crisis_open()
+            if ph.get("key") == "night":
+                _night_open()
             ROOM["flood"] = _flood_for(seq)
             bump()
         return {"seq": ROOM["seq"]}

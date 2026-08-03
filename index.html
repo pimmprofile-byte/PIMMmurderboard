@@ -1331,6 +1331,40 @@
 
   /* ── 침수 대응 퍼즐 ─────────────────────────────────────────
      조사 화면 맨 위를 차지한다. 이걸 넘기고 조사부터 하면 안 되니까 눈에 걸리게. */
+  .nightcard,.accusecard{border:1px solid var(--line);border-radius:13px;padding:15px 16px}
+  .nightcard{background:linear-gradient(168deg,rgba(9,12,20,.96),rgba(12,14,18,.98))}
+  .nt-kick{font-size:11px;letter-spacing:.26em;color:var(--cold);font-weight:700;margin-bottom:5px}
+  .nightcard h2,.accusecard h2{margin:0 0 9px;font-size:17px;color:#fff}
+  .nt-intro{font-size:13.5px;line-height:1.85;color:#cfd6df;white-space:pre-line;word-break:keep-all}
+  .nt-prompt{margin-top:11px;font-size:13px;color:var(--gold-b);font-weight:700;word-break:keep-all}
+  .nt-opt{display:block;width:100%;text-align:left;margin-top:9px;padding:11px 13px;cursor:pointer;
+    border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.02);color:inherit;font:inherit}
+  .nt-opt .nt-h{display:flex;align-items:center;gap:8px;font-size:14px;color:#eef2f6}
+  .nt-opt .mk{flex:0 0 auto;width:11px;height:11px;border-radius:50%;border:1px solid var(--sub)}
+  .nt-opt.on{border-color:var(--gold-b);background:rgba(180,140,60,.10)}
+  .nt-opt.on .mk{background:var(--gold-b);border-color:var(--gold-b)}
+  .nt-opt.locked{opacity:.55}
+  .nt-opt .at{margin-left:auto;font-size:11.5px;color:var(--cold);font-variant-numeric:tabular-nums}
+  .nt-opt .at.skip{color:var(--sub)}
+  .nt-opt .nt-d{margin-top:6px;font-size:12.5px;line-height:1.75;color:var(--sub);white-space:pre-line;word-break:keep-all}
+  .nt-foot{display:flex;align-items:center;gap:10px;margin-top:13px;padding-top:11px;border-top:1px solid var(--line)}
+  .nt-foot .tally{font-size:12px;color:var(--sub)}
+  .nt-foot .btn{margin-left:auto}
+  .nightcard.done{border-color:#4e6a8a}
+  .nt-out{margin-top:8px;font-size:13.5px;line-height:1.8;color:#dfe7ef;white-space:pre-line;word-break:keep-all}
+  .nt-mine{margin-top:13px;padding:11px 13px;border-left:2px solid var(--gold-b);background:rgba(180,140,60,.07);
+    font-size:13px;line-height:1.85;color:#ecd9bd;white-space:pre-line;word-break:keep-all}
+  .nt-mine .w{font-size:11px;letter-spacing:.2em;color:var(--gold-b);font-weight:700;margin-bottom:6px}
+  .ac-opt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;margin-top:9px;padding:11px 13px;
+    cursor:pointer;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.02);color:inherit;font:inherit}
+  .ac-opt .mk{width:11px;height:11px;border-radius:50%;border:1px solid var(--rc,var(--sub))}
+  .ac-opt.on{border-color:var(--rc);background:color-mix(in srgb,var(--rc) 12%,transparent)}
+  .ac-opt.on .mk{background:var(--rc)}
+  .ac-opt b{font-size:14px;color:#eef2f6}
+  .ac-opt .jb{margin-left:auto;font-size:11.5px;color:var(--sub)}
+  .ac-tally{margin-top:14px;padding-top:11px;border-top:1px solid var(--line)}
+  .ac-tally .w{font-size:11px;letter-spacing:.2em;color:var(--sub);font-weight:700;margin-bottom:7px}
+  .ac-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#dfe7ef}
   .crisis{border:1px solid var(--ember);border-radius:13px;padding:15px 16px;margin-bottom:12px;
     background:linear-gradient(165deg,rgba(40,12,10,.92),rgba(13,12,11,.96));
     box-shadow:0 0 0 1px rgba(200,68,47,.16), 0 10px 34px -18px rgba(200,68,47,.7)}
@@ -2788,6 +2822,25 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
       `각자 자기 기기에서 서술로 답합니다. 답은 이 진행석으로 모입니다.
        <div class="gm-ans" id="gmAnswers"><div class="gm-note">답안을 불러오는 중…</div></div>`);
   }
+  if(k==="night"){
+    const n=STATE.night||{};
+    if(n.done) return gmCinematic("밤이 지났다", (n.outcome||[]).join("\n"), n.headline||"",
+      "낭독하고 <b>다음 페이즈 ›</b>로 마지막 조사를 여세요. 시신은 어젯밤에 다녀간 손의 수만큼 자국을 갖고 있습니다.");
+    return gmCinematic("밤 · 각자의 방으로", (n.intro||""), (n.prompt||""),
+      `각자 자기 기기에서 하나씩 고릅니다. <b>무엇을 골랐는지는 아무에게도 안 보입니다.</b>
+       <div style="margin-top:8px">지금까지 <b>${(n.picked||[]).length}/${n.total}</b>명이 정했습니다.
+       전원이 정하면 저절로 아침이 옵니다.</div>
+       <div style="margin-top:8px"><button class="btn quiet" onclick="nightClose()">기다리지 않고 넘기기</button></div>`);
+  }
+  if(k==="accuse"){
+    const a=STATE.accuse1||{picks:{},tally:{}};
+    const rows=Object.keys(a.tally||{}).sort((x,y)=>a.tally[y]-a.tally[x])
+      .map(t=>`  ${nameOf(t)} — ${a.tally[t]}표`).join("\n");
+    return gmCinematic("1차 지목 · 이름을 부른다", (ph.gm||""), rows||"— 아직 아무도 안 적었습니다",
+      `각자 자기 기기에서 한 사람을 적습니다. <b>${Object.keys(a.picks||{}).length}/${a.voters}</b>명 적음.
+       <div style="margin-top:8px">이 표는 <b>지워지지 않습니다</b> — 종막까지 따라갑니다.
+       다 적었으면 동시에 펴고, <b>다음 페이즈 ›</b>로 넘기세요.</div>`);
+  }
   if(k==="decision"){
     const d=STATE.decision||{};
     const rows=(d.seats||[]).map((seat,i)=>{
@@ -2973,7 +3026,9 @@ function renderPanel(ph){
   const p=$("ppanel"); const k=ph.key;
   // 매 폴링마다 통째로 다시 그리면 방 카드 애니메이션이 계속 재생돼 '깜빡임'이 생긴다.
   // 실제로 바뀐 게 있을 때만 다시 그린다.
-  const sig=JSON.stringify([k,STATE.seq,STATE.round,STATE.turn,ph.ap,myRoleId,myHand.map(c=>c.id),STATE.revealedIds,STATE.usedAP,STATE.grades,STATE.ending&&STATE.ending.name,STATE.interrogate,STATE.checked,STATE.crisis&&[STATE.crisis.open,STATE.crisis.solved,STATE.crisis.answered],crAns.join(""),STATE.flood]);
+  const sig=JSON.stringify([k,STATE.seq,STATE.round,STATE.turn,ph.ap,myRoleId,myHand.map(c=>c.id),STATE.revealedIds,STATE.usedAP,STATE.grades,STATE.ending&&STATE.ending.name,STATE.interrogate,STATE.checked,STATE.crisis&&[STATE.crisis.open,STATE.crisis.solved,STATE.crisis.answered],crAns.join(""),STATE.flood,
+    STATE.night&&[STATE.night.open,STATE.night.done,STATE.night.mine,(STATE.night.picked||[]).join("")],
+    STATE.accuse1&&JSON.stringify(STATE.accuse1.picks)]);
   if(sig===renderPanel._sig) return;
   renderPanel._sig=sig;
   if(k==="open"){
@@ -3006,6 +3061,8 @@ function renderPanel(ph){
         return `<button class="pill pair${rd?" rdy":""}" title="${rd?"짝이 지금 나와 있습니다 — 눌러서 맞춰보세요":"같은 조각을 단 카드를 찾으세요"}" onclick="event.stopPropagation();showPairHint('${c.id}',${k.i})">${pairChip(k,c.id,rd)}${rd?"맞물림":"조각"}</button>`;
       }).join("")}<div class="lead clip1">${esc(oneLine(c.text))}</div></div>`).join("")||'<div class="panel-note">아직 조사한 단서가 없어요. (조사 페이즈에 카드를 여세요.)</div>'}</div>`
     +interrogPanelHTML()+nextPhaseBlock(); }
+  else if(k==="night"){ renderNight(p); }
+  else if(k==="accuse"){ renderAccuse(p); }
   else if(k==="final"){ renderFinal(p); }
   else if(k==="decision"){ renderDecision(p); }
   else if(k==="reveal"){ renderReveal(p); }
@@ -4095,13 +4152,94 @@ async function swapConfirm(){
       않은 답을 낸 것으로 보였다. 이제는 클로드에 그대로 붙여넣을 한 덩어리 글을 만들어
       준다 — 그걸 들고 클로드 세션에 물어보면 그 자리가 진행석이 된다. */
 function finalRoute(){ return backendOn()?"ai":((gmOn||(STATE&&STATE.hasGM))?"gm":"claude"); }
+/* 밤 — 각자 하나를 고르고, 그 조합이 그날 밤에 실제로 일어난 일을 정한다.
+   무엇을 골랐는지는 서로 안 보인다. 「정했다」까지만 보인다. */
+let nightPick="";
+function renderNight(p){
+  const n=(STATE&&STATE.night)||null;
+  if(!n){ p.innerHTML=`<div class="card"><div class="panel-note">밤이 지나갔습니다.</div></div>`; return; }
+  if(n.done){
+    p.innerHTML=`<div class="card nightcard done">
+      <div class="nt-kick">${esc(n.kick||"밤")} · 지나갔다</div>
+      <h2>${esc(n.headline||"")}</h2>
+      ${(n.outcome||[]).map(t=>`<div class="nt-out">${esc(t)}</div>`).join("")}
+      ${n.mineOutcome?`<div class="nt-mine"><div class="w">그날 밤 · 내가 한 일</div>${esc(n.mineOutcome)}</div>`:""}
+      <div class="panel-note" style="margin-top:12px">아침입니다. <b>다음 페이즈 ›</b>로 마지막 조사를 여세요.</div>
+    </div>`;
+    return;
+  }
+  const mine=n.mine||"";
+  const opts=(n.options||[]).map(o=>`<button class="nt-opt${nightPick===o.id?" on":""}${mine===o.id?" locked":""}"
+      ${mine?"disabled":""} onclick="nightSel('${o.id}')">
+      <div class="nt-h"><span class="mk"></span><b>${esc(o.label)}</b>${o.at?`<span class="at">${esc(o.at)}</span>`:`<span class="at skip">안 간다</span>`}</div>
+      <div class="nt-d">${esc(o.desc||"")}</div></button>`).join("");
+  p.innerHTML=`<div class="card nightcard">
+    <div class="nt-kick">${esc(n.kick||"밤")}</div>
+    <h2>${esc(n.title||"")}</h2>
+    <div class="nt-intro">${esc(n.intro||"")}</div>
+    <div class="nt-prompt">${esc(n.prompt||"")}</div>
+    ${myRoleValid()&&(n.options||[]).length?opts:`<div class="panel-note" style="margin-top:12px">관전 중 — 배역을 맡은 사람만 고릅니다.</div>`}
+    <div class="nt-foot">
+      <span class="tally">${(n.picked||[]).length}/${n.total} 정함${mine?" · 내 선택 잠김":""}</span>
+      ${myRoleValid()&&!mine?`<button class="btn primary sm"${nightPick?"":" disabled"} onclick="nightSend()">이걸로 간다</button>`:""}
+      ${(STATE.isHost||gmOn)?`<button class="btn quiet sm" onclick="nightClose()">지금 넘기기</button>`:""}
+    </div></div>`;
+}
+function nightSel(id){ nightPick=id; renderPanel._sig=null; applyState(); }
+async function nightSend(){
+  if(!nightPick) return;
+  if(!myRoleValid()){ banner("배역을 맡아야 고를 수 있어요"); return; }
+  const r=await post("/api/night",{roleId:myRoleId,clientId,optId:nightPick});
+  if(r&&r.error){ banner(r.error); return; }
+  banner(""); nightPick=""; await poll();
+}
+async function nightClose(){ await post("/api/night/close",{clientId,key:gmKey}); await poll(); }
+
+/* 1차 지목 — 판정은 없다. 여기서 부른 이름은 종막까지 그대로 따라간다. */
+function renderAccuse(p){
+  const a=(STATE&&STATE.accuse1)||{picks:{},tally:{}};
+  const mine=(a.picks||{})[myRoleId]||"";
+  const targets=(SCEN.characters||[]).filter(c=>c.id!==myRoleId);
+  const btns=targets.map(c=>`<button class="ac-opt${mine===c.id?" on":""}" style="--rc:${c.color}"
+      onclick="accuse1('${c.id}')"><span class="mk"></span><b>${esc(c.name)}</b>
+      <span class="jb">${esc(c.job||"")}</span></button>`).join("");
+  const rows=Object.keys(a.tally||{}).sort((x,y)=>a.tally[y]-a.tally[x])
+    .map(t=>`<div class="ac-row"><span>${esc(nameOf(t))}</span><b>${a.tally[t]}표</b></div>`).join("");
+  p.innerHTML=`<div class="card accusecard">
+    <div class="nt-kick">1차 지목</div>
+    <h2>지금, 한 사람의 이름을 적는다</h2>
+    <div class="nt-intro">여기서 부른 이름은 지워지지 않습니다. 종막까지 그대로 따라갑니다.
+      바꾸고 싶으면 지금 바꾸세요 — 이 막이 끝나면 못 고칩니다.</div>
+    ${myRoleValid()?btns:`<div class="panel-note" style="margin-top:12px">관전 중 — 배역을 맡은 사람만 적습니다.</div>`}
+    ${rows?`<div class="ac-tally"><div class="w">지금까지 나온 이름</div>${rows}</div>`:""}
+    <div class="nt-foot"><span class="tally">${Object.keys(a.picks||{}).length}/${a.voters} 적음${
+      a.tie?" · 표가 갈렸습니다":""}</span></div></div>`;
+}
+async function accuse1(t){
+  if(!myRoleValid()){ banner("배역을 맡아야 적을 수 있어요"); return; }
+  const r=await post("/api/accuse1",{roleId:myRoleId,clientId,targetRoleId:t});
+  if(r&&r.error){ banner(r.error); return; }
+  banner(""); await poll();
+}
 function renderFinal(p){
   const g=myRoleId?STATE.grades[myRoleId]:null; const mine=myRoleValid();
   const route=finalRoute();
   const lead={ai:"배역으로서 서술로 답하면 진행자(AI)가 진상 기준으로 채점합니다.",
                gm:"배역으로서 서술로 답하면 진행석(GM)이 모아 진상 기준으로 채점합니다.",
                claude:"이 방에는 채점할 진행자가 없습니다. 답을 적으면 <b>클로드에 붙여넣을 한 덩어리 글</b>로 정리해 드려요."}[route];
-  let h=`<div class="card"><h2>종막 · 질문지</h2><div class="mlead">${lead}</div>`;
+  let h="";
+  // 1차에서 부른 이름은 지워지지 않는다 — 종막에도 그대로 걸려 있어야 그게 «따라온» 것이 된다.
+  const a1=(STATE&&STATE.accuse1)||null;
+  if(a1&&Object.keys(a1.tally||{}).length){
+    const rows=Object.keys(a1.tally).sort((x,y)=>a1.tally[y]-a1.tally[x])
+      .map(t=>`<div class="ac-row"><span>${esc(nameOf(t))}</span><b>${a1.tally[t]}표</b></div>`).join("");
+    h+=`<div class="card accusecard" style="margin-bottom:12px">
+      <div class="nt-kick">1차에서 부른 이름</div>
+      <div class="ac-tally" style="margin-top:0;padding-top:0;border-top:0">${rows}</div>
+      <div class="panel-note" style="margin-top:10px">이 표는 그대로 남아 있습니다.
+        ${a1.tie?"표가 갈렸습니다 — 아직 한 사람으로 모이지 않았어요.":`지금까지 이 판의 이름은 <b>${esc(nameOf(a1.lead[0]))}</b>입니다.`}</div></div>`;
+  }
+  h+=`<div class="card"><h2>종막 · 질문지</h2><div class="mlead">${lead}</div>`;
   if(mine&&!g&&finalSubmitted(myRoleId)){
     const a=finalAnswersOf(myRoleId)||[];
     const note={ai:"제출 완료 — 채점 중입니다.",
