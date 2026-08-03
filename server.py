@@ -798,6 +798,20 @@ def state(clientId: str = "", gm: int = 0):
             if now - t > 20:           # 폴링이 1.5초 간격이니 20초면 확실히 떠난 것이다
                 ROOM["gmSeats"].pop(cid, None)
         st["hasGM"] = bool(ROOM["gmSeats"])
+        # 「추가 정보」가 몇 장인가. 화면은 이 숫자가 늘어난 것만 보고 알림을 띄운다 —
+        # 무엇이 늘었는지는 열어봐야 안다.
+        mine0 = next((rid for rid, r in ROOM["roles"].items() if r["clientId"] and r["clientId"] == clientId), "")
+        if mine0:
+            n = 0
+            try:
+                n += len(SC.memory_up_to(mine0, ROOM["seq"]))
+            except Exception:                                # noqa: BLE001
+                pass
+            if ((ROOM.get("ask") or {}).get("asked") or []):
+                n += 1
+            if ((ROOM.get("night") or {}).get("result")):
+                n += 1
+            st["extraN"] = n
         # 자기가 이미 적었는지는 자기만 안다. 남이 무엇을 적었는지는 다 던진 뒤에 열린다.
         if st.get("accuse1") is not None:
             who = next((rid for rid, r in ROOM["roles"].items() if r["clientId"] and r["clientId"] == clientId), "")
@@ -2479,6 +2493,7 @@ def _night_public(role_id: str = "") -> dict | None:
     if role_id:
         opts = (conf.get("options") or {}).get(role_id) or []
         out["mine"] = (n.get("picks") or {}).get(role_id, "")
+        out["why"] = (conf.get("why") or {}).get(role_id, "")
         # 시각은 정하고 나서야 알려준다. 고르기 전에는 «이르게/늦게/안 간다»까지다 —
         # 몇 시인지를 미리 알면 그건 시간을 고르는 것이지 행동을 고르는 게 아니다.
         if out["mine"]:

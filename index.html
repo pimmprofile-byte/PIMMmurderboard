@@ -1347,6 +1347,29 @@
 
   /* ── 침수 대응 퍼즐 ─────────────────────────────────────────
      조사 화면 맨 위를 차지한다. 이걸 넘기고 조사부터 하면 안 되니까 눈에 걸리게. */
+  /* 위에서 내려왔다 올라가는 알림 */
+  .dropnote{position:fixed;left:50%;top:0;transform:translate(-50%,-130%);z-index:70;
+    display:flex;align-items:center;gap:10px;max-width:min(92vw,420px);
+    padding:11px 14px;border:1px solid var(--gold-b);border-radius:0 0 12px 12px;
+    border-top:0;background:rgba(20,16,10,.97);box-shadow:0 10px 30px rgba(0,0,0,.5);
+    cursor:pointer;transition:transform .38s cubic-bezier(.22,1,.32,1),opacity .3s;opacity:0}
+  .dropnote.on{transform:translate(-50%,0);opacity:1}
+  .dropnote .dn-i{color:var(--gold-b);display:flex}
+  .dropnote .dn-i svg{width:18px;height:18px}
+  .dropnote .dn-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .dropnote .dn-t b{font-size:13.5px;color:#fff;font-weight:700}
+  .dropnote .dn-t i{font-style:normal;font-size:11.5px;color:var(--sub);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dropnote .dn-go{margin-left:auto;font-size:12px;color:var(--gold-b);font-weight:700;white-space:nowrap}
+  @media(prefers-reduced-motion:reduce){ .dropnote{transition:opacity .2s} }
+  .dashhead{display:flex;align-items:center;gap:10px}
+  .dashhead .dfilt{margin-left:auto}
+  .dashhead .dfilt select{appearance:none;-webkit-appearance:none;
+    background:rgba(255,255,255,.04) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2 4.5 6 8.5 10 4.5' fill='none' stroke='%238a95a3' stroke-width='1.5' stroke-linecap='round'/></svg>") no-repeat right 8px center/11px;
+    color:var(--sub);border:1px solid var(--line);border-radius:6px;
+    font:600 11.5px/1 inherit;letter-spacing:.02em;padding:7px 26px 7px 10px;cursor:pointer}
+  .dashhead .dfilt select:focus-visible{outline:2px solid var(--cold);outline-offset:2px}
+  .dashhead .dfilt select option{background:#11151c;color:#e8eef5}
   .nqlist{margin-top:12px;display:flex;flex-direction:column;gap:7px}
   .nq{border:1px solid var(--line);border-left-width:3px;border-radius:8px;padding:10px 12px;
     background:rgba(255,255,255,.02)}
@@ -1380,6 +1403,10 @@
   .nightcard h2,.accusecard h2{margin:0 0 9px;font-size:17px;color:#fff}
   .nt-intro{font-size:13.5px;line-height:1.85;color:#cfd6df;white-space:pre-line;word-break:keep-all}
   .nt-prompt{margin-top:11px;font-size:13px;color:var(--gold-b);font-weight:700;word-break:keep-all}
+  .nt-why{margin-top:14px;padding:11px 13px;border-left:2px solid var(--ember-b,#e0663c);
+    background:rgba(224,102,60,.08);font-size:13px;line-height:1.85;color:#ecd3ca;
+    white-space:pre-line;word-break:keep-all}
+  .nt-why .w{font-size:11px;letter-spacing:.2em;color:var(--ember-b,#e0663c);font-weight:700;margin-bottom:6px}
   .nt-opt{display:block;width:100%;text-align:left;margin-top:9px;padding:11px 13px;cursor:pointer;
     border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.02);color:inherit;font:inherit}
   .nt-opt .nt-h{display:flex;align-items:center;gap:8px;font-size:14px;color:#eef2f6}
@@ -1913,6 +1940,7 @@ function applyState(){
   // 정작 이 연출을 틀어야 할 사람이 GM인데.
   if(STATE.started&&(STATE.phase||{}).key==="open"&&isBoard()) openVN(false);
   maybePlayCut();
+  extraWatch();
   // 확정되면 각자 제 자리로 — 배역이 있으면 플레이 화면, 배역 없이 진행석만 켠 기기는 진행석으로.
   // 딱 한 번만 밀어준다. 매번 밀면 시작 뒤엔 로비로 못 돌아가서 헤더의 '배역' 버튼이
   // 눌러도 되돌아오는 죽은 버튼이 되고, 진행석 토글도 손댈 수 없다.
@@ -3102,6 +3130,26 @@ async function resetRoom(){
 })();
 
 /* 페이즈 패널 */
+/* 다시 그리는 동안 읽던 자리를 지킨다. 내용이 짧아지는 순간 브라우저가 스크롤을
+   잘라버리므로, 높이가 돌아온 다음 프레임에 되돌려 놓는다. */
+function scrollHost(){
+  let el=$("ppanel");
+  while(el&&el!==document.body){
+    const st=getComputedStyle(el);
+    if(/(auto|scroll)/.test(st.overflowY)&&el.scrollHeight>el.clientHeight+4) return el;
+    el=el.parentElement;
+  }
+  return document.scrollingElement||document.documentElement;
+}
+function keepScroll(){
+  const host=scrollHost(), y=host.scrollTop, h=host.scrollHeight;
+  if(!y) return;
+  const put=()=>{ // 내용이 줄어 자리가 없어졌으면 갈 수 있는 데까지만
+    const max=Math.max(0,host.scrollHeight-host.clientHeight);
+    host.scrollTop=Math.min(y,max);
+  };
+  requestAnimationFrame(()=>{ put(); requestAnimationFrame(put); setTimeout(put,120); });
+}
 function renderPanel(ph){
   const p=$("ppanel"); const k=ph.key;
   // 매 폴링마다 통째로 다시 그리면 방 카드 애니메이션이 계속 재생돼 '깜빡임'이 생긴다.
@@ -3112,6 +3160,9 @@ function renderPanel(ph){
     STATE.accuse1&&[STATE.accuse1.voted,STATE.accuse1.done,STATE.accuse1.mineDone,acSel]]);
   if(sig===renderPanel._sig) return;
   renderPanel._sig=sig;
+  // 조사 한 번에 화면이 맨 위로 튀던 것 — 판을 통째로 다시 그리는 동안 높이가 0 이 되고,
+  // 브라우저가 스크롤을 거기에 맞춰 잘라버린다. 읽던 자리를 재어뒀다가 되돌린다.
+  keepScroll();
   if(k==="open"){
     const lines=String(SCEN.intro||"").split("\n").filter(x=>x.trim());
     const chunks=[]; for(let i=0;i<lines.length;i+=2) chunks.push(lines.slice(i,i+2).join("\n"));
@@ -3503,16 +3554,38 @@ function discoveredIds(){
   Object.values(STATE.checked||{}).forEach(a=>(a||[]).forEach(x=>s.add(x)));
   return s;
 }
+/* 조사 현황 거르개. 구역이 아홉이라 목록이 길어지면 「지금 열 수 있는 게 뭐였더라」가
+   화면 밖으로 밀린다. 카드 제목은 어차피 안 뜨므로 걸러도 새는 것이 없다. */
+const DASH_FILTERS=[["all","전부"],["open","안 열린 카드"],["can","확인할 수 있는 카드"],["hand","손패에 있는 카드"]];
+let dashFilter="all";
+function dashPass(c){
+  if(dashFilter==="all") return true;
+  const k=cardState(c).k;
+  if(dashFilter==="open") return k==="open"||k==="lock";
+  if(dashFilter==="can")  return k==="open";
+  if(dashFilter==="hand") return k==="hand";
+  return true;
+}
+function setDashFilter(v){ dashFilter=v; const d=$("dash"); if(d) d.innerHTML=dashHTML(); }
 function dashHTML(){
+  let shown=0;
   const blocks=((SCEN.map)||[]).map(z=>{
     const cards=zoneCards(z.loc); if(!cards.length) return "";
     const done=cards.filter(c=>{ const k=cardState(c).k; return k!=="open"&&k!=="lock"; }).length;
+    const list=cards.filter(dashPass); shown+=list.length;
+    if(!list.length) return "";
     return `<div class="dz">
       <button class="dz-h" onclick="openZone('${z.loc}')">${esc(z.name||z.loc)}
         <span class="n">${done}/${cards.length}</span><span class="go">들어가기 ›</span></button>
-      <div class="dcards">${cards.map(dashCard).join("")}</div></div>`;
+      <div class="dcards">${list.map(dashCard).join("")}</div></div>`;
   }).join("");
-  return `<div class="dashhead">조사 현황</div>${blocks}`;
+  const opts=DASH_FILTERS.map(([v,l])=>`<option value="${v}"${v===dashFilter?" selected":""}>${l}</option>`).join("");
+  return `<div class="dashhead">조사 현황
+      <span class="dfilt"><select aria-label="조사 현황 거르개" onchange="setDashFilter(this.value)">${opts}</select></span>
+    </div>${blocks||`<div class="panel-note" style="margin-top:10px">${
+      dashFilter==="hand"?"손에 쥔 카드가 없습니다."
+      :dashFilter==="can"?"지금 확인할 수 있는 카드가 없습니다."
+      :"해당하는 카드가 없습니다."}</div>`}`;
 }
 /* ── 심층심문 — 상대가 지금 손패로 쥔 카드를 지목해 답을 요구한다(예산 소모, 그 자리에서 공개) ── */
 function heldCardsOf(roleId){ return ((STATE.checked||{})[roleId]||[]).map(id=>cardCat(id)).filter(Boolean); }
@@ -4333,6 +4406,7 @@ function renderNight(p){
     <div class="nt-kick">${esc(n.kick||"밤")}</div>
     <h2>${esc(n.title||"")}</h2>
     <div class="nt-intro">${esc(n.intro||"")}</div>
+    ${n.why?`<div class="nt-why"><div class="w">나는 왜 이걸 하려는가</div>${esc(n.why)}</div>`:""}
     <div class="nt-prompt">${esc(n.prompt||"")}</div>
     ${myRoleValid()&&(n.options||[]).length?opts:`<div class="panel-note" style="margin-top:12px">관전 중 — 배역을 맡은 사람만 고릅니다.</div>`}
     <div class="nt-foot">
@@ -4978,6 +5052,34 @@ const say=o=>dialog({...o,kind:"say"});
 const askText=o=>dialog({...o,kind:"text"});
 
 let bannerT=null;
+/* 위에서 내려왔다가 올라가며 사라지는 알림. 「추가 정보가 늘었다」처럼
+   지금 손을 멈출 필요는 없지만 놓치면 안 되는 것에 쓴다. */
+let dropT=null;
+function dropNote(title, sub){
+  let el=$("dropNote");
+  if(!el){ el=document.createElement("div"); el.id="dropNote"; el.className="dropnote";
+    el.onclick=()=>{ el.classList.remove("on"); sheetTab="extra"; showMySheet(); };
+    document.body.appendChild(el); }
+  el.innerHTML=`<span class="dn-i">${ICO.card||""}</span>
+    <span class="dn-t"><b>${esc(title)}</b>${sub?`<i>${esc(sub)}</i>`:""}</span>
+    <span class="dn-go">열기 ›</span>`;
+  clearTimeout(dropT);
+  el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+  try{ sfx("ping"); }catch(e){}
+  dropT=setTimeout(()=>el.classList.remove("on"), 4200);
+}
+/* 「추가 정보」가 늘면 한 번 알린다. 배역마다 따로 세고, 새로고침해도 다시 안 뜬다. */
+function extraWatch(){
+  if(!myRoleValid()||!STATE||STATE.extraN==null) return;
+  const k="pmb.extraN."+(STATE.roomId||"")+"."+myRoleId;
+  let was=null; try{ was=localStorage.getItem(k); }catch(e){}
+  const now=String(STATE.extraN);
+  if(was===null){ try{ localStorage.setItem(k,now); }catch(e){} return; }
+  if(Number(now)>Number(was)){
+    try{ localStorage.setItem(k,now); }catch(e){}
+    dropNote("추가 정보가 늘었습니다", (SCEN&&SCEN.fragNotice)||"내 정보 · 추가 정보에서 확인하세요");
+  } else if(now!==was){ try{ localStorage.setItem(k,now); }catch(e){} }
+}
 function banner(m){ const b=$("banner");
   clearTimeout(bannerT);
   if(!m){ b.classList.remove("on"); return; }
@@ -5154,7 +5256,8 @@ async function showMySheet(){
     // 판이 도는 동안 «늘어나는» 글이다. 훑는 자리(한눈에)가 아니라
     // 판 위에서 쓰는 자리(추가 정보)에 둔다 — 새로 생긴 것을 여기서 찾게 된다.
     slides.push({tab:"extra", html:`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">${esc(fragE)}</div><div class="bc-title" style="font-size:18px">${esc(fragL)}</div><div style="margin-top:14px">${fh}</div></div>`}); }
-  // 4-b) 고갯짓 — 질문지의 결과. 줄글로 적으면 여섯 줄이 뭉개져서 한 장으로 세운다.
+  // 4-b) 고갯짓 — 질문지의 결과.
+  //       늘어나는 것들(조각·고갯짓)이 앞이고 늘 있는 것(배치도)이 뒤다 — 새로 생긴 걸 여기서 찾는다. 줄글로 적으면 여섯 줄이 뭉개져서 한 장으로 세운다.
   //       물은 것과 «아무도 안 물은 것»이 같은 무게로 보여야 한다 — 안 물어진 쪽이 이 막의 기록이다.
   const ask=(STATE&&STATE.ask)||null;
   if(ask&&(ask.asked||[]).length){
