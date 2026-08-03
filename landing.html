@@ -116,8 +116,14 @@
   .scr-head .eyebrow{margin-bottom:10px}
   .scr-head h2{font-family:var(--serif);font-weight:800;font-size:clamp(1.7rem,5.5vw,2.8rem);margin:0;letter-spacing:.01em}
   .scr-head p{color:var(--faint);font-size:clamp(.68rem,2.3vw,.76rem);letter-spacing:.06em;margin:11px auto 0;max-width:26ch;line-height:1.5;word-break:keep-all}
-  .rail{display:flex;gap:clamp(14px,3vw,22px);overflow-x:auto;padding:26px 2px 30px;scroll-snap-type:x mandatory;scrollbar-width:thin}
-  .rail::before,.rail::after{content:"";flex:0 0 max(0px,calc((100% - 1180px)/2))}
+  /* 포스터 줄은 끝이 없다 — 같은 벌을 여러 번 이어 붙이고 가운데 벌을 벗어나면
+     한 벌 폭만큼 조용히 되돌린다. 그래서 좌우 어느 쪽으로 밀어도 계속 이어진다.
+     끝이 없으니 양옆을 벌려두던 여백(::before/::after)도 필요 없다 — 늘 가운데다.
+     scroll-snap 은 proximity 다. mandatory 로 두면 한 벌씩 되돌릴 때 브라우저가
+     스냅 목표를 다시 잡느라 손가락이 튕겨나간다. */
+  .rail{display:flex;gap:clamp(14px,3vw,22px);overflow-x:auto;padding:26px 2px 30px;
+    scroll-snap-type:x proximity;scrollbar-width:none;overscroll-behavior-x:contain}
+  .rail::-webkit-scrollbar{display:none}
   .poster{scroll-snap-align:center;flex:0 0 auto;width:clamp(242px,75vw,290px);text-align:left;background:none;border:none;padding:0;transition:.2s;color:inherit}
   .poster:hover{transform:translateY(-7px)}
   .frame{position:relative;border-radius:9px;padding:12px;
@@ -509,7 +515,10 @@ function pips(id){
 function pickScenario(id){
   const s=SCEN.find(x=>x.id===id);
   if(s.locked && !admin){ note(`《${s.title}》은 아직 준비 중이에요.`); return; }
-  me.pick=id; sfxPick(); render();
+  // 고른 포스터는 가운데로 온다. 다시 그리는 쪽이 보던 자리를 되돌린 «뒤에» 밀어야
+  // 하므로 뜻만 남겨두고, 다시 안 그렸으면 여기서 바로 민다.
+  me.pick=id; sfxPick(); railWant=id; render();
+  if(!railRedrew){ railWant=null; railCenter(id,true); }
 }
 async function launch(){
   const s=SCEN.find(x=>x.id===me.pick); if(!s) return;
@@ -528,9 +537,21 @@ function render(){
   const rp=$("rolepill");
   rp.innerHTML=(me.mode==="host"?svgCrown+"<span>호스트</span>":svgUser+"<span>참가자</span>");
   rp.className="hostpill"+(me.mode==="host"?"":" part");
-  $("rail").innerHTML=ORDER.map(id=>SCEN.find(s=>s.id===id)).filter(Boolean).map(s=>`
+  renderRail();
+  renderBar();
+}
+
+/* ── 끝 없는 포스터 줄 ────────────────────────────────────────────
+   같은 벌을 여러 번 이어 붙이고, 가운데 벌을 벗어나면 한 벌 폭만큼 조용히 되돌린다.
+   되돌린 자리에 같은 그림이 같은 간격으로 서 있어서 눈에는 안 띈다 — 그래서 좌우
+   어느 쪽으로 계속 밀어도 끝이 안 나온다.
+   벌 수는 화면에 맞춰 정한다. 한 벌이 화면보다 좁으면(큰 모니터) 세 벌로는
+   가운데 벌 안에 머물 수가 없어서 빈자리가 드러난다. */
+function railList(){ return ORDER.map(id=>SCEN.find(s=>s.id===id)).filter(Boolean); }
+function posterHTML(s,c){
+  return `
     <button class="poster ${s.locked&&!admin?"locked":""} ${me.pick===s.id?"on":""}"
-       onclick="pickScenario('${s.id}')">
+       data-c="${c}" data-id="${s.id}" onclick="pickScenario('${s.id}')">
       <div class="frame">
         <div class="art" style="background-image:url('${s.img}');background-size:cover;background-position:center 56%">
           <div style="position:absolute;inset:0;background:radial-gradient(130% 72% at 50% 130%, ${s.glow}, transparent 66%)"></div>
@@ -544,9 +565,76 @@ function render(){
       <div class="meta"><span class="chip">${s.diff}</span><span class="chip">${s.players}</span>
         ${s.text?`<span class="chip tx" title="내가 읽게 되는 분량 ${s.text.chars.toLocaleString()}자">${s.text.bar} ${s.text.label} · 읽기 ${s.text.minutes}분</span>`:""}
         <span class="sel">${s.locked?"준비중":(me.pick===s.id?"● 내가 고름":"고르기")}</span></div>
-    </button>`).join("");
-  renderBar();
+    </button>`;
 }
+let railCopies=3, railJump=false, railSig="", railWant=null, railRedrew=false;
+/* 한 벌의 폭 — 다음 벌 첫 장까지의 거리다(사이 간격까지 들어간다) */
+function railPeriod(){
+  const rail=$("rail"), n=railList().length;
+  if(!rail||!n||rail.children.length<n*2) return 0;
+  return rail.children[n].offsetLeft - rail.children[0].offsetLeft;
+}
+function renderRail(){
+  const rail=$("rail"); if(!rail) return;
+  const list=railList(); if(!list.length){ rail.innerHTML=""; railSig=""; return; }
+  const html=[];
+  for(let c=0;c<railCopies;c++) for(const s of list) html.push(posterHTML(s,c));
+  const sig=html.join("");
+  railRedrew=false;
+  if(sig===railSig) return;              // 바뀐 게 없으면 손대지 않는다 — 보던 자리가 안 흔들리게
+  railRedrew=true;
+  const first=!railSig, keep=rail.scrollLeft;
+  railSig=sig; rail.innerHTML=sig;
+  if(!rail.dataset.wired){ rail.dataset.wired="1";
+    rail.addEventListener("scroll",()=>{ if(!railJump) railWrap(); },{passive:true}); }
+  requestAnimationFrame(()=>{
+    const one=railPeriod(); if(!one) return;
+    // 한 벌이 화면보다 좁으면 벌을 더 깐다. 가운데 벌에 머물러도 오른쪽이 안 비게.
+    const need=Math.max(3, Math.ceil(rail.clientWidth/one)+2);
+    if(need!==railCopies){ railCopies=need; railSig=""; renderRail(); return; }
+    if(first){
+      // 처음에는 가운데 벌에 세운다. 0 에 두면 왼쪽으로 밀 자리가 없어서
+      // 되돌릴 기회조차 안 생기고 그대로 왼쪽 끝에 갇힌다.
+      railJump=true; rail.scrollLeft=one; railJump=false;
+      railCenter(me.pick||list[0].id,false);
+      return;
+    }
+    // 다시 그리면 scrollLeft 가 0 으로 떨어진다 — 보던 자리부터 되돌려놓고 시작한다.
+    railJump=true; rail.scrollLeft=keep; railJump=false;
+    railWrap();
+    if(railWant){ const w=railWant; railWant=null; railCenter(w,true); }
+  });
+}
+/* 그 사건을 화면 한가운데로. 여러 벌 중 «지금 자리에서 제일 가까운» 벌을 고른다 —
+   늘 가운데 벌로 보내면 방금 누른 포스터가 화면 밖으로 날아간다. */
+function railCenter(id, smooth){
+  const rail=$("rail"); if(!rail) return;
+  const els=[...rail.querySelectorAll(`.poster[data-id="${id}"]`)];
+  if(!els.length) return;
+  const mid=rail.scrollLeft + rail.clientWidth/2;
+  let best=els[0], bd=Infinity;
+  for(const el of els){ const d=Math.abs(el.offsetLeft+el.offsetWidth/2-mid); if(d<bd){ bd=d; best=el; } }
+  const to=best.offsetLeft-(rail.clientWidth-best.offsetWidth)/2;
+  // 미는 동안에는 되돌리지 않는다. 부드럽게 미는 중에 scrollLeft 를 건드리면
+  // 브라우저가 그 자리에서 미는 걸 멈춰버려서, 엉뚱한 포스터 앞에 선다.
+  railJump=true;
+  rail.scrollTo({left:to, behavior: smooth?"smooth":"auto"});
+  clearTimeout(railCenter._t);
+  if(smooth) railCenter._t=setTimeout(()=>{ railJump=false; railWrap(); }, 620);
+  else railJump=false;
+}
+/* 가운데 한 벌 [0.5벌, 1.5벌) 안에 머물게 한다. 양옆에 반 벌씩 여유를 두는 건
+   가운데로 세우는 계산이 경계에 딱 붙었을 때 곧바로 되돌리지 않게 하려는 것이다. */
+function railWrap(){
+  const rail=$("rail"), one=railPeriod(); if(!one) return;
+  const x=rail.scrollLeft, lo=one*0.5;
+  if(x<lo||x>=lo+one){
+    railJump=true;
+    rail.scrollLeft = lo + ((x-lo)%one + one)%one;
+    railJump=false;
+  }
+}
+addEventListener("resize",()=>{ if($("rail")&&$("rail").children.length){ railSig=""; renderRail(); } });
 function renderBar(){
   const s=me.pick?SCEN.find(x=>x.id===me.pick):null;
   let h;
