@@ -3339,7 +3339,11 @@ function heldCardsOf(roleId){ return ((STATE.checked||{})[roleId]||[]).map(id=>c
 function interrogPanelHTML(){
   if(!myRoleValid()) return `<div class="card" style="margin-top:14px"><h2>${ICO.torch} 심층심문</h2><div class="panel-note">배역을 맡아야 심문할 수 있어요.</div></div>`;
   const ig=STATE.interrogate; if(!ig) return "";
-  const targets=SCEN.characters.filter(c=>c.id!==myRoleId).map(c=>({c,cards:heldCardsOf(c.id)}));
+  // 사람이 맡은 배역은 대상이 아니다. 이 기능은 AI 배역에게서 대답을 끌어내는 장치고,
+  // 사람끼리는 대화창에서 직접 물으면 된다.
+  const targets=SCEN.characters
+    .filter(c=>c.id!==myRoleId && ((STATE.roles||{})[c.id]||{}).mode!=="human")
+    .map(c=>({c,cards:heldCardsOf(c.id)}));
   const voteBtn=(!ig.bonusGranted&&ig.voteNeed>0)?`<button class="btn sm" onclick="interrogVote()">${ICO.vote} 추가 심문 신청 (${ig.voteHave}/${ig.voteNeed})</button>`:(ig.bonusGranted?`<span class="pill" style="color:var(--good)">추가 심문 승인됨</span>`:"");
   let h=`<div class="card" style="margin-top:14px"><div class="clue-h"><h2 style="margin:0">${ICO.torch} 심층심문</h2>
       <span class="mspace"></span><button class="mrule" onclick="showInterrogRule()" aria-label="심문 규칙">?</button></div>
@@ -3348,7 +3352,7 @@ function interrogPanelHTML(){
       <span class="gbtns">${voteBtn}
         <button class="btn ember" ${(ig.remaining<=0||!targets.length)?"disabled":""} onclick="openInterrog()">${ICO.torch} 심문하기</button></span>
     </div>`;
-  if(!targets.length) h+=`<div class="panel-note" style="margin-top:8px">지금은 심문할 대상이 없어요 — 다들 손패가 비어 있거나 전부 공개했습니다.</div>`;
+  if(!targets.length) h+=`<div class="panel-note" style="margin-top:8px">지금은 심문할 대상이 없어요 — 사람이 맡은 배역은 심문할 수 없습니다. 직접 물어보세요.</div>`;
   else if(ig.remaining<=0) h+=`<div class="panel-note" style="margin-top:8px">이번 토론에서 쓸 수 있는 심문을 다 썼어요. 다음 토론에 다시 채워집니다.</div>`;
   return h+`</div>`;
 }

@@ -2387,6 +2387,13 @@ def interrogate(b: Interrogate):
             return JSONResponse({"error": "자기 자신은 심문할 수 없습니다"}, status_code=409)
         if b.targetRoleId not in ROOM["roles"]:
             return JSONResponse({"error": "없는 배역"}, status_code=404)
+        # 사람이 맡은 배역은 심층심문의 대상이 아니다.
+        # 이 기능은 «AI 가 연기하는 배역에게서 대답을 끌어내는» 장치다 —
+        # 사람끼리는 그냥 대화창에서 물으면 되고, 그 자리에서 무엇을 말할지는
+        # 판정이 아니라 그 사람이 정할 몫이다.
+        if (ROOM["roles"][b.targetRoleId] or {}).get("mode") == "human":
+            return JSONResponse({"error": "사람이 맡은 배역은 심층심문할 수 없습니다 — 직접 물어보세요"},
+                                status_code=409)
         budget = _interrogate_budget()
         if budget["remaining"] <= 0:
             return JSONResponse({"error": "이번 토론에서 쓸 수 있는 심문 횟수를 다 썼습니다"}, status_code=409)
@@ -2789,6 +2796,25 @@ def advance(b: HostReq):
     return _advance()
 
 
+def _seed_npc_lines(seq: int) -> None:
+    """배역이 아닌 사람도 말은 한다.
+
+    《자명종》의 마부가 그렇다. 그는 결백하고, 결백한 사람은 숨길 게 없다 —
+    그래서 자기가 본 것을 그냥 대화창에 쏟는다. 다만 관심이 사건에 없어서
+    말하는 김에 자기 돈 이야기부터 한다. 아무도 그 말을 진지하게 안 듣는다.
+
+    NPC_LINES 가 없는 사건에서는 아무 일도 안 일어난다.
+    """
+    for ln in (getattr(SC, "NPC_LINES", {}) or {}).get(seq, []) or []:
+        who = ln.get("who", "")
+        n = (SC.get_npc(who) if hasattr(SC, "get_npc") else None) or {}
+        nm = n.get("name", who)
+        job = n.get("job", "")
+        head = f"{nm}({job})" if job else nm
+        ROOM["table"].append({"kind": "system", "broadcast": True,
+                              "text": f"{head} — 「{ln.get('say','')}」"})
+
+
 def _seed_phase_lines(seq: int) -> None:
     """이 막에서 각자가 꺼내기로 한 말을 대화창에 그대로 올린다.
     예전에는 «내 정보 · 지금 할 말»에 조용히 붙어 있었다 — 열어보지 않으면 그 밤이
@@ -2830,6 +2856,7 @@ def _advance():
             if ph.get("gm"):
                 ROOM["table"].append({"kind": "gm", "broadcast": True, "text": ph["gm"]})
             _seed_phase_lines(seq)
+            _seed_npc_lines(seq)
             _ev("phase", name=ph["name"], key=ph.get("key", ""), min=ph.get("min", 0),
                 ap=int(ph.get("ap", 0) or 0), gm=ph.get("gm", ""), interlude=il or "")
             _reset_turn_for_seq(seq)   # 조사 페이즈면 순번 초기화

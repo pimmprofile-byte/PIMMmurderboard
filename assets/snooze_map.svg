@@ -28,12 +28,18 @@
       /* 소르트의 붉은 주황. 이 지도에서 이 색이 닿는 곳은 두 군데다 —
          당주의 방 창, 그리고 그 창으로 오르는 외벽 길. 그것이 이 사건의 전부다. */
       .acc     { stroke:#e0663c; opacity:.9; }
-      .acc-way { fill:none; stroke:#e0663c; stroke-width:1.8; stroke-dasharray:7 5; opacity:.85; }
+      .acc-way { fill:none; stroke:#e0663c; stroke-width:1.8; stroke-dasharray:7 5; opacity:.14;
+                 transition:opacity .2s; }
       .acc-txt { fill:#e0663c; }
       /* 정규 통로 — 정문에서 관리실 앞을 지나 이층 복도로. 실선 하나로 끝난다. */
-      .way   { fill:none; stroke:#dfe7e4; stroke-width:1.6; opacity:.55; }
+      .way   { fill:none; stroke:#dfe7e4; stroke-width:1.6; opacity:.10; transition:opacity .2s; }
       /* 마당에서 창까지의 시선. 길이 아니라 눈이 닿는 선이라 가장 가늘다. */
-      .sight { fill:none; stroke:#cdd9d6; stroke-width:1; stroke-dasharray:2 6; opacity:.38; }
+      .sight { fill:none; stroke:#cdd9d6; stroke-width:1; stroke-dasharray:2 6; opacity:.08;
+                 transition:opacity .2s; }
+      /* 바깥에서 켤 때만 또렷해진다 */
+      .ways-on .way   { opacity:.60; }
+      .ways-on .acc-way { opacity:.90; }
+      .ways-on .sight { opacity:.42; }
       .wave  { fill:none; stroke:#2f7f88; stroke-width:1.2; opacity:.35; }
     ]]></style>
   </defs>
