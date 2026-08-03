@@ -1267,6 +1267,16 @@
     color:var(--sub);background:rgba(255,255,255,.03);
     border-left:2px solid color-mix(in srgb,var(--me,var(--gold)) 60%,transparent);word-break:keep-all}
   .wimp .k{display:block;font-size:10px;letter-spacing:.14em;color:var(--me,var(--gold-b));margin-bottom:2px}
+  /* 앉을 수 없는 인물 — 배역 줄과 같은 판인데 한 톤 물러나 있어야 한다 */
+  .npch{margin:18px 0 8px;padding-top:14px;border-top:1px dashed var(--line);
+    font-size:10.5px;letter-spacing:.16em;color:var(--sub)}
+  .mlead.sm{font-size:11.5px;margin-bottom:2px}
+  .npcrow{opacity:.82}
+  .npcrow .ava{filter:grayscale(.5)}
+  .pill.npcp{color:var(--sub);border-color:var(--line)}
+  .wnote{margin-top:6px;padding:7px 10px;border-radius:4px;font-size:12px;line-height:1.65;
+    color:var(--sub);background:rgba(255,255,255,.03);border-left:2px solid #4a4136;word-break:keep-all}
+  .wnote .k{display:block;font-size:10px;letter-spacing:.14em;color:#9a8a72;margin-bottom:2px}
   .dc-go{align-self:flex-end;margin-top:-16px;font-size:11px;font-weight:700;color:var(--gold-b);white-space:nowrap}
   .dc.none.lock .dc-go{display:none}
   /* 누가 쥐고 있다 — 그 사람의 키컬러가 카드 옆구리에 선다 */
@@ -2756,7 +2766,7 @@ function renderGM(_force){
 }
 function buildGMBody(ph,cur,ap,k,checked,used,fresh){
   const inter=(SCEN.interludes||{})[String(ph.seq)]||"";
-  if(k==="open") return gmCinematic("막이 오른다 · 공통지문 낭독", (SCEN.intro||""), SCEN.victim,
+  if(k==="open") return gmCinematic("막이 오른다 · 공통지문 낭독", (SCEN.intro||""), vicText(),
     `<button class="btn gold" onclick="replayVN()">${ICO.play} 오프닝 비주얼노벨 재생</button>
      <div style="margin-top:8px">큰 화면에 띄워 다 같이 보세요. 끝나면 각자 <b>내 정보</b>로 자기소개를 나눈 뒤,
      <b>다음 페이즈 ›</b>로 <b>조사 R1</b>을 여세요.</div>`);
@@ -3872,9 +3882,18 @@ function keepTyping(inp){ if(inp&&!inp.disabled&&document.activeElement!==inp) i
 let whoTab="cast";
 function whoGo(t){ whoTab=t; showWho(true); }
 /* 피해자도 배역이다 — 배역 선택창과 같은 카드로 세운다. 다른 틀을 쓰면 다른 세계처럼 읽힌다. */
+/* 피해자가 페이즈에 따라 갈아 끼워지는 사건이 있다 — 《자명종》은 시신 → 위중 → 시신이다.
+   victimStages 가 없으면 예전대로 SCEN.victimCard 하나를 쓴다. */
+function vicStage(){
+  const ls=(SCEN&&SCEN.victimStages)||[]; const sq=(STATE&&STATE.seq)||0;
+  let cur=null; for(const st of ls){ if(sq>=(st.fromSeq||0)) cur=st; }
+  return cur||{};
+}
+const vicText =()=>vicStage().victim     ||(SCEN&&SCEN.victim)    ||"";
+const vicScene=()=>vicStage().sceneNote  ||(SCEN&&SCEN.sceneNote) ||"";
 function victimCardHTML(){
-  const v=(SCEN&&SCEN.victimCard)||null;
-  if(!v) return `<div class="panel-note">${esc((SCEN&&SCEN.victim)||"")}</div>`;
+  const v=vicStage().victimCard||(SCEN&&SCEN.victimCard)||null;
+  if(!v) return `<div class="panel-note">${esc(vicText())}</div>`;
   const sid=(STATE&&STATE.scenarioId)||"";
   const meta=[v.age&&v.age+"세",v.job].filter(Boolean).join(" · ");
   const img=sid?`<img class="pt" src="/assets/${sid}_portrait_victim.webp" alt="" decoding="async"`
@@ -3963,13 +3982,25 @@ function showWho(keepTab){
         ${ids.length?`<div class="wcards">${cards}</div>`:`<div class="wnone">지금 쥐고 있는 카드가 없습니다.</div>`}
       </div></div>`;
   }).join("");
+  /* 배역으로 앉을 수 없는 인물이 있는 사건이 있다 — 《자명종》의 의사와 운전기사다.
+     이들의 말은 조사 카드로만 들어오지만, 「이 집에 누가 있나」에는 보여야 한다. */
+  const npcs=(SCEN.npcs||[]).map(c=>`<div class="whorow npcrow">${avaHTML(c,"sm")}
+      <div class="wi">
+        <div class="wn" style="color:${c.color}">${esc(c.name)}<span class="sub">${esc(c.age)}·${esc(c.job)}</span>
+          <span class="pill npcp">배역 없음</span></div>
+        <div class="wt">${esc(c.tagline||"")}</div>
+        ${c.known?`<div class="wknown"><span class="k">여기 사람들이 아는 것</span>${esc(c.known)}</div>`:""}
+        ${c.note?`<div class="wnote"><span class="k">오늘</span>${esc(c.note)}</div>`:""}
+      </div></div>`).join("");
+  const npcSec=npcs?`<div class="npch">앉을 수 없는 자리</div>
+      <div class="mlead sm">이 둘은 배역이 아닙니다. 이들이 아는 것은 <b>조사 카드로만</b> 들어옵니다.</div>${npcs}`:"";
   const body=whoTab==="case" ? whoCaseHTML()
-    : `<div class="mlead">누가 어디를 뒤졌는지는 테이블이 다 압니다. <b>무엇을 찾았는지는 본인만</b> 알아요 — ${ICO.lock}는 자리만 아는 카드입니다.</div>${rows}`;
+    : `<div class="mlead">누가 어디를 뒤졌는지는 테이블이 다 압니다. <b>무엇을 찾았는지는 본인만</b> 알아요 — ${ICO.lock}는 자리만 아는 카드입니다.</div>${rows}${npcSec}`;
   $("whoBox").innerHTML=`<div class="mhead sheeth">
       <div class="sh-id"><span class="sh-nm" style="color:var(--cold)">${ICO.people} 인물정보</span>
         <span class="sh-meta">손패는 ${lim}장까지</span></div>
       <div class="shtabs">
-        <button class="shtab${whoTab==="cast"?" on":""}" onclick="whoGo('cast')">이 자리의 사람들<span class="n">${(SCEN.characters||[]).length}</span></button>
+        <button class="shtab${whoTab==="cast"?" on":""}" onclick="whoGo('cast')">이 자리의 사람들<span class="n">${(SCEN.characters||[]).length}${(SCEN.npcs||[]).length?"+"+SCEN.npcs.length:""}</span></button>
         <button class="shtab${whoTab==="case"?" on":""}" onclick="whoGo('case')">사건 현장과 피해자</button>
       </div></div>
     <div class="mbody">${body}</div>`;
@@ -4133,7 +4164,7 @@ function paintScene(sel){
   findAsset(`/assets/${sid}_scene`, url=>{
     if(!url) return;
     box.insertAdjacentHTML("beforeend",
-      `<button class="vic-s" onclick="showPic('${url}','사건 현장',SCEN.sceneNote||'')">
+      `<button class="vic-s" onclick="showPic('${url}','사건 현장',vicScene())">
          <img src="${url}" alt="" decoding="async">
          <span class="cap"><b>사건 현장</b>발견된 그대로입니다. 눌러서 크게 보세요.</span></button>`);
   });
@@ -4167,7 +4198,7 @@ function claudeHandoffText(){
   L.push("── 사건");
   L.push(SCEN.title||"");
   if(SCEN.subtitle) L.push(SCEN.subtitle);
-  if(SCEN.victim) L.push("피해자 — "+SCEN.victim);
+  if(vicText()) L.push("피해자 — "+vicText());
   L.push("");
   L.push("── 질문");
   qs.forEach((q,i)=>L.push(`${i+1}. ${q}`));
