@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 430" role="img"
+     preserveAspectRatio="xMidYMid meet"
+     font-family="-apple-system,BlinkMacSystemFont,'Noto Sans KR','Apple SD Gothic Neo',sans-serif">
+  <title>솔베인 성채 배치도</title>
+  <desc>당주의 방 복도 성채 외벽 마당 관리실 지하실 주방 마굿간 여덟 구역. 층을 갈라 세운 도면</desc>
+
+  <defs>
+    <!-- 사방의 바다. 섬이라는 것 하나만 말하면 되므로 가장자리에서만 옅게 밀려온다.
+         이 지도의 분위기 장치는 이것 하나뿐이다 — 나머지는 전부 선과 글자다. -->
+    <radialGradient id="sea" cx="50%" cy="48%" r="72%">
+      <stop offset=".55" stop-color="#2f7f88" stop-opacity="0"/>
+      <stop offset="1"   stop-color="#2f7f88" stop-opacity=".30"/>
+    </radialGradient>
+    <style><![CDATA[
+      text { pointer-events:none; }
+      /* 성채 몸통. 굵은 선은 이것 하나뿐이라 건물과 바깥이 한눈에 갈린다. */
+      .keep { fill:#080f14; stroke:#cdd9d6; stroke-width:2.2; opacity:.85; }
+      /* 층 경계·계단·동선·범례 — 전부 이 클래스로 묶는다.
+         약식 지도(.minimap)가 .trim 을 통째로 감추므로, 작게 줄었을 때 저절로 깨끗해진다. */
+      .trim  { fill:none; stroke:#9fb4b1; stroke-width:1.2; opacity:.42; }
+      .zone-fill { fill:#0f1e23; stroke:#4f8c8f; stroke-width:1.3;
+                   transition:fill .15s ease, stroke .15s ease; }
+      .z-name { fill:#e7f0ee; font-size:19px; font-weight:700; }
+      .z-cnt  { fill:#93b3b1; font-size:14px; font-weight:700;
+                font-variant-numeric:tabular-nums; }
+      .floor  { fill:#7f9a9a; font-size:12px; font-weight:700; opacity:.85; }
+      .lg     { fill:#8ea7a5; font-size:11px; }
+      /* 소르트의 붉은 주황. 이 지도에서 이 색이 닿는 곳은 두 군데다 —
+         당주의 방 창, 그리고 그 창으로 오르는 외벽 길. 그것이 이 사건의 전부다. */
+      .acc     { stroke:#e0663c; opacity:.9; }
+      .acc-way { fill:none; stroke:#e0663c; stroke-width:1.8; stroke-dasharray:7 5; opacity:.85; }
+      .acc-txt { fill:#e0663c; }
+      /* 정규 통로 — 정문에서 관리실 앞을 지나 이층 복도로. 실선 하나로 끝난다. */
+      .way   { fill:none; stroke:#dfe7e4; stroke-width:1.6; opacity:.55; }
+      /* 마당에서 창까지의 시선. 길이 아니라 눈이 닿는 선이라 가장 가늘다. */
+      .sight { fill:none; stroke:#cdd9d6; stroke-width:1; stroke-dasharray:2 6; opacity:.38; }
+      .wave  { fill:none; stroke:#2f7f88; stroke-width:1.2; opacity:.35; }
+    ]]></style>
+  </defs>
+
+  <rect width="720" height="430" fill="#060a10"/>
+  <rect width="720" height="430" fill="url(#sea)"/>
+  <g class="wave">
+    <path d="M96 16 q24 -8 48 0 t48 0 t48 0 t48 0 t48 0 t48 0 t48 0 t48 0"/>
+    <path d="M60 414 q24 -8 48 0 t48 0 t48 0 t48 0 t48 0 t48 0 t48 0 t48 0 t48 0"/>
+    <path d="M132 424 q24 -8 48 0 t48 0 t48 0 t48 0 t48 0 t48 0 t48 0 t48 0"/>
+  </g>
+
+  <!-- 성채. 흉벽을 얹은 석조 덩어리 하나를 잘라 세운 그림이다.
+       왼쪽이 바깥(마당), 오른쪽 벽에 정문이 난다. 그래서 «가장 안쪽»은 왼쪽 끝이 된다. -->
+  <path class="keep"
+        d="M246 62 V52 h18 v10 h22 v-10 h18 v10 h22 v-10 h18 v10 h22 v-10 h18 v10 h22 v-10
+           h18 v10 h22 v-10 h18 v10 h22 v-10 h18 v10 h22 v-10 h18 v10 h22 v-10 h18 v10
+           H690 V400 H246 Z"/>
+  <!-- 층 경계. 위에서부터 이층 / 일층 / 지면 / 주방 / 지하 순으로 내려간다. -->
+  <g class="trim">
+    <path d="M290 162 H690"/>
+    <path d="M246 256 H690" stroke-dasharray="6 5"/>
+    <path d="M290 330 H690"/>
+    <!-- 정문. 성채로 들어오는 입은 이것 하나고, 그 안쪽이 곧 관리실이다. -->
+    <path d="M672 190 H690 M672 228 H690"/>
+    <path d="M672 190 V228" stroke-dasharray="4 4"/>
+  </g>
+  <g class="floor">
+    <text transform="rotate(-90 706 115)" x="706" y="115" text-anchor="middle">이층</text>
+    <text transform="rotate(-90 706 209)" x="706" y="209" text-anchor="middle">일층</text>
+    <text transform="rotate(-90 706 296)" x="706" y="296" text-anchor="middle">일층 아래</text>
+    <text transform="rotate(-90 706 364)" x="706" y="364" text-anchor="middle">지하</text>
+    <text x="42" y="86">바깥 · 섬</text>
+    <text x="688" y="172" text-anchor="end" font-size="11">정문</text>
+  </g>
+
+  <!-- 계단. 지하실로 내려가는 길은 이 통짜 하나뿐이라, 지하에 있었다는 말은
+       반드시 이 계단을 지났다는 말이 된다. -->
+  <g class="trim">
+    <rect x="540" y="254" width="76" height="126" rx="3"/>
+    <path d="M540 268 H616 M540 282 H616 M540 296 H616 M540 310 H616
+             M540 324 H616 M540 338 H616 M540 352 H616 M540 366 H616"/>
+    <path d="M578 242 V254"/>
+    <path d="M520 296 H540 M520 360 H540"/>
+  </g>
+  <text class="floor" x="578" y="394" text-anchor="middle" font-size="11">계단</text>
+
+  <g id="zones">
+    <!-- 이층 — 복도 끝의 방 하나. 이 판은 결국 이 문 앞에서 벌어진 일이다. -->
+    <g id="zone-A" data-loc="A">
+      <rect class="zone-fill" x="294" y="82" width="150" height="66" rx="6"/>
+      <text class="z-name" x="310" y="112">당주의 방</text>
+      <text class="z-cnt" id="cnt-A" x="428" y="140" text-anchor="end">0/0</text>
+    </g>
+    <g id="zone-B" data-loc="B">
+      <rect class="zone-fill" x="456" y="82" width="224" height="66" rx="6"/>
+      <text class="z-name" x="472" y="112">복도</text>
+      <text class="z-cnt" id="cnt-B" x="664" y="140" text-anchor="end">0/0</text>
+    </g>
+    <!-- 외벽은 방이 아니라 «면»이다. 그래서 세로로 길게 선다 —
+         이 띠를 타고 오르면 복도를 한 번도 밟지 않고 당주의 방 창에 닿는다. -->
+    <g id="zone-C" data-loc="C">
+      <rect class="zone-fill" x="250" y="74" width="36" height="182" rx="6"/>
+      <text class="z-name" transform="rotate(-90 268 150)" x="268" y="150"
+            text-anchor="middle" font-size="16">성채 외벽</text>
+      <text class="z-cnt" id="cnt-C" transform="rotate(-90 268 228)" x="268" y="228"
+            text-anchor="middle">0/0</text>
+    </g>
+    <!-- 마당 — 외벽과 그 위의 창이 정면으로 보이는 자리. 여기 있던 사람은 무언가를 봤다. -->
+    <g id="zone-D" data-loc="D">
+      <rect class="zone-fill" x="42" y="96" width="178" height="150" rx="6"/>
+      <text class="z-name" x="58" y="132">마당</text>
+      <text class="z-cnt" id="cnt-D" x="204" y="232" text-anchor="end">0/0</text>
+    </g>
+    <g id="zone-E" data-loc="E">
+      <rect class="zone-fill" x="548" y="176" width="134" height="66" rx="6"/>
+      <text class="z-name" x="562" y="206" font-size="17">관리실</text>
+      <text class="z-cnt" id="cnt-E" x="668" y="232" text-anchor="end">0/0</text>
+    </g>
+    <!-- 주방은 일층에서 반 층 내려앉아 있다. 개수대가 여기 있다. -->
+    <g id="zone-G" data-loc="G">
+      <rect class="zone-fill" x="330" y="270" width="190" height="52" rx="6"/>
+      <text class="z-name" x="344" y="303" font-size="17">주방</text>
+      <text class="z-cnt" id="cnt-G" x="506" y="303" text-anchor="end">0/0</text>
+    </g>
+    <g id="zone-F" data-loc="F">
+      <rect class="zone-fill" x="300" y="336" width="220" height="56" rx="6"/>
+      <text class="z-name" x="314" y="371">지하실</text>
+      <text class="z-cnt" id="cnt-F" x="506" y="371" text-anchor="end">0/0</text>
+    </g>
+    <g id="zone-H" data-loc="H">
+      <rect class="zone-fill" x="42" y="296" width="178" height="88" rx="6"/>
+      <text class="z-name" x="58" y="332">마굿간</text>
+      <text class="z-cnt" id="cnt-H" x="204" y="370" text-anchor="end">0/0</text>
+    </g>
+  </g>
+
+  <!-- 당주의 방으로 가는 길은 둘이고, 이 지도가 말해야 하는 것도 그 둘뿐이다.
+       실선: 정문 → 관리실 앞 → 이층 → 복도 → 방. 누구나 아는 길.
+       점선: 마당 → 외벽 → 창. 복도를 지나지 않는 길. -->
+  <g class="trim">
+    <path class="way" d="M690 209 H628 V115 H454"/>
+    <path d="M452 115 l12 -6 v12 Z" fill="#dfe7e4" stroke="none" opacity=".55"/>
+    <path class="acc-way" d="M220 180 H268 V106 H288"/>
+    <path d="M292 106 l-12 -6 v12 Z" fill="#e0663c" stroke="none" opacity=".9"/>
+    <!-- 창. 붉은 주황이 닿는 두 군데 중 하나 — 이 창이 열려 있었는지가 문제다. -->
+    <path class="acc" d="M292 96 V126" stroke-width="3"/>
+    <path class="sight" d="M150 152 L288 112"/>
+  </g>
+
+  <!-- 범례. 선 세 종류가 각각 무슨 뜻인지 여기서 한 번만 말한다. -->
+  <g class="trim">
+    <path class="way" d="M46 250 H66"/>
+    <path class="acc-way" d="M46 264 H66"/>
+    <path class="sight" d="M46 278 H66"/>
+  </g>
+  <g class="lg">
+    <text x="74" y="254">정규 통로 · 복도</text>
+    <text x="74" y="268" class="acc-txt">외벽을 탄다</text>
+    <text x="74" y="282">창이 보이는 시선</text>
+  </g>
+</svg>
