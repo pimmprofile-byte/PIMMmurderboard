@@ -4791,18 +4791,19 @@ async function showMySheet(){
     ${s.hidden?`<div class="bc-hidden">${ICO.flag} 스포일러 배역 — 정체를 들키지 마세요</div>`:``}</div>`});
   // 2) 나의 이야기 — 줄글. 요약을 두 번 겹치면 어디서도 안 풀린다.
   //    사람이 «되어야» 하는 대목이라 카테고리로 쪼개지 않고 한 흐름으로 읽힌다.
+  const SL=(SCEN&&SCEN.storyLabels)||{};
   const storySlide=(eb,ttl,txt)=>{ const paras=String(txt||"").split("\n\n").map(t=>t.trim()).filter(Boolean);
     if(!paras.length) return;
     slides.push({tab:"main", html:`<div class="bigcard role k-story" style="--rc:${s.color}">
       <div class="bc-eyebrow">${esc(eb)}</div><div class="bc-title" style="font-size:18px">${esc(ttl)}</div>
       <div class="story">${paras.map(t=>`<p>${esc(t)}</p>`).join("")}</div></div>`}); };
-  storySlide("나의 이야기","여기까지 오게 된 일",s.storyPast);
-  storySlide("사건 당일 행적","그리고 오늘 밤",s.storyToday);
+  storySlide("나의 이야기", SL.past||"여기까지 오게 된 일", s.storyPast);
+  storySlide("사건 당일 행적", SL.today||"그리고 오늘 밤", s.storyToday);
   // 3) 감춰야 할 것 — 줄글에 녹이면 심문당했을 때 «내가 부인해야 하는 게 뭐였더라»를 못 찾는다.
   //    이건 판 중에 제일 급하게 다시 꺼내 보는 항목이라 목록으로 남긴다.
   if((s.hide||[]).length){
     slides.push({tab:"main", html:`<div class="bigcard role k-hide" style="--rc:${s.color}">
-      <div class="bc-eyebrow">오늘 밤</div><div class="bc-title" style="font-size:18px">들키면 위험한 사실</div>
+      <div class="bc-eyebrow">${esc(SL.when||"오늘 밤")}</div><div class="bc-title" style="font-size:18px">들키면 위험한 사실</div>
       <div class="hidelist">${s.hide.map(t=>`<div class="hideitem">${esc(t)}</div>`).join("")}</div></div>`});
   }
   // 4) 떠오른 기억
@@ -4842,7 +4843,7 @@ async function showMySheet(){
            먼저 집어 덮을지, 그 턴을 다른 데 쓸지는 내가 정한다.`}</div></div>`});
   });
   // 7) 나의 목표
-  slides.push({tab:"main", html:`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">나의 목표</div><div class="bc-title" style="font-size:18px">이번 밤, 내가 노리는 것</div>
+  slides.push({tab:"main", html:`<div class="bigcard role" style="--rc:${s.color}"><div class="bc-eyebrow">나의 목표</div><div class="bc-title" style="font-size:18px">${esc(SL.goals||"이번 밤, 내가 노리는 것")}</div>
     <div style="margin-top:12px">${(s.goals||[]).map(g=>`<div class="bc-goal"><span>${esc(g.t)}</span><span class="pt">+${g.p}</span></div>`).join("")}
     ${s.keepGoal?`<div class="bc-goal keep"><span>${esc(s.keepGoal.label)}</span><span class="pt">+${s.keepGoal.points}</span></div>
       <div class="keepnote">어느 카드인지는 <b>찾아내야 한다</b>. 조사해서 열어보면 그 자리에서 나에게만 표시된다.
