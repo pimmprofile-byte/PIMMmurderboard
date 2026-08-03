@@ -3293,22 +3293,33 @@ async function paintMap(){
   wireZones(svg); paintFlood(svg); wirePod(svg); wireWays(art, svg);
   const d=$("dash"); if(d) d.innerHTML=dashHTML();
 }
-/* 동선 토글. 배치도에 길이 늘 또렷하게 그어져 있으면 구역 이름을 읽는 데 방해가 된다.
-   그래서 지도는 동선을 흐리게 깔아두고(.way/.acc-way/.sight), 여기서 켤 때만 진해진다.
-   그런 선이 없는 사건에서는 버튼 자체가 안 생긴다. */
+/* 동선 토글. 길은 «그 길을 말하는 카드»가 테이블에 깔려야 지도에 그어진다 —
+   유리지붕(C1) · 배관(C2) · 복도(B1). 아직 안 나온 길은 아예 안 그린다.
+   그렇게 열린 길도 늘 또렷하면 구역 이름을 읽는 데 방해가 되므로,
+   평소에는 흐리게 두고 이 버튼을 켤 때만 진해진다.
+   열린 길이 하나도 없으면 버튼 자체가 안 생긴다 — 켤 것이 없으니까. */
 let waysOn=false;
 function wireWays(host, svg){
-  if(!svg.querySelector(".way,.acc-way,.sight")) return;
+  const routes=[...svg.querySelectorAll(".route[data-need]")];
+  if(!routes.length && !svg.querySelector(".way,.acc-way,.sight")) return;
+  const pub=new Set(STATE&&STATE.revealedIds||[]);
+  const need=new Set();
+  routes.forEach(g=>{ const id=g.getAttribute("data-need");
+    const lit=pub.has(id); g.classList.toggle("lit", lit); if(lit) need.add(id); });
+  if(routes.length && !need.size) return;          // 아직 아무 길도 안 드러났다
   svg.classList.toggle("ways-on", waysOn);
+  const n=need.size;
+  const label=()=>(waysOn?"동선 끄기":"동선 보기")+(n?` (${n})`:"");
   const b=document.createElement("button");
   b.className="mapways"+(waysOn?" on":"");
   b.type="button";
-  b.textContent=waysOn?"동선 끄기":"동선 보기";
+  b.textContent=label();
+  b.title=n?"테이블에 깔린 카드가 말하는 길만 그려집니다":"";
   b.setAttribute("aria-pressed", waysOn?"true":"false");
   b.onclick=()=>{ waysOn=!waysOn;
     svg.classList.toggle("ways-on", waysOn);
     b.classList.toggle("on", waysOn);
-    b.textContent=waysOn?"동선 끄기":"동선 보기";
+    b.textContent=label();
     b.setAttribute("aria-pressed", waysOn?"true":"false"); };
   host.appendChild(b);
 }

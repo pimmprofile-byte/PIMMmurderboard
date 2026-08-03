@@ -32,6 +32,10 @@
       .acc-way { fill:none; stroke:#e0663c; stroke-width:1.8; stroke-dasharray:7 5; opacity:.14;
                  transition:opacity .2s; }
       .acc-txt { fill:#e0663c; }
+      /* 길은 «그 길을 말하는 카드»가 테이블에 깔려야 그어진다.
+         바깥에서 data-need 를 보고 켜준다 — 안 켜진 길은 아예 안 그린다. */
+      .route { display:none; }
+      .route.lit { display:inline; }
       /* 정규 통로 — 정문에서 관리실 앞을 지나 이층 복도로. 실선 하나로 끝난다. */
       .way   { fill:none; stroke:#dfe7e4; stroke-width:1.6; opacity:.10; transition:opacity .2s; }
       /* 마당에서 창까지의 시선. 길이 아니라 눈이 닿는 선이라 가장 가늘다. */
@@ -165,22 +169,39 @@
        실선: 정문 → 관리실 앞 → 이층 → 복도 → 방. 누구나 아는 길.
        점선: 마당 → 외벽 → 창. 복도를 지나지 않는 길. -->
   <g class="trim ways">
-    <path class="way" d="M690 209 H700 V115 H682"/>
-    <path class="way" d="M584 115 H576"/>
-    <path class="way" d="M454 115 H444"/>
-    <path class="way-tip" d="M452 115 l12 -6 v12 Z"/>
-    <!-- 창. 붉은 주황이 닿는 두 군데 중 하나 — 이 창이 열려 있었는지가 문제다. -->
+    <!-- 정규 통로 · 복도 — 「깨끗한 복도 속 유일한 발자국」이 깔려야 그어진다 -->
+    <g class="route" data-need="B1">
+      <path class="way" d="M690 209 H700 V115 H682"/>
+      <path class="way" d="M584 115 H576"/>
+      <path class="way" d="M454 115 H444"/>
+      <path class="way-tip" d="M452 115 l12 -6 v12 Z"/>
+    </g>
+    <!-- 온실 유리지붕을 밟고 오르는 길 — 「밟힌 유리지붕」 -->
+    <g class="route" data-need="C1">
+      <path class="acc-way" d="M212 246 H281 V118 H288"/>
+      <path class="acc-tip" d="M292 118 l-12 -6 v12 Z"/>
+    </g>
+    <!-- 창 옆 배관을 타는 길 — 「흐트러진 배관」. 지붕과 반대편이라 벽 안쪽으로 붙는다 -->
+    <g class="route" data-need="C2">
+      <path class="acc-way" d="M256 262 V104 H288" stroke-dasharray="3 4"/>
+      <path class="acc-tip" d="M292 104 l-12 -6 v12 Z"/>
+    </g>
+    <!-- 창. 이 색이 닿는 자리는 여기 하나다 — 길이 아니라 «자리»다. -->
     <path class="acc" d="M292 96 V126" stroke-width="3"/>
     <path class="sight" d="M150 152 L288 112"/>
   </g>
 
   <!-- 범례. 선 세 종류가 각각 무슨 뜻인지 여기서 한 번만 말한다. -->
   <g class="trim ways legend">
-    <path class="way" d="M46 250 H66"/>
-    <path class="sight" d="M46 264 H66"/>
+    <g class="route" data-need="B1"><path class="way" d="M348 202 H368"/></g>
+    <g class="route" data-need="C1"><path class="acc-way" d="M348 216 H368"/></g>
+    <g class="route" data-need="C2"><path class="acc-way" d="M348 230 H368" stroke-dasharray="3 4"/></g>
+    <path class="sight" d="M348 244 H368"/>
   </g>
   <g class="lg legend">
-    <text x="74" y="254">정규 통로 · 복도</text>
-    <text x="74" y="268">창이 보이는 시선</text>
+    <g class="route" data-need="B1"><text x="376" y="206">정규 통로 · 복도</text></g>
+    <g class="route" data-need="C1"><text x="376" y="220" class="acc-txt">온실 지붕을 밟는다</text></g>
+    <g class="route" data-need="C2"><text x="376" y="234" class="acc-txt">배관을 탄다</text></g>
+    <text x="376" y="248">창이 보이는 시선</text>
   </g>
 </svg>
