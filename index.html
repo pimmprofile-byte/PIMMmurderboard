@@ -1194,7 +1194,9 @@
   /* 밤이 내려앉는다 — 그림이 천천히 꺼지고 그대로 어둠에 머문다.
      글자는 위 칸(.vn-box)에 있어서 안 덮인다. 읽을 것은 계속 읽혀야 한다. */
   #vn .vn-stage.fx-nightfall .vn-flash{background:#04060b;animation:vnNightfall 3.4s cubic-bezier(.35,0,.5,1) forwards}
-  #vn .vn-stage.fx-nightfall .vn-sprite{animation:vnFadeOut 3.4s cubic-bezier(.35,0,.5,1) forwards}
+  /* .show 가 붙은 스프라이트만 꺼진다. 화자 없는 컷에도 걸어놨더니
+     앞 컷 사람이 opacity:1 로 되살아났다가 사라졌다 — 깜빡이는 것처럼 보였다. */
+  #vn .vn-stage.fx-nightfall .vn-sprite.show{animation:vnFadeOut 3.4s cubic-bezier(.35,0,.5,1) forwards}
   #vn .vn-stage.fx-nightfall .vn-bg{animation:vnCool 3.4s ease-out forwards}
   /* 이미 어두워진 다음 컷 — 애니메이션 없이 그 자리에 머문다 */
   #vn .vn-stage.fx-night .vn-flash{background:#04060b;opacity:.94}
@@ -1204,7 +1206,7 @@
   @keyframes vnCool{0%{filter:none}100%{filter:saturate(.25) brightness(.55)}}
   @media(prefers-reduced-motion:reduce){
     #vn .vn-stage.fx-nightfall .vn-flash{animation:none;opacity:.94}
-    #vn .vn-stage.fx-nightfall .vn-sprite{animation:none;opacity:0}
+    #vn .vn-stage.fx-nightfall .vn-sprite.show{animation:none;opacity:0}
     #vn .vn-stage.fx-nightfall .vn-bg{animation:none;filter:saturate(.25) brightness(.55)}
   }
   @keyframes vnAlarm{0%,100%{opacity:0}45%{opacity:1}}
@@ -1364,7 +1366,11 @@
   .dropnote .dn-t i{font-style:normal;font-size:11.5px;color:var(--sub);
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dropnote .dn-go{margin-left:auto;font-size:12px;color:var(--gold-b);font-weight:700;white-space:nowrap}
-  @media(prefers-reduced-motion:reduce){ .dropnote{transition:opacity .2s} }
+  /* 알림이 내려와 있는 동안 뒤를 한 겹 죽인다 — 눌러야 하는 건 알림이 아니라서 통과시킨다 */
+  .dropdim{position:fixed;inset:0;z-index:69;pointer-events:none;background:#05060a;
+    opacity:0;transition:opacity .34s ease}
+  .dropdim.on{opacity:.42}
+  @media(prefers-reduced-motion:reduce){ .dropnote{transition:opacity .2s} .dropdim{transition:opacity .15s} }
   .dashhead{display:flex;align-items:center;gap:10px}
   .dashhead .dfilt{margin-left:auto}
   .dashhead .dfilt select{appearance:none;-webkit-appearance:none;
@@ -1980,6 +1986,7 @@ function applyState(){
     paintPodLaunch();
     paintCoach();
     paintChatBadge();
+    chatChime();
     // 다음 페이즈·조사 화면·진행석은 ☰ 서랍이 페이즈를 보고 스스로 넣고 뺀다.
     if(ph.key==="invest"&&$("lookModal").classList.contains("on")) closeLook();
     renderAiCall();
@@ -2124,6 +2131,18 @@ function paintChatBadge(){
   b.textContent=n>99?"99+":String(n);
   b.classList.toggle("on", n>0);
 }
+/* 말이 새로 왔으면 한 번 울린다 — 대화창을 안 보고 있어도 오간 걸 알아채게.
+   내가 방금 쓴 말과 첫 폴링은 뺀다(들어오자마자 밀린 말이 우수수 울리면 안 된다). */
+let chatHeard=null;
+function chatChime(){
+  const rows=(STATE&&STATE.table||[]).filter(m=>m.kind==="ai"||m.kind==="human"||m.kind==="gm");
+  const n=rows.length;
+  if(chatHeard===null||n<chatHeard){ chatHeard=n; return; }
+  if(n<=chatHeard) return;
+  const fresh=rows.slice(chatHeard);
+  chatHeard=n;
+  if(fresh.some(m=>m.roleId!==myRoleId)) sfx("chat");
+}
 
 async function aiAll(){ const ais=SCEN.characters.filter(c=>STATE.roles[c.id].mode==="ai"); for(const c of ais){ await aiSay(c.id); } }
 /* 자율대화 — 켜두면 조용해질 때마다 서버가 알아서 한 명을 골라 말하게 한다 */
@@ -2225,6 +2244,8 @@ const UI_SFX={
   cursor  (){ vnTone(300,.10,"sine",.06,520); vnNoise(.07,2200,700,.05); },   // 창이 열린다
   buzzer  (){ vnTone(220,.16,"square",.07,150); },                            // 막힌 동작
   bell    (){ vnTone(740,.07,"triangle",.06); setTimeout(()=>vnTone(1110,.13,"triangle",.05),60); },
+  chat    (){ vnTone(988,.09,"sine",.055); setTimeout(()=>vnTone(1319,.14,"sine",.045),85); },  // 말이 왔다
+  ping    (){ vnTone(1319,.08,"triangle",.05); setTimeout(()=>vnTone(1760,.16,"sine",.04),95); },// 알림이 내려온다
   // ── 사건용 ──────────────────────────────────────────────
   siren   (){ let i=0; (function w(){ if(i++>=3||vnMuted) return;            // 비상·파공
                 vnTone(520,.55,"sawtooth",.08,880); setTimeout(()=>vnTone(880,.55,"sawtooth",.08,520),540);
@@ -5059,17 +5080,27 @@ let bannerT=null;
    지금 손을 멈출 필요는 없지만 놓치면 안 되는 것에 쓴다. */
 let dropT=null;
 function dropNote(title, sub){
+  let dim=$("dropDim");
+  if(!dim){ dim=document.createElement("div"); dim.id="dropDim"; dim.className="dropdim";
+    document.body.appendChild(dim); }
   let el=$("dropNote");
   if(!el){ el=document.createElement("div"); el.id="dropNote"; el.className="dropnote";
-    el.onclick=()=>{ el.classList.remove("on"); sheetTab="extra"; showMySheet(); };
+    el.onclick=()=>{ dropHide(); sheetTab="extra"; showMySheet(); };
     document.body.appendChild(el); }
   el.innerHTML=`<span class="dn-i">${ICO.card||""}</span>
     <span class="dn-t"><b>${esc(title)}</b>${sub?`<i>${esc(sub)}</i>`:""}</span>
     <span class="dn-go">열기 ›</span>`;
   clearTimeout(dropT);
   el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+  dim.classList.add("on");
   try{ sfx("ping"); }catch(e){}
-  dropT=setTimeout(()=>el.classList.remove("on"), 4200);
+  dropT=setTimeout(dropHide, 4900);
+}
+function dropHide(){
+  clearTimeout(dropT);
+  const el=$("dropNote"), dim=$("dropDim");
+  if(el) el.classList.remove("on");
+  if(dim) dim.classList.remove("on");
 }
 /* 「추가 정보」가 늘면 한 번 알린다. 배역마다 따로 세고, 새로고침해도 다시 안 뜬다. */
 function extraWatch(){
@@ -5106,7 +5137,11 @@ function buildSwipe(slides){
    화면이 바뀐 것으로 읽힌다.
    몇 번째 장인지는 변수 하나가 쥔다 — 예전처럼 스크롤 위치에서 되짚지 않는다.
    폰에서 주소창이 접히며 화면이 바뀌면 그 되짚기가 어긋나 보던 자리를 잃었다. */
-function wireSwipe(box){
+/* opt.start   — 처음 세울 장. "end" 면 마지막 장(왼쪽 탭에서 건너온 경우)
+   opt.onEdge(d) — 끝 장에서 더 밀었을 때. 처리했으면 true 를 돌려준다(그럼 여기서 손을 뗀다)
+   opt.hasEdge(d)— 그쪽으로 건너갈 데가 있는가. 화살표를 죽일지 말지에만 쓴다 */
+function wireSwipe(box, opt){
+  opt=opt||{};
   const sw=box.querySelector(".swipe"); if(!sw)return;
   const vp=sw.querySelector(".sw-vp"), track=sw.querySelector(".sw-track");
   const slides=[...sw.querySelectorAll(".sw-slide")];
@@ -5116,15 +5151,16 @@ function wireSwipe(box){
   const cnt=sw.querySelector(".sw-cur");
   const scroller=sw.closest(".mbody")||sw.parentElement;
   const N=slides.length;
-  let i=0;
+  let i=(opt.start==="end") ? N-1 : Math.max(0,Math.min(N-1, opt.start||0));
 
   const fit=()=>{ const h=slides[i]&&slides[i].offsetHeight; if(h) vp.style.height=h+"px"; };
   const place=px=>{ track.style.transform=`translate3d(calc(${-i*100}% + ${px||0}px),0,0)`; };
   const paint=()=>{
     dots.forEach((d,k)=>d.classList.toggle("on",k===i));
     if(cnt) cnt.textContent=i+1;
-    if(prev) prev.disabled=i<=0;
-    if(next) next.disabled=i>=N-1;
+    // 끝 장이어도 건너갈 옆 탭이 있으면 화살표는 살려둔다
+    if(prev) prev.disabled=i<=0&&!(opt.hasEdge&&opt.hasEdge(-1));
+    if(next) next.disabled=i>=N-1&&!(opt.hasEdge&&opt.hasEdge(1));
     slides.forEach((sl,k)=>sl.classList.toggle("on",k===i));
   };
   const go=(k,keepTop)=>{
@@ -5134,8 +5170,10 @@ function wireSwipe(box){
     // 장을 넘기면 새 글이다 — 앞 장에서 내려와 있던 자리를 물려받지 않는다.
     if(moved&&!keepTop&&scroller) scroller.scrollTop=0;
   };
-  if(prev) prev.onclick=()=>go(i-1);
-  if(next) next.onclick=()=>go(i+1);
+  const step=d=>{ if((d<0&&i<=0)||(d>0&&i>=N-1)){ if(opt.onEdge&&opt.onEdge(d)) return; }
+                  go(i+d); };
+  if(prev) prev.onclick=()=>step(-1);
+  if(next) next.onclick=()=>step(1);
   dots.forEach(d=>d.onclick=()=>go(+d.dataset.i));
 
   // ── 끌기 ──────────────────────────────────────────────────────
@@ -5166,8 +5204,11 @@ function wireSwipe(box){
     const w=W(), dt=Math.max(1,(e&&e.timeStamp||0)-t0), v=Math.abs(dx)/dt;
     // 짧고 빠르게 튕겨도 넘어간다. 천천히 끌면 3분의 1은 와야 한다.
     const pass=Math.abs(dx)>w*0.32 || (v>0.45&&Math.abs(dx)>28);
-    go(pass ? i+(dx<0?1:-1) : i, !pass);
+    const d=dx<0?1:-1;
     axis=0; dx=0;
+    // 끝 장에서 더 밀었으면 옆 탭으로 건너간다 — 받아준 쪽이 새로 그리니 여기선 손을 뗀다
+    if(pass&&((d<0&&i<=0)||(d>0&&i>=N-1))&&opt.onEdge&&opt.onEdge(d)) return;
+    go(pass ? i+d : i, !pass);
   };
   track.addEventListener("touchend",drop,{passive:true});
   track.addEventListener("touchcancel",drop,{passive:true});
@@ -5193,7 +5234,7 @@ function wireSwipe(box){
     slides.forEach(sl=>ro.observe(sl)); }
   if(document.fonts&&document.fonts.ready) document.fonts.ready.then(fit).catch(()=>{});
   sw.querySelectorAll("img").forEach(im=>{ if(!im.complete) im.addEventListener("load",fit,{once:true}); });
-  go(0,true);
+  go(i,true);
   requestAnimationFrame(()=>{ place(0); fit(); });   // 폭이 잡힌 뒤 한 번 더
 }
 
@@ -5332,7 +5373,7 @@ async function showMySheet(){
       <div class="tl-w">${esc(r.w)}</div><div class="tl-t">${esc(r.t)}</div></div>`).join("");
     slides.push({tab:"sum", html:`<div class="bigcard role" style="--rc:${s.color}">
       <div class="bc-eyebrow">한눈에</div>
-      <div class="bc-title" style="font-size:18px">여기까지의 나</div>
+      <div class="bc-title" style="font-size:18px">${esc(SL.pastTl||"여기까지의 나")}</div>
       <div class="tl">${rows}</div></div>`});
   }
   // 진행 팁 — 이 배역을 어떻게 굴리는가. 처음 하는 사람이 제일 막막해하는 자리다.
@@ -5368,7 +5409,21 @@ function hasUnseenTab(){
   if(!sheetSlides.length) return q.size<SHEET_TABS.length;
   return SHEET_TABS.some(([k])=>sheetSlides.some(x=>x.tab===k)&&!q.has(k));
 }
-function sheetGo(t){ sheetTab=t; markTabSeen(t); renderSheetTabs(); }
+/* 탭을 건너오면 어느 장부터 볼지 — 왼쪽 탭에서 넘어왔으면 그 탭의 마지막 장부터다.
+   한 번 쓰고 0 으로 돌아간다(탭 단추를 직접 누르면 언제나 첫 장). */
+let sheetStart=0;
+function sheetGo(t,at){ sheetTab=t; sheetStart=(at==null?0:at); markTabSeen(t); renderSheetTabs(); }
+/* 지금 그려져 있는 탭들 — 슬라이드가 하나도 없는 탭은 애초에 안 나온다 */
+function sheetTabList(){ return SHEET_TABS.filter(([k])=>sheetSlides.some(x=>x.tab===k)).map(([k])=>k); }
+function sheetHasEdge(d){ const a=sheetTabList(), k=a.indexOf(sheetTab)+d; return k>=0&&k<a.length; }
+/* 마지막 장에서 더 밀면 옆 탭으로. 왼쪽으로 건너가면 그쪽 마지막 장에 선다. */
+function sheetEdge(d){
+  const a=sheetTabList(), k=a.indexOf(sheetTab)+d;
+  if(a.indexOf(sheetTab)<0||k<0||k>=a.length) return false;
+  sheetGo(a[k], d<0?"end":0);
+  try{ sfx("tap"); }catch(e){}
+  return true;
+}
 function renderSheetTabs(){
   const s=sheetRole; if(!s) return;
   const meta=[s.age,s.sex,s.job].filter(Boolean).join(" · ");
@@ -5385,7 +5440,8 @@ function renderSheetTabs(){
         <span class="sh-meta">${esc(meta)}</span></div>
       <div class="shtabs">${tabs}</div></div>
     <div class="mbody">${buildSwipe(cur)}</div>`;
-  wireSwipe($("sheetBox"));
+  const start=sheetStart; sheetStart=0;
+  wireSwipe($("sheetBox"), {start, onEdge:sheetEdge, hasEdge:sheetHasEdge});
 }
 /* 내 단서(손패) — 어느 페이즈에서든 다시 확인. 조사한 카드는 사라지지 않는다. 큼지막하게 스와이프. */
 /* 「소지품」으로 따로 빼는 구역들. 시나리오가 정한다(쉘터는 G·P).
