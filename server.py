@@ -3080,6 +3080,15 @@ def _advance():
                 ap=int(ph.get("ap", 0) or 0), gm=ph.get("gm", ""), interlude=il or "")
             _reset_turn_for_seq(seq)   # 조사 페이즈면 순번 초기화
             _auto_reveal_obligatory()
+            # 막이 스스로 테이블에 올리는 카드. 조사턴으로는 못 여는 자리에 있던 것이
+            # 이야기 진행에 맞춰 나오는 경우다 — 없는 사건에서는 아무 일도 안 일어난다.
+            for cid in (getattr(SC, "PHASE_REVEAL", {}) or {}).get(seq, []) or []:
+                if cid not in ROOM["revealed"]:
+                    _publish(cid)
+                    c = SC.get_card(cid) or {}
+                    where = f'{c.get("locName","")} · {c.get("spot","")}' if c.get("spot") else c.get("locName", "")
+                    ROOM["table"].append({"kind": "system", "broadcast": True,
+                                          "text": f'[{where}] 「{c.get("title","")}」이(가) 테이블에 올랐습니다.'})
             conf = _crisis_conf()
             if conf and seq == conf["seq"]:
                 _crisis_open()

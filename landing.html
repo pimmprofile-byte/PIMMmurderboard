@@ -480,6 +480,7 @@ function sfxPick(){ blip(300,0.09,"triangle",0.07,560); }             // 포스�
 function sfxTransit(){ blip(180,0.28,"sine",0.06,90); setTimeout(()=>blip(520,0.16,"sine",0.045,760),60); } // 화면 전환: 낮은 스윕+반짝
 document.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) sfxClick(); },true);
 
+loadTextLoads();          // 첫 화면에서 관리자를 열어도 목록이 비지 않게, 뜨자마자 한 번 읽는다
 function go(name){
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));
   $("scr-"+name).classList.add("on");
@@ -608,6 +609,8 @@ function submitAdmin(){
   const v=($("adpw")?$("adpw").value:"").trim();
   if(v==="pimm5265"){
     admin=true;
+    // 서버가 아는 사건을 먼저 당겨온다. 늦게 와도 목록을 다시 그린다.
+    loadTextLoads().then(()=>{ if($("admask").classList.contains("on")) showAdminPanel(); });
     const b=$("adminbtn"); b.classList.add("on"); b.textContent="● 관리자 ON";
     if($("scr-scenarios").classList.contains("on")) render();
     showAdminPanel();
@@ -673,7 +676,7 @@ function admSetKey(toRoles){
   if(toRoles) admRolesLoad(); else admLoad();
 }
 function showCardBrowser(){
-  const tabs=ORDER.map(id=>{ const sc=SCEN.find(s=>s.id===id); if(!sc) return "";
+  const tabs=admOrder().map(id=>{ const sc=SCEN.find(s=>s.id===id); if(!sc) return "";
     return `<button class="adtab${id===admScen?" on":""}" onclick="admScen='${id}';showCardBrowser()">${ADM_ESC(sc.title)}</button>`; }).join("");
   $("adcard").className="adcard wide";
   $("adcard").innerHTML=`<h3>조사카드 훑어보기</h3><div class="adsub">QA READOUT · 본문·힌트까지 전부</div>
@@ -748,7 +751,7 @@ function admRole(r,d){
   </div>`;
 }
 function showRoleBrowser(){
-  const tabs=ORDER.map(id=>{ const sc=SCEN.find(s=>s.id===id); if(!sc) return "";
+  const tabs=admOrder().map(id=>{ const sc=SCEN.find(s=>s.id===id); if(!sc) return "";
     return `<button class="adtab${id===admScen?" on":""}" onclick="admScen='${id}';showRoleBrowser()">${ADM_ESC(sc.title)}</button>`; }).join("");
   $("adcard").className="adcard wide";
   $("adcard").innerHTML=`<h3>배역 훑어보기</h3><div class="adsub">QA READOUT · 목표·비밀·심문 대사까지 전부</div>
@@ -759,8 +762,15 @@ function showRoleBrowser(){
   admRolesLoad();
 }
 
+/* 열람 순서 — ORDER 를 먼저 쓰되, 아직 안 채워졌으면 SCEN 에 있는 것도 붙인다.
+   목록이 화면을 어디 거쳐 왔는지에 따라 달라지면 그건 목록이 아니다. */
+function admOrder(){
+  const out=ORDER.slice();
+  SCEN.forEach(s=>{ if(out.indexOf(s.id)<0) out.push(s.id); });
+  return out;
+}
 function showAdminPanel(){
-  const rows=ORDER.map(id=>SCEN.find(s=>s.id===id)).filter(Boolean).map(s=>{
+  const rows=admOrder().map(id=>SCEN.find(s=>s.id===id)).filter(Boolean).map(s=>{
     const d=ADMINDOC[s.id]||{};
     return `<div class="adrow">
       <div class="rt">《${s.title}》 <span class="tg ${s.locked?"locked":""}">${s.locked?"준비중 · 열람가능":"운영중"}</span></div>
