@@ -2,7 +2,7 @@
      preserveAspectRatio="xMidYMid meet"
      font-family="-apple-system,BlinkMacSystemFont,'Noto Sans KR','Apple SD Gothic Neo',sans-serif">
   <title>솔베인 성채 배치도</title>
-  <desc>당주의 방 복도 성채 외벽 마당 관리실 지하실 주방 마굿간 여덟 구역. 층을 갈라 세운 도면</desc>
+  <desc>당주의 방 복도 서재 성채 외벽 온실 마당 관리실 주방 지하실 마굿간 아홉 구역. 층을 갈라 세운 도면</desc>
 
   <defs>
     <!-- 사방의 바다. 섬이라는 것 하나만 말하면 되므로 가장자리에서만 옅게 밀려온다.
@@ -40,6 +40,14 @@
       .ways-on .way   { opacity:.60; }
       .ways-on .acc-way { opacity:.90; }
       .ways-on .sight { opacity:.42; }
+      .trim.ways { opacity:1; }
+      /* 화살촉도 선을 따라 같이 흐려진다. 선이 꺼졌는데 촉만 남으면 그게 더 눈에 걸린다. */
+      .way-tip { fill:#dfe7e4; stroke:none; opacity:.12; transition:opacity .2s; }
+      .acc-tip { fill:#e0663c; stroke:none; opacity:.18; transition:opacity .2s; }
+      .ways-on .way-tip { opacity:.55; }
+      .ways-on .acc-tip { opacity:.9; }
+      .legend { opacity:0; transition:opacity .2s; pointer-events:none; }
+      .ways-on .legend { opacity:1; }
       .wave  { fill:none; stroke:#2f7f88; stroke-width:1.2; opacity:.35; }
     ]]></style>
   </defs>
@@ -109,11 +117,19 @@
     <!-- 외벽은 방이 아니라 «면»이다. 그래서 세로로 길게 선다 —
          이 띠를 타고 오르면 복도를 한 번도 밟지 않고 당주의 방 창에 닿는다. -->
     <g id="zone-C" data-loc="C">
-      <rect class="zone-fill" x="250" y="74" width="36" height="182" rx="6"/>
-      <text class="z-name" transform="rotate(-90 268 150)" x="268" y="150"
+      <rect class="zone-fill" x="250" y="74" width="36" height="122" rx="6"/>
+      <text class="z-name" transform="rotate(-90 268 128)" x="268" y="128"
             text-anchor="middle" font-size="16">성채 외벽</text>
-      <text class="z-cnt" id="cnt-C" transform="rotate(-90 268 228)" x="268" y="228"
+      <text class="z-cnt" id="cnt-C" transform="rotate(-90 268 182)" x="268" y="182"
             text-anchor="middle">0/0</text>
+    </g>
+    <!-- 온실. 성채 벽에 기대 선 유리 헛간이라 담장을 반쯤 물고 밖으로 나온다.
+         이 문이 열려 있었다는 것과, 이 지붕이 창 바로 아래라는 것이 이 칸의 전부다. -->
+    <g id="zone-J" data-loc="J">
+      <rect class="zone-fill" x="226" y="204" width="100" height="52" rx="6"
+            stroke-dasharray="5 3"/>
+      <text class="z-name" x="238" y="230" font-size="17">온실</text>
+      <text class="z-cnt" id="cnt-J" x="314" y="248" text-anchor="end">0/0</text>
     </g>
     <!-- 마당 — 외벽과 그 위의 창이 정면으로 보이는 자리. 여기 있던 사람은 무언가를 봤다. -->
     <g id="zone-D" data-loc="D">
@@ -147,25 +163,25 @@
   <!-- 당주의 방으로 가는 길은 둘이고, 이 지도가 말해야 하는 것도 그 둘뿐이다.
        실선: 정문 → 관리실 앞 → 이층 → 복도 → 방. 누구나 아는 길.
        점선: 마당 → 외벽 → 창. 복도를 지나지 않는 길. -->
-  <g class="trim">
+  <g class="trim ways">
     <path class="way" d="M690 209 H700 V115 H682"/>
     <path class="way" d="M584 115 H576"/>
     <path class="way" d="M454 115 H444"/>
-    <path d="M452 115 l12 -6 v12 Z" fill="#dfe7e4" stroke="none" opacity=".55"/>
-    <path class="acc-way" d="M220 180 H268 V106 H288"/>
-    <path d="M292 106 l-12 -6 v12 Z" fill="#e0663c" stroke="none" opacity=".9"/>
+    <path class="way-tip" d="M452 115 l12 -6 v12 Z"/>
+    <path class="acc-way" d="M212 246 H281 V106 H288"/>
+    <path class="acc-tip" d="M292 106 l-12 -6 v12 Z"/>
     <!-- 창. 붉은 주황이 닿는 두 군데 중 하나 — 이 창이 열려 있었는지가 문제다. -->
     <path class="acc" d="M292 96 V126" stroke-width="3"/>
     <path class="sight" d="M150 152 L288 112"/>
   </g>
 
   <!-- 범례. 선 세 종류가 각각 무슨 뜻인지 여기서 한 번만 말한다. -->
-  <g class="trim">
+  <g class="trim ways legend">
     <path class="way" d="M46 250 H66"/>
     <path class="acc-way" d="M46 264 H66"/>
     <path class="sight" d="M46 278 H66"/>
   </g>
-  <g class="lg">
+  <g class="lg legend">
     <text x="74" y="254">정규 통로 · 복도</text>
     <text x="74" y="268" class="acc-txt">외벽을 탄다</text>
     <text x="74" y="282">창이 보이는 시선</text>

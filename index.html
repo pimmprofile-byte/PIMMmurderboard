@@ -1419,6 +1419,13 @@
   .minimap{flex:0 0 auto;width:208px;border:1px solid var(--line);border-radius:9px;
     overflow:hidden;background:#0b1016}
   .minimap svg{width:100%;height:auto;display:block}
+  /* 동선 토글 — 지도 위 오른쪽 아래 구석에 작게 앉는다 */
+  .mapways{position:absolute;right:8px;bottom:8px;z-index:3;
+    font:600 11px/1 inherit;letter-spacing:.02em;
+    background:rgba(10,13,18,.82);color:var(--sub);
+    border:1px solid var(--line);border-radius:3px;padding:6px 9px;cursor:pointer}
+  .mapways.on{color:var(--ember-b,#e0663c);border-color:currentColor}
+  .mapways:focus-visible{outline:2px solid var(--cold);outline-offset:2px}
   .minimap text{display:none}
   .minimap .trim,.minimap #m-floodwater,.minimap #m-pod,.minimap #m-doors,.minimap #m-leak{display:none}
   .minimap.podon #m-pod{display:block}
@@ -1492,7 +1499,7 @@
   .podwarn{margin-top:10px;padding:9px 12px;border:1px solid rgba(200,68,47,.45);
     border-radius:9px;background:rgba(200,68,47,.1);color:#f2d7d1;font-size:12.5px;line-height:1.55}
   .podwarn b{color:var(--ember-b)}
-  .mapwrap{width:100%;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0b1016}
+  .mapwrap{position:relative;width:100%;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0b1016}
   .mapwrap svg{width:100%;height:auto;display:block}
   .mapwrap.plain text{display:none}
   .mapwrap.nopod #pod{display:none}
@@ -3226,8 +3233,27 @@ async function paintMap(){
   const svgTxt=await loadMapSVG(); if(!svgTxt||!$("mapArt")) return;
   art.innerHTML=svgTxt;
   const svg=art.querySelector("svg"); if(!svg) return;
-  wireZones(svg); paintFlood(svg); wirePod(svg);
+  wireZones(svg); paintFlood(svg); wirePod(svg); wireWays(art, svg);
   const d=$("dash"); if(d) d.innerHTML=dashHTML();
+}
+/* 동선 토글. 배치도에 길이 늘 또렷하게 그어져 있으면 구역 이름을 읽는 데 방해가 된다.
+   그래서 지도는 동선을 흐리게 깔아두고(.way/.acc-way/.sight), 여기서 켤 때만 진해진다.
+   그런 선이 없는 사건에서는 버튼 자체가 안 생긴다. */
+let waysOn=false;
+function wireWays(host, svg){
+  if(!svg.querySelector(".way,.acc-way,.sight")) return;
+  svg.classList.toggle("ways-on", waysOn);
+  const b=document.createElement("button");
+  b.className="mapways"+(waysOn?" on":"");
+  b.type="button";
+  b.textContent=waysOn?"동선 끄기":"동선 보기";
+  b.setAttribute("aria-pressed", waysOn?"true":"false");
+  b.onclick=()=>{ waysOn=!waysOn;
+    svg.classList.toggle("ways-on", waysOn);
+    b.classList.toggle("on", waysOn);
+    b.textContent=waysOn?"동선 끄기":"동선 보기";
+    b.setAttribute("aria-pressed", waysOn?"true":"false"); };
+  host.appendChild(b);
 }
 /* 포드 자리에 포인터를 찍는다. 눌러야 코드를 넣을 수 있다 —
    코드를 넣어둔 사람만 발사창에서 실제로 나간다. */
