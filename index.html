@@ -2782,7 +2782,9 @@ let gmSig=null, gmSeenMarks=null;
 function renderGM(_force){
   const ph=STATE.phase||{}; const cur=STATE.round||0; const ap=ph.ap||0; const k=ph.key;
   $("gmPhase").textContent=(ph.name||"")+(cur?` · R${cur}`:"")+(ap?` · 인당 ${ap}장`:"");
-  $("gmAdvBtn").style.display=(STATE.seq>=9)?"none":"";
+  // 마지막 막에서만 감춘다. 예전엔 9로 박아뒀는데 사건마다 막 수가 달라서,
+  // 열 막짜리 사건에서는 「최후의 선택」에서 다음 막으로 못 넘어갔다.
+  $("gmAdvBtn").style.display=(STATE.seq>=((SCEN.phases||[]).length||9))?"none":"";
   const checked=STATE.checked||{}; const used=STATE.usedAP||{};
   // 새로 마킹된 칸(플레이어가 방금 조사) 감지 → 펄스 1회
   const curMarks=new Set(); Object.entries(checked).forEach(([r,ids])=>ids.forEach(id=>curMarks.add(r+":"+id)));
