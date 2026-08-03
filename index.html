@@ -764,7 +764,10 @@
   .mfoot{flex:0 0 auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;
     padding:12px 18px;border-top:1px solid var(--line);background:var(--bg2)}
   .mfoot .mf-note{margin-right:auto;font-size:12px;color:var(--muted);word-break:keep-all;min-width:0}
-  /* 안내창 — 브라우저 기본 창 대신. 나머지 창과 같은 결로, 다만 더 좁고 조용하게. */
+  /* 안내창 — 브라우저 기본 창 대신. 나머지 창과 같은 결로, 다만 더 좁고 조용하게.
+     이건 늘 「무엇 위에서」 물어보는 창이다. 카드창(#cardModal 70)이든 비주얼노벨(90)이든
+     그 위에서 눌러야 하니 다른 어떤 창보다 앞에 세운다. */
+  .dlg{z-index:120}
   .dlg .box{max-width:400px}
   .dlg .mhead{align-items:center;gap:11px;padding:17px 18px 14px}
   .dlg .dlg-ic{flex:0 0 34px;height:34px;border-radius:11px;display:grid;place-items:center;
