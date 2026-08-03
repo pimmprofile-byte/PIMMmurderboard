@@ -1340,6 +1340,9 @@
   .ask-q .ask-a .by{margin-left:auto;font-size:11.5px;opacity:.75}
   .ask-q .ask-a.wait{color:var(--gold-b);font-weight:700}
   .ask-q:disabled .ask-a.wait{color:var(--sub);font-weight:400}
+  .ask-q.on{border-color:var(--gold-b);background:rgba(180,140,60,.10)}
+  .ask-q.on .ask-t{color:#fff}
+  .ask-q.on .ask-a.wait{color:var(--gold-b)}
   .ask-q.done{background:rgba(255,255,255,.04)}
   .ask-q.done .ask-t{color:var(--sub)}
   .ask-q.nod{border-color:#4e8a6a}   .ask-q.nod .ask-a{color:#8fd6ae}
@@ -3059,7 +3062,7 @@ function renderPanel(ph){
   // 실제로 바뀐 게 있을 때만 다시 그린다.
   const sig=JSON.stringify([k,STATE.seq,STATE.round,STATE.turn,ph.ap,myRoleId,myHand.map(c=>c.id),STATE.revealedIds,STATE.usedAP,STATE.grades,STATE.ending&&STATE.ending.name,STATE.interrogate,STATE.checked,STATE.crisis&&[STATE.crisis.open,STATE.crisis.solved,STATE.crisis.answered],crAns.join(""),STATE.flood,
     STATE.night&&[STATE.night.open,STATE.night.done,STATE.night.mine,(STATE.night.picked||[]).join("")],
-    STATE.ask&&[STATE.ask.open,STATE.ask.turn,(STATE.ask.asked||[]).map(r=>r.by+r.q).join("")],
+    STATE.ask&&[STATE.ask.open,STATE.ask.turn,(STATE.ask.asked||[]).map(r=>r.by+r.q).join("")],askSel,
     STATE.accuse1&&JSON.stringify(STATE.accuse1.picks)]);
   if(sig===renderPanel._sig) return;
   renderPanel._sig=sig;
@@ -4200,20 +4203,25 @@ async function swapConfirm(){
       않은 답을 낸 것으로 보였다. 이제는 클로드에 그대로 붙여넣을 한 덩어리 글을 만들어
       준다 — 그걸 들고 클로드 세션에 물어보면 그 자리가 진행석이 된다. */
 function finalRoute(){ return backendOn()?"ai":((gmOn||(STATE&&STATE.hasGM))?"gm":"claude"); }
+/* 「키어런가 물었다」가 안 되게. 받침이 있으면 이, 없으면 가. */
+function subjOf(nm){ if(!nm) return "가"; const c=nm.charCodeAt(nm.length-1)-0xAC00;
+  return (c>=0&&c<11172&&c%28)?"이":"가"; }
 /* 질문지 — 당주는 끄덕이거나 젓는 것뿐이다. 여섯 장에 셋이 하나씩 물으니
    셋은 끝내 안 물어진다. 무엇을 «안 묻기로 했는가»가 이 막에 남는 기록이다. */
 function renderAsk(p){
   const a=(STATE&&STATE.ask)||null;
   if(!a){ p.innerHTML=`<div class="card"><div class="panel-note">질문지가 덮였습니다.</div></div>${nextPhaseBlock()}`; return; }
   const mine=a.turn===myRoleId&&a.open&&myRoleValid();
+  if(!mine) askSel="";
   const rows=(a.questions||[]).map(q=>{
     const done=!!q.askedBy;
+    const on=askSel===q.id;
     const ans=q.a==="nod"?a.nod:a.shake;
-    return `<button class="ask-q${done?" done":""}${done&&q.a==="nod"?" nod":""}${done&&q.a==="shake"?" shake":""}"
-      ${(mine&&!done)?`onclick="askPick('${q.id}')"`:"disabled"}>
+    return `<button class="ask-q${done?" done":""}${on?" on":""}${done&&q.a==="nod"?" nod":""}${done&&q.a==="shake"?" shake":""}"
+      ${(mine&&!done)?`onclick="askSel1('${q.id}')"`:"disabled"}>
       <div class="ask-t">「${esc(q.q)}」</div>
-      ${done?`<div class="ask-a">…${esc(ans)}.<span class="by">${esc(nameOf(q.askedBy))}가 물었다</span></div>`
-            :`<div class="ask-a wait">${mine?"이걸 묻는다 ›":"— 아직 안 물었다"}</div>`}</button>`;}).join("");
+      ${done?`<div class="ask-a">…${esc(ans)}.<span class="by">${esc(nameOf(q.askedBy))}${subjOf(nameOf(q.askedBy))} 물었다</span></div>`
+            :`<div class="ask-a wait">${on?"이걸로 정했다 — 아래에서 확인":(mine?"고르기":"— 아직 안 물었다")}</div>`}</button>`;}).join("");
   const turnName=a.turn?nameOf(a.turn):"";
   p.innerHTML=`<div class="card nightcard askcard">
     <div class="nt-kick">${esc(a.kick||"질문지")}</div>
@@ -4222,14 +4230,20 @@ function renderAsk(p){
     <div class="nt-prompt">${a.open?(mine?esc(a.prompt||""):`${esc(turnName)}의 차례입니다.`):"질문지가 덮혔습니다."}</div>
     <div class="asklist">${rows}</div>
     <div class="nt-foot"><span class="tally">${(a.asked||[]).length}/${a.total} 물음${
-      a.open?"":" · 남은 것은 아무도 묻지 않았습니다"}</span></div>
-  </div>${a.open?"":nextPhaseBlock()}`;
+      a.open?"":" · 남은 것은 아무도 묻지 않았습니다"}</span>
+      ${mine?`<button class="btn primary sm"${askSel?"":" disabled"} onclick="askSend()">이걸 묻는다</button>`:""}
+    </div></div>${a.open?"":nextPhaseBlock()}`;
 }
-async function askPick(qid){
+/* 한 번 누르면 골라만 두고, 확인을 눌러야 물어진다.
+   여섯 장 중 하나를 되돌릴 수 없게 정하는 자리라 한 번에 넘어가면 안 된다. */
+let askSel="";
+function askSel1(qid){ askSel=(askSel===qid?"":qid); renderPanel._sig=null; applyState(); }
+async function askSend(){
+  if(!askSel) return;
   if(!myRoleValid()){ banner("배역을 맡아야 물을 수 있어요"); return; }
-  const r=await post("/api/ask",{roleId:myRoleId,clientId,qid});
+  const r=await post("/api/ask",{roleId:myRoleId,clientId,qid:askSel});
   if(r&&r.error){ banner(r.error); return; }
-  banner(""); await poll();
+  banner(""); askSel=""; await poll();
 }
 /* 밤 — 각자 하나를 고르고, 그 조합이 그날 밤에 실제로 일어난 일을 정한다.
    무엇을 골랐는지는 서로 안 보인다. 「정했다」까지만 보인다. */
