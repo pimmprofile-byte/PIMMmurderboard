@@ -5177,11 +5177,12 @@ function wireSwipe(box, opt){
   dots.forEach(d=>d.onclick=()=>go(+d.dataset.i));
 
   // ── 끌기 ──────────────────────────────────────────────────────
-  let sx=0, sy=0, dx=0, axis=0, t0=0;   // axis: 0 미정 · 1 가로 · -1 세로
+  // dx = 화면에 끌어 보인 거리(끝에서는 일부러 죽인다) · raw = 손가락이 실제로 간 거리
+  let sx=0, sy=0, dx=0, raw=0, axis=0, t0=0;   // axis: 0 미정 · 1 가로 · -1 세로
   const W=()=>vp.clientWidth||1;
   track.addEventListener("touchstart",e=>{
     if(e.touches.length!==1){ axis=-1; return; }
-    sx=e.touches[0].clientX; sy=e.touches[0].clientY; dx=0; axis=0; t0=e.timeStamp;
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY; dx=0; raw=0; axis=0; t0=e.timeStamp;
   },{passive:true});
   track.addEventListener("touchmove",e=>{
     if(axis<0||e.touches.length!==1) return;
@@ -5193,19 +5194,24 @@ function wireSwipe(box, opt){
       else return;
     }
     e.preventDefault();               // 가로로 정했으면 세로 스크롤은 넘기지 않는다
-    dx=mx;
+    raw=mx; dx=mx;
     // 양 끝에서는 덜 끌린다 — 더 갈 데가 없다는 걸 손으로 알려준다.
-    if((i===0&&dx>0)||(i===N-1&&dx<0)) dx*=0.32;
+    // 옆 탭으로 건너갈 수 있는 끝에서는 덜 죽인다. 여기서 세게 죽여놨더니
+    // 손가락을 아무리 밀어도 아래 문턱에 못 닿아서 영영 못 건넜다.
+    const dd=dx<0?1:-1;
+    if((dd<0&&i<=0)||(dd>0&&i>=N-1)) dx*=(opt.hasEdge&&opt.hasEdge(dd))?0.55:0.32;
     place(dx);
   },{passive:false});
   const drop=e=>{
-    if(axis<=0){ axis=0; return; }
+    if(axis<=0){ axis=0; raw=0; return; }
     sw.classList.remove("dragging");
-    const w=W(), dt=Math.max(1,(e&&e.timeStamp||0)-t0), v=Math.abs(dx)/dt;
+    // 판정은 «손가락이 간 거리»로 한다. 끌린 그림(dx)은 끝에서 일부러 죽여놨으니
+    // 그걸로 재면 끝 장에서는 어떤 스와이프도 문턱을 못 넘는다.
+    const w=W(), dt=Math.max(1,(e&&e.timeStamp||0)-t0), v=Math.abs(raw)/dt;
     // 짧고 빠르게 튕겨도 넘어간다. 천천히 끌면 3분의 1은 와야 한다.
-    const pass=Math.abs(dx)>w*0.32 || (v>0.45&&Math.abs(dx)>28);
-    const d=dx<0?1:-1;
-    axis=0; dx=0;
+    const pass=Math.abs(raw)>w*0.32 || (v>0.45&&Math.abs(raw)>28);
+    const d=raw<0?1:-1;
+    axis=0; dx=0; raw=0;
     // 끝 장에서 더 밀었으면 옆 탭으로 건너간다 — 받아준 쪽이 새로 그리니 여기선 손을 뗀다
     if(pass&&((d<0&&i<=0)||(d>0&&i>=N-1))&&opt.onEdge&&opt.onEdge(d)) return;
     go(pass ? i+d : i, !pass);
