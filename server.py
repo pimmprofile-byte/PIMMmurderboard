@@ -3189,7 +3189,9 @@ def _seed_npc_lines(seq: int) -> None:
     """
     for ln in (getattr(SC, "NPC_LINES", {}) or {}).get(seq, []) or []:
         who = ln.get("who", "")
-        n = (SC.get_npc(who) if hasattr(SC, "get_npc") else None) or {}
+        # 배역이 받아치는 자리도 있다 — NPC 목록에 없으면 배역에서 찾는다.
+        n = ((SC.get_npc(who) if hasattr(SC, "get_npc") else None)
+             or (SC.get_character(who) if hasattr(SC, "get_character") else None) or {})
         nm = n.get("name", who)
         job = n.get("job", "")
         head = f"{nm}({job})" if job else nm
