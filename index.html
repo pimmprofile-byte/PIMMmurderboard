@@ -3406,7 +3406,11 @@ function sealedLoc(loc){ return ((STATE&&STATE.sealed)||[]).indexOf(loc)>=0; }
 function zoneCards(loc){
   const cr=STATE.round||0;
   const pub=new Set((STATE.revealed||[]).map(c=>c.id)); const hand=new Set(myHand.map(c=>c.id));
-  return SCEN.cardCatalog.filter(c=>c.loc===loc && (c.round<=cr || pub.has(c.id) || hand.has(c.id)));
+  // gone 이 지난 카드는 그 자리에서 «치워진» 것이다 — 어제와 같은 방이 아니다.
+  // 내가 쥐고 있는 것만 남는다(이미 본 것을 뺏지는 않는다).
+  return SCEN.cardCatalog.filter(c=>c.loc===loc
+    && !(c.gone && cr>=c.gone && !hand.has(c.id))
+    && (c.round<=cr || pub.has(c.id) || hand.has(c.id)));
 }
 /* 구역 점 표시 — 시나리오 선택창의 사람표시와 같은 읽는 법. 채워진 점 = 이미 누가 꺼낸 카드 */
 function zonePips(loc){

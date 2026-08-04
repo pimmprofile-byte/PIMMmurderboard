@@ -444,7 +444,8 @@ def public_state() -> dict:
             "turnOrder": _turn_order() if ap > 0 else [],
             # 이 라운드에 아직 «누구든» 열 수 있는 자리가 남았는가.
             # 카드보다 턴이 많은 판에서 막바지에 화면이 멈춘 것처럼 보이던 자리다.
-            "openLeft": (sum(1 for _c in _round_open_pool()) if ap > 0 else None),
+            "openLeft": (len(_round_open_pool()) if ap > 0 else None),
+            "openIds": (_round_open_pool() if (ap > 0 and DEBUG_POOL) else None),
             "interrogate": _interrogate_budget() if ph.get("key") == "talk" else None,
             "started": bool(ROOM.get("started")),
             "typing": ROOM["typing"],
@@ -624,6 +625,10 @@ def scenario():
     d["cardCatalog"] = [{"id": c["id"], "loc": c["loc"], "locName": c["locName"], "round": c["round"],
                          "spot": c.get("spot", ""),
                          "needs": _card_needs(c),
+                         # auto  판이 스스로 여는 자리 · hot  판을 뒤집는 자리
+                         # gone  이 라운드부터는 그 자리가 «없다»(어제와 같은 방이 아니다)
+                         "auto": bool(c.get("auto")), "hot": bool(c.get("hot")),
+                         "gone": c.get("gone", 0),
                          "requires": c.get("requires"), "obligatory": c.get("reveal") == "obligatory"}
                         for c in SC.CARDS]
     return d
@@ -1407,6 +1412,9 @@ def _card_needs(c: dict) -> list:
     return out
 
 
+DEBUG_POOL = os.environ.get("PMB_DEBUG_POOL") == "1"
+
+
 def _round_open_pool() -> list:
     """이번 라운드에 아직 아무도 안 가져간, 열릴 수 있는 카드. 몫·차례는 안 본다 —
     「이 판에 열 자리가 더 남았는가」만 센다."""
@@ -1417,6 +1425,8 @@ def _round_open_pool() -> list:
     out = []
     for c in getattr(SC, "CARDS", []) or []:
         if c["id"] in taken or c.get("round", 1) > cur or c.get("auto"):
+            continue
+        if c.get("gone") and cur >= c["gone"]:      # 판에서 치워진 자리
             continue
         if _zone_lock(c.get("loc", ""), cur) or c.get("loc") in (ROOM.get("sealed") or []):
             continue
@@ -1453,6 +1463,8 @@ def _openable_cards(role_id: str) -> list:
         if c["id"] in mine or c["id"] in ROOM["revealed"] or c["round"] > cur:
             continue
         if c.get("auto"):            # 판이 스스로 여는 자리 — 뒤져서 열 수 없다
+            continue
+        if c.get("gone") and cur >= c["gone"]:      # 이 라운드에는 이미 치워진 자리
             continue
         if _holder_of(c["id"]) and not c.get("shared"):   # 남이 가져간 카드는 후보에서 제외
             continue
@@ -1741,6 +1753,8 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
         return lock
     if c.get("auto") and card_id not in ROOM["revealed"]:
         return "여기는 뒤져서 여는 자리가 아닙니다 — 때가 되면 판이 스스로 엽니다"
+    if c.get("gone") and cur >= c["gone"] and card_id not in ROOM["hands"].get(role_id, []):
+        return "그 자리는 이제 없습니다 — 어제와 같은 방이 아닙니다"
     if c["round"] > cur:
         return f"아직 조사할 수 없습니다 (조사 R{c['round']}에 열림)"
     # 선행 카드 검사. 여태 _openable_cards(=화면 표시와 AI 선택)에만 있었고 실제 조사 요청에는

@@ -1102,7 +1102,7 @@ CARDS = [
     # ── R1 · 현장 6 (서재·주인·소지품은 잠김) ─────────────────────
     {"id": "A1", "loc": "A", "locName": "당주의 방", "round": 1, "reveal": "private", "bait": False,
      "spot": "침대 · 시신",
-     "auto": True,
+     "auto": True, "gone": 3,
      "title": "피해자의 시신",
      "text": "이불이 목까지 반듯하게 덮여 있다. 흐트러진 데가 없다.\n"
              "입술 안쪽과 눈꺼풀에 점상 출혈. 그런데 목에는 아무 자국이 없다.\n"
@@ -1114,7 +1114,7 @@ CARDS = [
     {"id": "A2", "loc": "A", "locName": "당주의 방", "round": 1, "reveal": "private", "bait": False,
      "spot": "협탁 · 자명종",
      "insight": {"basil": "…내가 끝까지 눌렀다. 소리부터 멎춰야 했으니까.\n"
-                          "어느 깊이로 눌러야 이 집에서 자연스러운지까지는 몰랐다."},
+                          "어느 깊이로 눌러야 이 집에서 자연스러운지까지는 몰랐다."}, "gone": 3,
      "title": "자명종",
      "text": "은종이 두 개 달린 자명종.\n"
              "꼭대기 버튼을 반만 누르면 십 분 뒤 다시 울리고, 끝까지 누르면 멎는다.\n"
@@ -1159,6 +1159,14 @@ CARDS = [
              "마시 선생이 늘 처방하던 약이다.\n"
              "★ 반 년치 분의 빈 병이 보인다.",
      "hint": "반년이다. 손톱의 하얀 줄도 반년이고, 머리숱이 준 것도 반년이다."},
+
+    {"id": "F2", "loc": "F", "locName": "지하실", "round": 3, "reveal": "private", "bait": False,
+     "spot": "약장 앞 바닥",
+     "title": "독 안에 든 쥐",
+     "text": "마시가 처방해준 에드먼드 경의 약 앞에 쥐가 여럿 죽어 있다.\n"
+             "하나같이 털이 희게 변했다.\n"
+             "★ 이 약… 독성이 짙은 듯하다.",
+     "hint": "쥐가 반년을 못 버틴 것을 사람은 반년 동안 먹었다."},
 
     {"id": "H1", "loc": "H", "locName": "마굿간", "round": 1, "reveal": "private", "bait": False,
      "spot": "일지 걸이",
@@ -2567,6 +2575,7 @@ def public_scenario() -> dict:
         "cardCatalog": [{"id": c["id"], "loc": c["loc"], "locName": c["locName"],
                          "spot": c.get("spot", ""), "round": c["round"],
                          "auto": bool(c.get("auto")), "hot": bool(c.get("hot")),
+                         "gone": c.get("gone", 0),
                          "requires": c.get("requires", "")} for c in CARDS],
         "openingCuts": OPENING_CUTS,
         "finalQuestions": FINAL_QUESTIONS,
