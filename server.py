@@ -441,6 +441,9 @@ def public_state() -> dict:
             "overLimit": {rid: max(0, len(cs) - _hand_limit()) for rid, cs in ROOM["hands"].items() if len(cs) > _hand_limit()},
             "turn": ROOM.get("turn") if ap > 0 else None,
             "turnOrder": _turn_order() if ap > 0 else [],
+            # 이 라운드에 아직 «누구든» 열 수 있는 자리가 남았는가.
+            # 카드보다 턴이 많은 판에서 막바지에 화면이 멈춘 것처럼 보이던 자리다.
+            "openLeft": (sum(1 for _c in _round_open_pool()) if ap > 0 else None),
             "interrogate": _interrogate_budget() if ph.get("key") == "talk" else None,
             "started": bool(ROOM.get("started")),
             "typing": ROOM["typing"],
@@ -1346,10 +1349,15 @@ def _advance_turn() -> None:
     start = order.index(ROOM["turn"]) if ROOM.get("turn") in order else -1
     for step in range(1, len(order) + 1):
         cand = order[(start + step) % len(order)]
-        if ap <= 0 or _round_checks(cand, cur) < ap:   # 아직 조사 여력이 있는 배역
-            ROOM["turn"] = cand
-            bump()
-            return
+        if ap > 0 and _round_checks(cand, cur) >= ap:
+            continue                                   # 이번 라운드 몫을 다 썼다
+        # 열 수 있는 자리가 하나도 없으면 그 차례는 건너뛴다. 카드보다 턴이 많은 판에서
+        # 아무것도 못 하는 화면 앞에 사람을 세워두면 판이 거기서 멈춘 것처럼 보인다.
+        if ap > 0 and not _openable_cards(cand):
+            continue
+        ROOM["turn"] = cand
+        bump()
+        return
     ROOM["turn"] = order[(start + 1) % len(order)]      # 전원 소진 → 그냥 다음 배역
     bump()
 
@@ -1392,6 +1400,25 @@ def _card_needs(c: dict) -> list:
     req = c.get("requires")
     out = [req] if isinstance(req, str) and req else list(req or [])
     out += list(c.get("combo") or [])
+    return out
+
+
+def _round_open_pool() -> list:
+    """이번 라운드에 아직 아무도 안 가져간, 열릴 수 있는 카드. 몫·차례는 안 본다 —
+    「이 판에 열 자리가 더 남았는가」만 센다."""
+    cur = current_round(ROOM["seq"])
+    taken = set(ROOM["revealed"])
+    for cids in ROOM["hands"].values():
+        taken.update(cids)
+    out = []
+    for c in getattr(SC, "CARDS", []) or []:
+        if c["id"] in taken or c.get("round", 1) > cur:
+            continue
+        if _zone_lock(c.get("loc", ""), cur) or c.get("loc") in (ROOM.get("sealed") or []):
+            continue
+        if [r for r in _card_needs(c) if r not in taken]:
+            continue
+        out.append(c["id"])
     return out
 
 
@@ -3259,6 +3286,11 @@ def _advance():
     _ev("phase_leaving", name=SC.phase_by_seq(ROOM["seq"])["name"])
     with LOCK:
         ROOM["ready"] = []          # 준비 표시는 막마다 새로 받는다
+        # 밤을 안 닫고 넘어가면 «아침이 안 온다». 밤 결과가 없으면 그날 밤의 자국도
+        # 안 생겨서 마지막 조사에 열 카드가 모자란다 — 조사턴이 통째로 빈다.
+        # 아직 안 고른 사람은 「안 갔다」로 본다. 그게 안 고른 것의 뜻이다.
+        if (ROOM.get("night") or {}).get("open"):
+            _night_resolve()
         if ROOM["seq"] < len(SC.PHASES):
             ROOM["seq"] += 1
             seq = ROOM["seq"]

@@ -3863,9 +3863,15 @@ function turnBar(){
 
   // 전원이 조사를 마쳤으면 차례 안내 대신 다음 페이즈로 넘어가는 자리를 이 칸에 띄운다.
   // 손패가 넘치는 사람이 있으면 넘길 수 없다 — 넘기는 순간 그 카드는 정리할 기회를 잃는다.
-  if(ap>0 && !investLeft().length){
+  // 조사턴이 남아도 «뒤질 곳»이 없으면 거기서 판이 멈춘 것처럼 보인다.
+  // 카드가 턴보다 적은 판에서 실제로 그랬다 — 그럴 땐 다 끝난 것으로 본다.
+  const noPlaces = ap>0 && STATE.openLeft===0;
+  if(ap>0 && (!investLeft().length || noPlaces)){
     const stuck=overLimitRoles();
     const canAdv=STATE.isHost||gmOn||!STATE.hasHost;
+    const why=(noPlaces&&investLeft().length)
+      ? "더 뒤질 곳이 없습니다 — 조사턴이 남았지만 열 카드가 없어요."
+      : "모두 조사를 마쳤습니다.";
     let body;
     if(stuck.length){
       const mineStuck=stuck.indexOf(myRoleId)>=0;
@@ -3876,9 +3882,9 @@ function turnBar(){
           : `<b>${who}</b>님이 손패를 정리하는 중입니다.`}</div>`;
     }else if(canAdv){
       body=`<button class="btn gold" onclick="advance()">다음 페이즈 ›</button>
-        <div class="tb-why">모두 조사를 마쳤습니다.</div>`;
+        <div class="tb-why">${esc(why)}</div>`;
     }else{
-      body=`<div class="tb-why">모두 조사를 마쳤습니다 — 진행석에서 다음 페이즈로 넘겨줍니다.</div>`;
+      body=`<div class="tb-why">${esc(why)} 진행석에서 다음 페이즈로 넘겨줍니다.</div>`;
     }
     return `<div class="turnbar done"><div class="tb-order"><div class="tb-rail">${chips}</div></div>
       <div class="tb-act col">${body}</div></div>`;
