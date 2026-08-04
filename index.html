@@ -310,6 +310,11 @@
   .chat{flex:1 1 auto;overflow-y:auto;padding:12px 14px;border-top:1px solid var(--line);background:radial-gradient(130% 90% at 50% 0%,#131211,var(--bg) 70%);display:flex;flex-direction:column;gap:10px}
   .sys{align-self:center;text-align:center;color:var(--muted);font-size:12px;border:1px dashed var(--line);border-radius:20px;padding:4px 14px;max-width:92%}
   .sys.bc{color:var(--cold);border-color:#2c465a;background:#0e1620}
+  /* 한 대목이 끝난 자리. 여기서 판이 멈춰 서고, 누르면 다음 대목이 이어진다 —
+     성격이 다른 이야기가 이어 붙을 때 어디서 끊겼는지가 보이게. */
+  .dripgo{align-self:center;display:flex;align-items:center;gap:10px;padding:4px 0 2px;width:100%}
+  .dripgo::before,.dripgo::after{content:"";flex:1 1 auto;height:1px;background:var(--line)}
+  .dripgo .btn{flex:0 0 auto}
   /* GM은 대화창에서 말한다 — 배역들 사이에 끼되, 배역의 말투와 구분되게 */
   .gmsay{align-self:stretch;display:flex;gap:9px;align-items:flex-start;max-width:100%;
     border-left:2px solid var(--gold);background:linear-gradient(90deg,rgba(140,110,50,.16),transparent);
@@ -4386,6 +4391,9 @@ async function humanSayFrom(id){
   if(!myRoleValid()) return;
   const inp=$(id), t=inp.value.trim(); if(!t) return;
   inp.value=""; inp.style.height="auto";
+  // 판이 멈춰 서 있는데 말을 걸었다면 그건 「계속」이다 — 제 말이 안 뜨고 붙잡혀
+  // 있으면 안 보내진 줄 알고 또 친다.
+  if(dripPaused) dripGo();
   // 보내고 나서 다시 잡아둔다 — 한 마디 하고 또 한 마디 하는 자리다.
   keepTyping(inp);
   const r=await post("/api/human-say",{roleId:myRoleId,clientId,text:t});
@@ -5214,10 +5222,20 @@ function chatRow(m){
    푸는 건 대화창을 보고 있을 때뿐이다. 안 보고 있으면 그대로 붙잡아 둔다 —
    나중에 열었을 때 처음부터 흘러야 그 자리에 있던 것이 된다. 하단바의 안 읽은 숫자는
    붙잡힌 줄까지 세니까(chatLines 는 원본을 본다) 알림은 도착하는 즉시 뜬다. */
-const DRIP_MS=500;
-const DRIP_MAX=20;                   // 밀린 줄이 이보다 많으면 앞엣것은 한 번에 푼다
+/* 한 줄이 머무는 시간은 그 줄의 길이를 따라간다. 전부 0.5초로 두면 세 줄짜리 증언이
+   1.5초 만에 지나가서, 읽는 사람 입장에서는 결국 «와르르»다. 짧은 표시줄은 스치고
+   긴 증언은 오래 머문다. 위는 막아둔다 — 아무리 길어도 두 초 남짓이면 다음이 온다. */
+const DRIP_TICK=120;                 // 재는 간격. 아래 시간들이 이보다 성기게 걸린다
+const DRIP_BASE=360, DRIP_PER=20, DRIP_CAP=1900;
+const DRIP_BUDGET=30000;             // 밀린 것을 다 흘리는 데 이보다 오래 걸리면 앞엣것은 한 번에
 let dripUntil=null;                  // 이 번호까지 풀었다. null이면 아직 첫 폴링 전
+let dripAt=0;                        // 다음 줄을 풀어도 되는 시각
+let dripPaused=false;                // 「계속」을 누를 때까지 멈춰 선 자리
 const nOf=m=>(m.n==null?0:m.n);
+function dripDelay(m){
+  const t=String((m&&(m.text||m.line))||"");
+  return Math.min(DRIP_CAP, DRIP_BASE+t.length*DRIP_PER);
+}
 function dripHeld(){
   const rows=(STATE&&STATE.table)||[];
   if(dripUntil===null) return null;
@@ -5236,24 +5254,37 @@ function chatWatching(){
   const g=$("gmChat"); if(g&&g.offsetParent!==null) return true;
   return false;
 }
+function repaintChat(){
+  if($("chatModal")&&$("chatModal").classList.contains("on")) renderChat("chatFull");
+  if($("gmChat")) renderChat("gmChat");
+  paintChatBadge();
+}
+/* 「계속」 — 한 대목이 끝나는 자리에서 판이 스스로 멈춰 선다. 알리바이 한 바퀴가
+   끝나고 자기소개로 넘어가는 자리처럼, 성격이 다른 대목이 이어 붙으면 어디서
+   끊겼는지가 안 보인다. 누르기 전에는 다음 줄이 안 온다. */
+function dripGo(){ dripPaused=false; dripAt=0; repaintChat(); }
 function dripTick(){
   const rows=(STATE&&STATE.table)||[];
   if(dripUntil===null){              // 들어오자마자 밀려 있던 것은 흘리지 않는다
     if(rows.length) dripUntil=Math.max(...rows.map(nOf));
     return;
   }
-  let m=dripHeld(); if(!m||!chatWatching()) return;
-  // 한참 만에 열었으면 밀린 게 스무 줄을 넘을 수 있다. 그걸 다 흘리면 열 몇 초를
-  // 지난 이야기만 보고 앉아 있게 된다 — 앞엣것은 한 번에 풀고 끝자락만 흘린다.
+  let m=dripHeld(); if(!m||dripPaused||!chatWatching()||Date.now()<dripAt) return;
+  // 한참 만에 열었으면 밀린 것이 삼십 초를 넘을 수 있다. 그걸 다 흘리면 지난
+  // 이야기만 보고 앉아 있게 된다 — 앞엣것은 한 번에 풀고 끝자락만 흘린다.
   const i=rows.indexOf(m);
-  if(i>=0&&rows.length-i>DRIP_MAX){ dripUntil=nOf(rows[rows.length-DRIP_MAX-1]); m=dripHeld(); if(!m) return; }
+  if(i>=0){
+    let tot=0, cut=-1;
+    for(let k=rows.length-1;k>=i;k--){ tot+=dripDelay(rows[k]); if(tot>DRIP_BUDGET){ cut=k; break; } }
+    if(cut>=0){ dripUntil=nOf(rows[cut]); m=dripHeld(); if(!m){ repaintChat(); return; } }
+  }
   dripUntil=nOf(m);
+  dripAt=Date.now()+dripDelay(m);
+  if(m.stop&&dripHeld()) dripPaused=true;   // 끊는 자리 — 뒤에 더 있을 때만 멈춘다
   if(m.roleId!==myRoleId) sfx("chat");
-  if($("chatModal")&&$("chatModal").classList.contains("on")) renderChat("chatFull");
-  if($("gmChat")) renderChat("gmChat");
-  paintChatBadge();
+  repaintChat();
 }
-setInterval(dripTick, DRIP_MS);
+setInterval(dripTick, DRIP_TICK);
 
 function renderChat(boxId){
   const id=boxId||"chatFull", box=$(id); if(!box) return;
@@ -5261,6 +5292,7 @@ function renderChat(boxId){
   // 흘리려고 붙잡아 둔 것뿐이면 아직 그릴 게 없는 것이지 창이 빈 게 아니다 — 지우면 안 된다
   if(!rows.length&&((STATE&&STATE.table)||[]).length) return;
   const near=box.scrollHeight-box.scrollTop-box.clientHeight<120;
+  const go=box.querySelector(":scope > .dripgo"); if(go) go.remove();   // 새 줄은 단추 앞에 붙는다
   let last=chatDrawn[id];
   const first=rows.length?(rows[0].n||0):0, tail=rows.length?(rows[rows.length-1].n||0):-1;
   // 못 본 사이에 창이 밀려났거나(오래 떠나 있었다) 방이 초기화돼 번호가 되감겼으면 다시 그린다
@@ -5271,7 +5303,12 @@ function renderChat(boxId){
   if(added) box.appendChild(frag);
   chatDrawn[id]=last;
   while(box.children.length>CHAT_KEEP) box.removeChild(box.firstChild);
-  if(near&&added) box.scrollTop=box.scrollHeight;
+  if(dripPaused){
+    const d=document.createElement("div"); d.className="dripgo";
+    d.innerHTML=`<button class="btn gold sm" onclick="dripGo()">계속 ›</button>`;
+    box.appendChild(d);
+  }
+  if((near&&added)||dripPaused) box.scrollTop=box.scrollHeight;
 }
 /* 키보드가 올라오면 화면이 줄어든다(dvh). 그때 대화창이 읽던 자리에 그대로 있으면
    방금 온 말이 위로 밀려 사라진 것처럼 보인다 — 바닥에 붙어 있었으면 계속 바닥에 붙인다. */

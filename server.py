@@ -1073,7 +1073,11 @@ def _seed_alibi() -> None:
         for a in log:
             # 말이 아니라 «판이 적는 줄». 대화록 중간에 한 번 끊고 무슨 일이 벌어졌는지 적는다.
             if a.get("note"):
-                ROOM["table"].append({"kind": "system", "broadcast": True, "text": PRE + a["note"]})
+                row = {"kind": "system", "broadcast": True, "text": PRE + a["note"]}
+                # 「여기서 한 번 끊는다」 — 대화창이 여기서 멈춰 서고 「계속」을 기다린다
+                if a.get("stop"):
+                    row["stop"] = True
+                ROOM["table"].append(row)
                 continue
             # 배역이 아닌 사람도 이 자리에 선다 — 마부도 왕진의도 그날 아침 어디 있었는지를 말한다.
             who = a.get("who", "")
