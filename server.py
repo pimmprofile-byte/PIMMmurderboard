@@ -1979,12 +1979,10 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
             if x["id"] not in h:
                 h.append(x["id"])
                 ROOM["checkedRound"][role_id][x["id"]] = 0
-        # 카드의 제목과 본문은 그 배역의 손패다. 하지만 '누가 어디를 봤는가'는 공개 정보고,
-        # 마킹이 존재하는 이유가 바로 그것이다 — 그 자체가 추리 재료다.
-        nm = (SC.get_character(role_id) or {}).get("name", role_id)
-        where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c.get("locName", "")
-        ROOM["table"].append({"kind": "system", "broadcast": True,
-                              "text": f'{nm}{_subj(nm)} 〈{where}〉{_obj(where)} 살펴봤습니다.'})
+        # 「누가 어디를 봤는가」는 여전히 공개 정보지만, 대화창에 적지는 않는다.
+        # 조사 페이즈에는 이 줄이 사람 수 × AP 만큼 쏟아져서 정작 오간 말을 밀어냈다.
+        # 그 정보를 읽는 자리는 조사 현황판이다 — 거기 카드마다 「○○ 쥐고 있음」이
+        # 적혀 있고, 그건 대화가 흐르고 나서도 안 사라진다.
         _auto_combine()
         bump()
     return None
@@ -2022,17 +2020,14 @@ def _obj(word: str) -> str:
 
 
 def _publish_from(role_id: str, card_id: str) -> None:
-    """그 배역의 손패에서 카드를 빼 전체공개로 돌리고 테이블에 알린다."""
-    c = SC.get_card(card_id)
-    who = SC.get_character(role_id) or {}
+    """그 배역의 손패에서 카드를 빼 전체공개로 돌린다.
+
+    대화창에는 안 적는다. 조사가 끝날 때마다 각자 두 장씩 내려놓는 판이라
+    이 줄만 열 몇 개가 연달아 붙었고, 그 사이에 오간 말이 위로 밀려 사라졌다.
+    무엇이 공개됐는지는 조사 현황판과 손패 화면이 계속 들고 있다.
+    """
     _publish(card_id, by=role_id)
-    if c:
-        nm = who.get("name", role_id)
-        where = f'{c["locName"]} · {c["spot"]}' if c.get("spot") else c["locName"]
-        ttl = c["title"]
-        ROOM["table"].append({"kind": "system", "broadcast": True,
-                              "text": f'{nm}{_subj(nm)} [{where}] 「{ttl}」{_obj(ttl)} 전체공개했습니다.'})
-        bump()
+    bump()
 
 
 def _auto_combine() -> None:
