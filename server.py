@@ -675,6 +675,121 @@ def admin_cards(key: str = "", scenarioId: str = ""):
             "keepGoals": getattr(m, "KEEP_GOALS", {})}
 
 
+# ── 에셋 프롬프트 ────────────────────────────────────────────────
+# pending/ 밑의 마크다운이 정본이다. 서버가 그걸 그대로 읽어 관리자 화면에 넘긴다.
+# JSON을 따로 만들어 두면 문서와 화면이 언젠가 갈라진다 — 그래서 파싱해서 쓴다.
+_ASSET_SETS = [
+    ("snooze", "자명종", "snooze_자명종", "#c99a4e", 4040),
+    ("shelter", "쉘터", "shelter_쉘터", "#7e9159", 5050),
+    ("submarine", "잠수정", "submarine_잠수정", "#a8382e", 3030),
+    ("subway", "막차", "subway_막차", "#5e8a8c", 2020),
+    ("graduation", "졸업사진", "graduation_졸업사진", "#6b7fa0", 1010),
+]
+_ASSET_CACHE: dict = {"stamp": None, "data": None}
+
+
+def _asset_fences(text: str) -> list:
+    return re.findall(r"```\n(.*?)```", text, re.S)
+
+
+def _asset_parse(path: Path) -> list:
+    """「### 제목 → `파일명`」 한 덩어리를 항목 하나로 읽는다.
+
+    본문은 인용부호(>)로 적혀 있고, 그 아래 「꼭 보여야 하는 것」과 「리젝」이 붙는다.
+    문서를 사람이 읽기 좋게 접어 쓴 줄바꿈은 여기서 편다 — 프롬프트는 한 덩어리로 붙여야 한다.
+    """
+    if not path.exists():
+        return []
+    lines = path.read_text(encoding="utf-8").split("\n")
+    out, group, i = [], "", 0
+    while i < len(lines):
+        line = lines[i]
+        m = re.match(r"^#\s+\d+\.\s*(.+)$", line)
+        if m:
+            group = re.sub(r"\s*—.*$", "", m.group(1)).strip()
+        if line.startswith("### "):
+            head = line[4:].strip()
+            fm = re.search(r"→\s*`([^`]+)`", head)
+            if fm:
+                cur = {"file": fm.group(1), "group": group,
+                       "title": head.split("→")[0].replace("~~", "").strip(),
+                       "meta": "", "body": "", "must": "", "reject": ""}
+                j, body = i + 1, []
+                while j < len(lines) and not lines[j].startswith(("### ", "## ", "# ")):
+                    t = lines[j]
+                    if t.startswith("> "):
+                        body.append(t[2:].rstrip())
+                    elif t.startswith(">"):
+                        body.append(t[1:].rstrip())
+                    elif t.startswith("**꼭 보여야 하는 것:**"):
+                        cur["must"] = t.split("**", 2)[2].strip()
+                    elif t.startswith("**리젝:**"):
+                        cur["reject"] = t.split("**", 2)[2].strip()
+                    elif t.startswith("**") and not cur["meta"] and not body:
+                        cur["meta"] = t.replace("**", "").strip()
+                    j += 1
+                cur["body"] = re.sub(r"\s+", " ", " ".join(x.strip() for x in body if x.strip())).strip()
+                if cur["body"]:
+                    out.append(cur)
+                i = j
+                continue
+        i += 1
+    return out
+
+
+def _asset_prompts() -> dict:
+    """pending/ 을 통째로 읽어 화면이 쓸 모양으로 준다. 파일이 안 바뀌면 다시 안 읽는다."""
+    root = _HERE / "pending"
+    files = sorted(root.rglob("*.md")) if root.exists() else []
+    stamp = tuple((str(p), p.stat().st_mtime_ns) for p in files)
+    if _ASSET_CACHE["stamp"] == stamp and _ASSET_CACHE["data"]:
+        return _ASSET_CACHE["data"]
+
+    common = {"zone": "", "card": "", "ref": ""}
+    cp = root / "00_화풍_공통.md"
+    if cp.exists():
+        f = _asset_fences(cp.read_text(encoding="utf-8"))
+        for k, idx in (("zone", 0), ("card", 1), ("ref", 2)):
+            if len(f) > idx:
+                common[k] = f[idx].strip()
+
+    scen = []
+    for sid, name, folder, hue, seed in _ASSET_SETS:
+        d = root / folder
+        zp, kp = d / "구역.md", d / "카드.md"
+        tone = ""
+        for src in (zp, kp):
+            if not src.exists():
+                continue
+            for f in _asset_fences(src.read_text(encoding="utf-8")):
+                if "The place" in f:
+                    tone = f.strip()
+                    break
+            if tone:
+                break
+        zones, cards = _asset_parse(zp), _asset_parse(kp)
+        for it in zones + cards:
+            it["have"] = (_HERE / "assets" / it["file"]).exists()
+        scen.append({"id": sid, "name": name, "hue": hue, "seed": seed,
+                     "tone": tone, "zones": zones, "cards": cards})
+
+    data = {"common": common, "scen": scen}
+    _ASSET_CACHE["stamp"], _ASSET_CACHE["data"] = stamp, data
+    return data
+
+
+@app.get("/api/admin/assets")
+def admin_assets(key: str = ""):
+    """검수용 — pending/ 의 에셋 프롬프트를 관리자 화면에 그대로 넘긴다.
+
+    프롬프트 본문에는 「무엇이 보여야 하는가」가 적혀 있고, 그게 곧 그 카드의 답이다.
+    그래서 카드·배역 훑어보기와 똑같이 AGENT_KEY로 잠근다.
+    """
+    if not _agent_ok(key):
+        return JSONResponse({"error": "key"}, status_code=403)
+    return _asset_prompts()
+
+
 @app.get("/api/admin/roles")
 def admin_roles(key: str = "", scenarioId: str = ""):
     """검수용 — 한 시나리오의 배역을 롤카드 통째로 준다.

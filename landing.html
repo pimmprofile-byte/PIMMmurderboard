@@ -261,6 +261,35 @@
   .adpair{font-size:.8rem;line-height:1.7;color:var(--bone-dim);padding:8px 0;border-top:1px solid var(--line2)}
   .adpair b{color:var(--brass)}
 
+  /* 에셋 프롬프트 훑어보기 — 읽는 화면이 아니라 «복사하는» 화면이다.
+     프롬프트 하나는 앞머리 + 톤 + 본문 세 조각을 이어 붙여야 완성되므로,
+     그 셋을 한 번에 붙여주는 버튼을 항목마다 세워 둔다. */
+  .adp{background:#0c0910;border:1px solid var(--line2);border-radius:11px;padding:13px 14px;margin-bottom:10px}
+  .adp .ph{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px}
+  .adp .pti{font-family:var(--serif);font-weight:800;font-size:1rem;color:var(--bone)}
+  .adp .pfile{font-family:var(--mono);font-size:.6rem;letter-spacing:.03em;color:var(--brass);word-break:break-all}
+  .adp .pmeta{font-size:.72rem;color:var(--faint);margin-bottom:7px;word-break:keep-all}
+  .adp .pbody{font-family:var(--mono);font-size:.72rem;line-height:1.8;color:var(--bone-dim);
+    background:#080610;border:1px solid var(--line2);border-radius:8px;padding:11px 12px;
+    white-space:pre-wrap;word-break:break-word;max-height:200px;overflow:auto}
+  .adp .pbody b{color:var(--brass);font-weight:700}
+  .adp .pacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;align-items:center}
+  .adp .pnote{font-size:.74rem;line-height:1.6;margin-top:8px;display:flex;gap:7px;word-break:keep-all}
+  .adp .pnote .w{font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;border:1px solid currentColor;
+    border-radius:5px;padding:1px 6px;flex:0 0 auto;align-self:flex-start}
+  .adp .pnote.m{color:#8fb37f}
+  .adp .pnote.r{color:var(--blood-bri)}
+  .adp .pnote span.t{color:var(--bone-dim)}
+  .adp .phave{font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;margin-left:auto;
+    border:1px solid rgba(143,179,127,.5);color:#8fb37f;border-radius:20px;padding:1px 7px;white-space:nowrap}
+  .adcp{font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;background:#0c0910;
+    border:1px solid var(--line2);color:var(--bone-dim);border-radius:7px;padding:6px 11px}
+  .adcp:hover{color:var(--bone);border-color:var(--brass)}
+  .adcp.k{background:var(--brass);border-color:var(--brass);color:#120d08;font-weight:800}
+  .adcp.done{background:#3f6b3a!important;border-color:#3f6b3a!important;color:#fff!important}
+  .adphint{font-size:.74rem;line-height:1.7;color:var(--faint);margin:0 0 14px;word-break:keep-all}
+  .adphint b{color:var(--brass)}
+
   /* 배역 훑어보기 — 한 사람이 한 칸. 카드 훑어보기와 달리 세로로 길어서
      한 줄에 하나(넓은 화면은 둘)만 놓고, 안에서 소제목으로 갈라 읽는다. */
   .adroles{display:grid;gap:14px;grid-template-columns:1fr}
@@ -838,17 +867,18 @@ function admCard(c){
     ${c.gone?`<div class="cgone">이튿날에는 이 자리가 없다</div>`:""}
     ${tags?`<div class="ctags">${tags}</div>`:""}</div>`;
 }
-function admSetKey(toRoles){
+function admSetKey(to){
   const i=$("admk"); if(!i) return;
   admKey=i.value.trim(); try{ localStorage.setItem("pmb.gmkey",admKey); }catch(e){}
-  if(toRoles) admRolesLoad(); else admLoad();
+  if(to==="assets"){ ASSETS=null; admAssetsLoad(); }
+  else if(to) admRolesLoad(); else admLoad();
 }
 function showCardBrowser(){
   const tabs=admOrder().map(id=>{ const sc=SCEN.find(s=>s.id===id); if(!sc) return "";
     return `<button class="adtab${id===admScen?" on":""}" onclick="admScen='${id}';showCardBrowser()">${ADM_ESC(sc.title)}</button>`; }).join("");
   $("adcard").className="adcard wide";
   $("adcard").innerHTML=`<h3>조사카드 훑어보기</h3><div class="adsub">QA READOUT · 본문·힌트까지 전부</div>
-    <div class="adtabs">${tabs}<button class="adtab" onclick="showRoleBrowser()">배역</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
+    <div class="adtabs">${tabs}<button class="adtab" onclick="showRoleBrowser()">배역</button><button class="adtab" onclick="showAssetBrowser()">에셋 프롬프트</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
     <div id="admcards"></div>
     <button class="adclose" onclick="closeAdmin()">닫기</button>`;
   $("admask").classList.add("on");
@@ -923,11 +953,149 @@ function showRoleBrowser(){
     return `<button class="adtab${id===admScen?" on":""}" onclick="admScen='${id}';showRoleBrowser()">${ADM_ESC(sc.title)}</button>`; }).join("");
   $("adcard").className="adcard wide";
   $("adcard").innerHTML=`<h3>배역 훑어보기</h3><div class="adsub">QA READOUT · 목표·비밀·심문 대사까지 전부</div>
-    <div class="adtabs">${tabs}<button class="adtab" onclick="showCardBrowser()">조사카드</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
+    <div class="adtabs">${tabs}<button class="adtab" onclick="showCardBrowser()">조사카드</button><button class="adtab" onclick="showAssetBrowser()">에셋 프롬프트</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
     <div id="admroles"></div>
     <button class="adclose" onclick="closeAdmin()">닫기</button>`;
   $("admask").classList.add("on");
   admRolesLoad();
+}
+
+/* ── 에셋 프롬프트 훑어보기 ─────────────────────────────────────
+   그림을 뽑을 때 쓰는 창구다. 읽으라고 만든 화면이 아니라 «복사하라고» 만든 화면이다.
+   프롬프트 한 덩어리는 앞머리 + 톤 블록 + 본문, 세 조각을 이어 붙여야 완성된다.
+   그 조립을 사람이 매번 하면 언젠가 한 조각을 빠뜨린다 — 그래서 버튼이 붙여준다.
+   본문에 그대로 단서가 적혀 있어서 카드·배역 쪽과 같은 AGENT_KEY로 잠겨 있다. */
+let admAsset="snooze", ASSETS=null;
+const ADM_BARE=t=>String(t==null?"":t).replace(/\*\*/g,"").replace(/[«»]/g,'"');
+const ADM_MARK=t=>ADM_ESC(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>");
+
+function admCopy(text,btn){
+  const done=()=>{ if(!btn) return; const o=btn.textContent;
+    btn.textContent="복사됨"; btn.classList.add("done");
+    setTimeout(()=>{ btn.textContent=o; btn.classList.remove("done"); },1200); };
+  // 사내망에서 http로 여는 경우가 많다 — 그때는 clipboard API가 없다.
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(done,()=>admCopyFallback(text,done));
+  } else admCopyFallback(text,done);
+}
+function admCopyFallback(text,done){
+  const ta=document.createElement("textarea");
+  ta.value=text; ta.style.position="fixed"; ta.style.top="-2000px"; ta.setAttribute("readonly","");
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0,ta.value.length);
+  try{ document.execCommand("copy"); done(); }
+  catch(e){ note("복사가 막혔습니다 — 본문을 길게 눌러 직접 복사해 주세요."); }
+  ta.remove();
+}
+/* 앞머리 + 톤 + 본문. 이 순서가 규약이다. */
+function admAssetFull(sc,it,kind){
+  const head=(kind==="zone"?ASSETS.common.zone:ASSETS.common.card)||"";
+  return [head, sc&&sc.tone, ADM_BARE(it.body)].filter(Boolean).join("\n\n");
+}
+function admAssetItem(sc,it,kind){
+  const notes=[
+    it.must?`<div class="pnote m"><span class="w">꼭</span><span class="t">${ADM_MARK(it.must)}</span></div>`:"",
+    it.reject?`<div class="pnote r"><span class="w">리젝</span><span class="t">${ADM_MARK(it.reject)}</span></div>`:"",
+  ].join("");
+  return `<div class="adp">
+    <div class="ph"><span class="pti">${ADM_ESC(it.title)}</span>
+      <span class="pfile">${ADM_ESC(it.file)}</span>
+      ${it.have?'<span class="phave">설치됨</span>':""}</div>
+    ${it.meta?`<div class="pmeta">${ADM_MARK(it.meta)}</div>`:""}
+    <div class="pbody">${ADM_MARK(it.body)}</div>
+    <div class="pacts">
+      <button class="adcp k" onclick="admAssetCopy(this,'${sc.id}','${kind}','${ADM_ESC(it.file)}','full')">합쳐서 복사</button>
+      <button class="adcp" onclick="admAssetCopy(this,'${sc.id}','${kind}','${ADM_ESC(it.file)}','body')">본문만</button>
+      <button class="adcp" onclick="admAssetCopy(this,'${sc.id}','${kind}','${ADM_ESC(it.file)}','file')">파일명</button>
+    </div>${notes}</div>`;
+}
+function admAssetCopy(btn,sid,kind,file,what){
+  const sc=(ASSETS&&ASSETS.scen||[]).find(x=>x.id===sid); if(!sc) return;
+  const it=(kind==="zone"?sc.zones:sc.cards).find(x=>x.file===file); if(!it) return;
+  if(what==="full") admCopy(admAssetFull(sc,it,kind),btn);
+  else if(what==="body") admCopy(ADM_BARE(it.body),btn);
+  else admCopy(it.file,btn);
+}
+function admAssetBlock(title,sub,text,tag){
+  return `<div class="adp">
+    <div class="ph"><span class="pti">${ADM_ESC(title)}</span></div>
+    ${sub?`<div class="pmeta">${ADM_ESC(sub)}</div>`:""}
+    <div class="pbody">${ADM_ESC(text)}</div>
+    <div class="pacts"><button class="adcp" onclick="admCopy(admAssetRaw('${tag}'),this)">복사</button></div>
+  </div>`;
+}
+function admAssetRaw(tag){
+  if(!ASSETS) return "";
+  if(tag==="zone"||tag==="card"||tag==="ref") return ASSETS.common[tag]||"";
+  const sc=(ASSETS.scen||[]).find(x=>x.id===tag);
+  return sc?sc.tone:"";
+}
+async function admAssetsLoad(which){
+  if(which) admAsset=which;
+  const box=$("admassets"); if(box) box.innerHTML='<div class="adsub">불러오는 중…</div>';
+  if(!ASSETS){
+    let d;
+    try{ d=await (await fetch(`/api/admin/assets?key=${encodeURIComponent(admKey)}`)).json(); }
+    catch(e){ d={error:"network"}; }
+    if(d.error){
+      const b=$("admassets"); if(!b) return;
+      b.innerHTML=`<div class="aderr">프롬프트를 열 수 없습니다 (${ADM_ESC(d.error)}).</div>
+        <div class="adform"><input id="admk" type="password" placeholder="GM 키 (AGENT_KEY)" autocomplete="off">
+        <button onclick="admSetKey('assets')">확인</button></div>
+        <div class="adsub" style="margin-top:10px">배포본은 서버에 넣어둔 AGENT_KEY가 필요합니다. 로컬은 빈 값으로 열립니다.</div>`;
+      const i=$("admk"); if(i){ i.value=admKey; i.onkeydown=ev=>{ if(ev.key==="Enter") admSetKey("assets"); }; i.focus(); }
+      return;
+    }
+    ASSETS=d;
+  }
+  const b=$("admassets"); if(!b) return;
+
+  if(admAsset==="common"){
+    b.innerHTML=`<div class="adphint">여기 있는 블록은 <b>모든 프롬프트 맨 앞에</b> 붙습니다.
+        각 항목의 「합쳐서 복사」를 쓰면 이미 붙어서 나오니, 이 화면은 따로 손볼 때만 쓰세요.</div>
+      ${admAssetBlock("앞머리 · 구역 배경용","사람 없음 · 가운데 비움 · 글자 없음",ASSETS.common.zone,"zone")}
+      ${admAssetBlock("앞머리 · 카드 그림용","물건 하나를 크게 · 세로 40% 지점 · 글자 없음",ASSETS.common.card,"card")}
+      ${admAssetBlock("레퍼런스를 올릴 때","「화풍만 가져와라」 — 안 붙이면 다른 판 배경이 따라 들어옵니다",ASSETS.common.ref,"ref")}`;
+    return;
+  }
+  const sc=(ASSETS.scen||[]).find(x=>x.id===admAsset);
+  if(!sc){ b.innerHTML='<div class="adsub">이 사건에는 아직 프롬프트가 없습니다.</div>'; return; }
+
+  const group=(list,kind)=>{
+    let g=null, out=[];
+    list.forEach(it=>{
+      if(it.group&&it.group!==g){ g=it.group;
+        out.push(`<h4 style="font-family:var(--serif);font-size:.95rem;color:var(--faint);margin:16px 0 8px">${ADM_ESC(g)}</h4>`); }
+      out.push(admAssetItem(sc,it,kind));
+    });
+    return out.join("");
+  };
+  const done=[...sc.zones,...sc.cards].filter(x=>x.have).length;
+  b.innerHTML=`<div class="adsub">${ADM_ESC(sc.title||sc.name)} · 구역 ${sc.zones.length} · 카드 ${sc.cards.length}${done?` · 설치됨 ${done}`:""} · 시드 ${sc.seed}</div>
+    ${sc.tone?admAssetBlock(sc.name+" 톤 블록","앞머리 다음, 본문 앞에 붙습니다",sc.tone,sc.id):""}
+    ${sc.zones.length?`<div class="adzone"><h4>구역 배경<span class="n">${sc.zones.length}장</span></h4>${group(sc.zones,"zone")}</div>`:""}
+    ${sc.cards.length?`<div class="adzone"><h4>조사카드<span class="n">${sc.cards.length}장</span></h4>${group(sc.cards,"card")}</div>`:""}`;
+}
+function showAssetBrowser(){
+  const ids=["common","snooze","shelter","submarine","subway","graduation"];
+  const nm={common:"공통 사양",snooze:"자명종",shelter:"쉘터",submarine:"잠수정",subway:"막차",graduation:"졸업사진"};
+  const tabs=ids.map(id=>`<button class="adtab${id===admAsset?" on":""}" onclick="admAssetsLoad('${id}');showAssetTabs()">${nm[id]}</button>`).join("");
+  $("adcard").className="adcard wide";
+  $("adcard").innerHTML=`<h3>에셋 프롬프트</h3><div class="adsub">GRAPHIC-NOVEL · 앞머리 + 톤 + 본문</div>
+    <div class="adphint">그림은 <b>실사가 아니라 잉크 그래픽노블</b>입니다. 프롬프트 하나는
+      <b>앞머리 + 톤 블록 + 본문</b> 세 조각이라, <b>합쳐서 복사</b>가 그 셋을 이어 붙여 줍니다.
+      「본문만」은 이미 앞머리를 걸어둔 창에 이어 붙일 때 쓰세요.</div>
+    <div class="adtabs" id="admassettabs">${tabs}</div>
+    <div class="adtabs"><button class="adtab" onclick="showCardBrowser()">조사카드</button><button class="adtab" onclick="showRoleBrowser()">배역</button><button class="adtab" onclick="showAdminPanel()">← 사건 정본</button></div>
+    <div id="admassets"></div>
+    <button class="adclose" onclick="closeAdmin()">닫기</button>`;
+  $("admask").classList.add("on");
+  admAssetsLoad();
+}
+/* 탭만 다시 칠한다 — 목록을 통째로 다시 그리면 스크롤이 위로 튄다. */
+function showAssetTabs(){
+  const ids=["common","snooze","shelter","submarine","subway","graduation"];
+  const t=$("admassettabs"); if(!t) return;
+  [...t.children].forEach((b,i)=>b.classList.toggle("on",ids[i]===admAsset));
 }
 
 /* 열람 순서 — ORDER 를 먼저 쓰되, 아직 안 채워졌으면 SCEN 에 있는 것도 붙인다.
@@ -953,6 +1121,7 @@ function showAdminPanel(){
     ${rows}
     <button class="adtab" style="margin-top:16px;width:100%;padding:11px" onclick="showCardBrowser()">조사카드 전부 훑어보기 →</button>
     <button class="adtab" style="margin-top:7px;width:100%;padding:11px" onclick="showRoleBrowser()">배역 전부 훑어보기 →</button>
+    <button class="adtab" style="margin-top:7px;width:100%;padding:11px" onclick="showAssetBrowser()">에셋 프롬프트 훑어보기 →</button>
     <button class="adclose" onclick="closeAdmin()">닫기</button>`;
   $("admask").classList.add("on");
 }
