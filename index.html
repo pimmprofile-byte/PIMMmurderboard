@@ -1321,6 +1321,11 @@
     background:rgba(60,110,150,.14)}
   .zcard.fresh{border-color:color-mix(in srgb,var(--cold) 45%,var(--line));
     background:linear-gradient(180deg,rgba(60,110,150,.14),rgba(60,110,150,.04))}
+  /* 그 아침에 «벌어진 일» 자체를 적은 카드 — 판을 뒤집는 자리라 붉게 세운다 */
+  .dc.hot,.zcard.hot{--wc:var(--ember);border-color:color-mix(in srgb,var(--ember) 50%,var(--line));
+    background:linear-gradient(180deg,rgba(170,60,40,.17),rgba(170,60,40,.05))}
+  .dc.hot .fr,.zcard.hot .fr{color:var(--ember-b);
+    border-color:color-mix(in srgb,var(--ember) 55%,transparent);background:rgba(170,60,40,.16)}
   .dc .wh{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--wc);font-weight:700}
   .dc .wh i{font-style:normal;font-size:14px}
   /* 아직 아무도 안 본 카드 — 판에 있다는 것만 알린다 */
@@ -2756,7 +2761,7 @@ function openZoneList(loc){
   const list=cards.map(c=>{ const st=cardState(c); const full=cardOpen(c.id);
     // 제목은 카탈로그가 아니라 실제로 열린 판본에서 가져온다 — 카탈로그에는 제목이 없어서
     // 여태 내 손패·전체공개 카드의 이름 자리가 빈 채로 떴다.
-    return `<div class="zcard ${st.k}${isFresh(c)?" fresh":""}"${st.who?` style="--tc:${st.who.color}"`:""}>
+    return `<div class="zcard ${st.k}${isFresh(c)?" fresh":""}${c.hot?" hot":""}"${st.who?` style="--tc:${st.who.color}"`:""}>
       <div class="zc-spot">${esc(c.spot||z.name||"")}${isFresh(c)?`<span class="fr">이튿날</span>`:""}</div>
       <div class="zc-body">${full?`<b>${esc(full.title)}</b>`:`<span class="zc-q">아직 보지 않은 곳</span>`}</div>
       ${st.act?`<button class="btn ${st.k==="open"?"primary":"quiet"} sm" onclick="${st.act}">${st.label}</button>`
@@ -3340,6 +3345,8 @@ function cardState(c){
   const apOut=myRoleValid()&&ap>0&&used>=ap;
   const turn=STATE.turn, myTurn=(!turn)||turn===myRoleId;
   if(sealedLoc(c.loc)) return {k:"lock", label:"물에 잠김", act:""};
+  // 판이 때가 되면 스스로 여는 자리. 뒤지는 것이 아니라 «열리는 것»을 기다린다.
+  if(c.auto) return {k:"lock", label:"때가 되면 열립니다", act:""};
   // ap 가 0인 페이즈(토론·종막)에도 지도를 열어볼 수 있게 되면서, 눌러봤자 서버가 막는
   // '조사하기'가 뜨는 자리가 생겼다. 그럴 땐 아예 누를 수 없게 두고 언제 열리는지만 말한다.
   if(roundOk&&reqOk&&myRoleValid()&&ap>0&&!apOut&&myTurn) return {k:"open", label:"조사하기", act:`investigate('${c.id}')`};
@@ -3641,7 +3648,7 @@ function isFresh(c){ return (c&&c.round)===3; }
 function dashCard(c){
   const st=cardState(c), full=cardOpen(c.id);
   const spot=esc(c.spot||c.locName||"")+(isFresh(c)?`<span class="fr">이튿날</span>`:"");
-  const fr=isFresh(c)?" fresh":"";
+  const fr=(isFresh(c)?" fresh":"")+(c.hot?" hot":"");
   if(st.k==="pub") return `<button class="dc pub act${fr}" onclick="openCard('${c.id}')">
     <span class="sp">${spot}</span><span class="ti">${esc((full&&full.title)||"")}${comboBadge(c.id)}</span>
     ${full&&full.text?`<span class="tx clip1">${esc(oneLine(full.text))}</span>`:""}
@@ -3657,7 +3664,8 @@ function dashCard(c){
   // cardState 의 잠김 사유에는 '내 차례 아님'처럼 내 사정이 섞여 있다. 현황판은 판 전체를
   // 읽는 자리라 카드 쪽 사정만 적는다 — 나머지는 그냥 아직 아무도 안 본 카드다.
   let why="아직 아무도 보지 않음", dim=false;
-  if(sealedLoc(c.loc)){ why="물에 잠김 — 닿을 수 없음"; dim=true; }
+  if(c.auto){ why="때가 되면 판이 엽니다 — 뒤질 수 없음"; dim=true; }
+  else if(sealedLoc(c.loc)){ why="물에 잠김 — 닿을 수 없음"; dim=true; }
   else if(c.round>(STATE.round||0)){ why=`조사 R${c.round}에 열림`; dim=true; }
   else if((c.needs||(c.requires?[c.requires]:[])).some(r=>!discoveredIds().has(r))){
     const d=discoveredIds(), miss=(c.needs||[c.requires]).filter(r=>!d.has(r))

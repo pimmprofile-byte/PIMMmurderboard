@@ -652,6 +652,7 @@ def admin_cards(key: str = "", scenarioId: str = ""):
             "icon": z.get("icon", ""),
             "spot": c.get("spot", ""), "round": c.get("round", 0),
             "reveal": c.get("reveal", ""), "bait": bool(c.get("bait")),
+            "auto": bool(c.get("auto")), "hot": bool(c.get("hot")),
             "requires": c.get("requires", ""), "unlocks": c.get("unlocks", ""),
             "title": c.get("title", ""), "text": c.get("text", ""), "hint": c.get("hint", ""),
         })
@@ -1412,7 +1413,7 @@ def _round_open_pool() -> list:
         taken.update(cids)
     out = []
     for c in getattr(SC, "CARDS", []) or []:
-        if c["id"] in taken or c.get("round", 1) > cur:
+        if c["id"] in taken or c.get("round", 1) > cur or c.get("auto"):
             continue
         if _zone_lock(c.get("loc", ""), cur) or c.get("loc") in (ROOM.get("sealed") or []):
             continue
@@ -1447,6 +1448,8 @@ def _openable_cards(role_id: str) -> list:
     out, fresh = [], []
     for c in SC.CARDS:
         if c["id"] in mine or c["id"] in ROOM["revealed"] or c["round"] > cur:
+            continue
+        if c.get("auto"):            # 판이 스스로 여는 자리 — 뒤져서 열 수 없다
             continue
         if _holder_of(c["id"]) and not c.get("shared"):   # 남이 가져간 카드는 후보에서 제외
             continue
@@ -1733,6 +1736,8 @@ def _try_investigate(role_id: str, card_id: str, enforce_ap: bool = True, enforc
     lock = _zone_lock(c.get("loc", ""), cur)
     if lock:
         return lock
+    if c.get("auto") and card_id not in ROOM["revealed"]:
+        return "여기는 뒤져서 여는 자리가 아닙니다 — 때가 되면 판이 스스로 엽니다"
     if c["round"] > cur:
         return f"아직 조사할 수 없습니다 (조사 R{c['round']}에 열림)"
     # 선행 카드 검사. 여태 _openable_cards(=화면 표시와 AI 선택)에만 있었고 실제 조사 요청에는

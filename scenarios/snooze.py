@@ -668,7 +668,7 @@ NPC_LINES = {
 # 조사로는 못 여는 카드가 이야기 진행에 맞춰 테이블에 올라오는 자리.
 # 유서확인식. 어젯밤 집사가 「내일 오전에 하겠다」고 했고, 그래서 아침에 서재가 열린다.
 # 조사턴으로는 못 여는 자리다 — 이 두 장은 판이 열어준다.
-PHASE_REVEAL = {7: ["I1", "I2"]}
+PHASE_REVEAL = {2: ["A1"], 7: ["I1", "I2", "A4", "A5"]}
 
 ATTEMPT_ID = "basil"
 CULPRIT_ID = "nell"
@@ -1102,6 +1102,7 @@ CARDS = [
     # ── R1 · 현장 6 (서재·주인·소지품은 잠김) ─────────────────────
     {"id": "A1", "loc": "A", "locName": "당주의 방", "round": 1, "reveal": "private", "bait": False,
      "spot": "침대 · 시신",
+     "auto": True,
      "title": "피해자의 시신",
      "text": "이불이 목까지 반듯하게 덮여 있다. 흐트러진 데가 없다.\n"
              "입술 안쪽과 눈꺼풀에 점상 출혈. 그런데 목에는 아무 자국이 없다.\n"
@@ -1191,7 +1192,7 @@ CARDS = [
              "★ 발자국의 주인은 하녀 「넬 위더」.",
      "hint": "정규 통로로 이 방에 온 사람은 하나뿐이다. 그럼 나머지는 어디로 들어왔나."},
 
-    {"id": "G1", "loc": "G", "locName": "주방", "round": 3, "reveal": "private", "bait": False,
+    {"id": "G1", "loc": "G", "locName": "주방", "round": 1, "reveal": "private", "bait": False,
      "spot": "개수대 옆",
      "insight": {"nell": "…찬물 가져다준다고 했다가 못 줬다.\n"
                          "그 얘기가 왜 나왔는지는 나도 아직 모르겠고."},
@@ -1202,7 +1203,7 @@ CARDS = [
              "넬 위더는 얼굴이 빨개질 뿐이었다.",
      "hint": "마부가 주방에 있었고, 하녀가 그를 위해 잔을 꺼냈다. 이 집에서 그럴 일이 없다."},
 
-    {"id": "I1", "loc": "I", "locName": "서재", "round": 4, "reveal": "private", "bait": False,
+    {"id": "I1", "loc": "I", "locName": "서재", "round": 3, "auto": True, "reveal": "private", "bait": False,
      "spot": "금고",
      "insight": {"kieran": "…저건 내가 넣어둔 거다. 저대로면 이 집은 내 거다.\n"
                            "종이가 낡은 건 좀 걸리는데."},
@@ -1304,6 +1305,7 @@ CARDS = [
      "spot": "두 번째 아침",
      # 밤에 각자 무엇을 했는지는 판마다 다르다 — 그건 「내 정보」의 그날 밤 조각이 말한다.
      # 여기서는 셋 다 시신을 «처음 보는 사람의 눈»으로만 읽는다.
+     "auto": True, "hot": True,
      "title": "두 번째 아침",
      "text": "에드먼드 경이 다시 죽어 있다. 이번엔 몸이 굳었다.\n"
              "어제의 그 흔적이 하나도 없다 — 점상 출혈도, 눌린 자국도.\n"
@@ -1313,6 +1315,7 @@ CARDS = [
 
     {"id": "A5", "loc": "A", "locName": "당주의 방", "round": 3, "reveal": "private", "bait": False,
      "spot": "협탁 · 두 번째",
+     "auto": True, "hot": True,
      "title": "두 번 울린 자명종",
      "text": "오늘 아침에도 울렸다. 여덟 시에 한 번, 십 분 뒤에 한 번 더.\n"
              "★ 버튼이 반만 눌려 있다. 그가 삼십 년 누르던 그 깊이다.\n"
@@ -1349,8 +1352,8 @@ CARDS = [
              "  앉아서 일한 게 아닌 «기다리고 있던» 자세다.",
      "hint": "여기서 밤을 샌 사람이 있다. 일한 게 아니라 기다렸다."},
 
-    {"id": "I2", "loc": "I", "locName": "서재", "round": 4, "reveal": "private", "bait": False,
-     "spot": "책상 맨 아래 칸",
+    {"id": "I2", "loc": "I", "locName": "서재", "round": 3, "auto": True, "reveal": "private", "bait": False,
+     "spot": "금고",
      "title": "로프탄 매매 서류",
      "text": "사십 년 전 날짜로 기록된 가죽 장부 한 권. 먼지가 가득히 쌓여 있다.\n"
              "「솔베인 상회 — 로프탄 섬 매입 및 권한 행사 내역」\n\n"
@@ -2482,6 +2485,7 @@ def public_scenario() -> dict:
         "pairKeys": [],
         "cardCatalog": [{"id": c["id"], "loc": c["loc"], "locName": c["locName"],
                          "spot": c.get("spot", ""), "round": c["round"],
+                         "auto": bool(c.get("auto")), "hot": bool(c.get("hot")),
                          "requires": c.get("requires", "")} for c in CARDS],
         "openingCuts": OPENING_CUTS,
         "finalQuestions": FINAL_QUESTIONS,
