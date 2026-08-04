@@ -69,6 +69,21 @@ MAP = [
     {"loc": "H", "name": "마굿간", "icon": ""},
 ]
 
+# 구역 그림 — 조사화면 배경으로 깔린다. art 키가 곧 /assets/snooze_room_{art}.webp 다.
+# 서재(I)는 지도에 자리가 없는 구역이라 카드가 「구역 밖」으로 뜨지만, 그림은 있다.
+ROOMS = [
+    {"key": "A", "loc": "A", "name": "당주의 방",  "art": "bedroom"},
+    {"key": "B", "loc": "B", "name": "복도",      "art": "hall"},
+    {"key": "C", "loc": "C", "name": "성채 외벽",  "art": "wall"},
+    {"key": "J", "loc": "J", "name": "온실",      "art": "glasshouse"},
+    {"key": "D", "loc": "D", "name": "마당",      "art": "yard"},
+    {"key": "E", "loc": "E", "name": "관리실",     "art": "office"},
+    {"key": "F", "loc": "F", "name": "지하실",     "art": "cellar"},
+    {"key": "G", "loc": "G", "name": "주방",      "art": "kitchen"},
+    {"key": "H", "loc": "H", "name": "마굿간",     "art": "stable"},
+    {"key": "I", "loc": "I", "name": "서재",      "art": "study"},
+]
+
 COMMON_INTRO = (
     "지중해의 외딴 섬 솔베니아. 소르트 향료로 유명한 땅이고, 섬 전체가 솔베인 가문의 것이다.\n"
     "마흔 해 전 당주 에드먼드 솔베인이 이 섬을 통째로 사들였다.\n\n"
@@ -2583,6 +2598,8 @@ def public_scenario() -> dict:
         "title": TITLE, "subtitle": SUBTITLE, "intro": COMMON_INTRO, "victim": VICTIM,
         "alibiLog": ALIBI_LOG, "alibiNote": ALIBI_NOTE, "alibiHead": ALIBI_HEAD,
         "map": MAP, "victimCard": VICTIM_CARD, "sceneNote": SCENE_NOTE, "mapLabel": "솔베인 관",
+        "rooms": [{"key": r["key"], "loc": r["loc"], "name": r["name"], "art": r["art"],
+                   "needPod": False} for r in ROOMS],
         # 이 사건은 아침에 일어난다 — 「그리고 오늘 밤」이 안 맞는다.
         "storyLabels": {"past": "지난 과거", "today": "오늘, 일어난 일",
                         "when": "오늘 아침", "goals": "오늘, 내가 노리는 것",

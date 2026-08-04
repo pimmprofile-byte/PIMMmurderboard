@@ -752,8 +752,10 @@
   /* 비율을 고정하지 않는다 — 물건마다 알맞은 틀이 다르다(세운 병은 세로, 널린 서류는 가로).
      다만 세로로 길어도 화면을 다 먹지는 않게 잘라둔다. 카드는 읽는 물건이다. */
   .cardart{margin:0 0 13px;border-radius:5px;overflow:hidden;border:1px solid var(--line);
-    cursor:pointer;max-height:44svh}
-  .cardart img{display:block;width:100%;height:auto;max-height:44svh;object-fit:cover;object-position:50% 42%}
+    cursor:pointer;max-height:54svh;background:rgba(0,0,0,.35)}
+  /* 잘라내지 않는다 — 세로 그림은 아래쪽에 단서가 앉는 경우가 많아서(밀랍 직인, 바닥의 자국)
+     가운데를 오려내면 그 카드가 말하려던 것이 사라진다. 남는 자리는 어둡게 둔다. */
+  .cardart img{display:block;width:100%;height:auto;max-height:54svh;object-fit:contain}
   .sharesec{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--gold-b);
     margin:14px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--line)}
   .sharesec.cold{color:var(--cold)}
