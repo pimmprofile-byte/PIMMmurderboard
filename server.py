@@ -183,6 +183,8 @@ def fresh_room() -> dict:
         # 중간 지목 — 판이 끝나기 전에 한 번 이름을 부르는 사건이 있다. 그 표는 사라지지
         # 않고 종막까지 따라간다. seq 를 같이 적어두는 건 그 막에서만 고칠 수 있게 하려고다.
         "vaultRead": [], "accuse1": {"seq": None, "picks": {}},
+        # 1차 지목에서 압수된 소지품의 임자들. 한 번 압수되면 판이 끝날 때까지 펴져 있다.
+        "seized": [],
         # 밤 — 각자 몰래 한 가지를 고르고, 그 조합이 그날 밤에 실제로 일어난 일을 정한다.
         "night": {"open": False, "picks": {}, "result": None},
         # 질문지 — 순서대로 하나씩 묻는다. 안 물어진 것이 남는 게 이 막의 요점이다.
@@ -944,6 +946,11 @@ def state(clientId: str = "", gm: int = 0):
             # 내가 무엇을 적었는지는 언제든 나만 볼 수 있다. 남의 표는 종막까지 안 열린다.
             st["accuse1"]["mineDone"] = who in ((ROOM.get("accuse1") or {}).get("picks") or {})
             st["accuse1"]["mine"] = ((ROOM.get("accuse1") or {}).get("picks") or {}).get(who, "")
+        # 소지품 — 내 것과, 압수돼 펴진 것만. 남의 주머니는 압수 전에는 안 보인다.
+        _who = next((rid for rid, r in ROOM["roles"].items() if r["clientId"] and r["clientId"] == clientId), "")
+        _bl = _belongings_public(_who)
+        if _bl:
+            st["belongings"] = _bl
         # 밤의 선택지는 그 사람 것만 내려간다. 공개 상태에는 «누가 정했나»만 있다.
         if st.get("night") is not None:
             mine = next((rid for rid, r in ROOM["roles"].items() if r["clientId"] and r["clientId"] == clientId), "")
@@ -2906,6 +2913,112 @@ def _tally(picks: dict) -> dict:
     return out
 
 
+def _person(rid: str) -> dict:
+    """이름표 하나. 배역이든 NPC든 상관없이 찾아준다.
+
+    소지품이 열릴 때 받아치는 사람은 대개 NPC다(토마스 렌·마시 선생). 배역 목록만
+    뒤지면 그 자리에 id가 그대로 찍힌다."""
+    for fn in ("get_character", "get_npc"):
+        f = getattr(SC, fn, None)
+        if not f:
+            continue
+        try:
+            c = f(rid)
+        except Exception:                      # noqa: BLE001 — 이름 하나 때문에 판이 멈추면 안 된다
+            c = None
+        if c:
+            return c
+    return {}
+
+
+def _person_name(rid: str) -> str:
+    return (_person(rid) or {}).get("name", rid)
+
+
+def _belongings_public(who: str) -> dict | None:
+    """소지품 — 내 것은 늘 보이고, 남의 것은 압수된 뒤에만 보인다.
+
+    조사카드와 아예 다른 물건이라 손패·공개카드 어디에도 안 섞인다.
+    압수 전에는 «누가 무엇을 쥐고 있다»조차 안 나간다 — 남의 주머니는 남의 것이다.
+    """
+    have = getattr(SC, "BELONGINGS", {}) or {}
+    if not have:
+        return None
+    seized = list(ROOM.get("seized") or [])
+
+    def pack(rid):
+        b = have.get(rid) or {}
+        ch = SC.get_character(rid) or {}
+        return {"roleId": rid, "id": rid, "name": ch.get("name", rid), "job": ch.get("job", ""),
+                "avatar": ch.get("avatar", ""), "color": ch.get("color", ""),
+                "title": b.get("title", ""), "spot": b.get("spot", ""),
+                "text": b.get("text", ""), "hint": b.get("hint", "")}
+
+    return {"kick": getattr(SC, "BELONGINGS_KICK", "품 안에 있는 것"),
+            "title": getattr(SC, "BELONGINGS_TITLE", "내 소지품"),
+            "note": getattr(SC, "BELONGINGS_NOTE", ""),
+            "seizedLabel": getattr(SC, "BELONGINGS_SEIZED_LABEL", "압수된 소지품"),
+            "mine": pack(who) if who in have else None,
+            "mineSeized": who in seized,
+            "seized": [pack(r) for r in seized if r != who],
+            "total": len(have), "seizedN": len(seized)}
+
+
+def _seize_belongings() -> list:
+    """1차 지목의 최다 득표자에게서 소지품을 압수한다.
+
+    표가 갈리면 갈린 사람 전부다 — 「제일 많이 받은 사람」이 여럿이면 여럿이 내놓는다.
+    소지품이 없는 이름(NPC·당주)은 셈에는 들어가도 압수할 것이 없으니 빠진다.
+    한 번 압수된 것은 되돌리지 않는다.
+
+    열린 물건마다 자리에 있던 사람들이 한마디씩 한다. 그 말은 BELONGINGS_ORDER
+    차례대로 나간다 — 둘이 한꺼번에 열렸을 때 반응이 서로 물리면 누가 무엇에 대고
+    하는 말인지 사라진다. 각 줄에는 drip 표를 붙여 보낸다. 클라이언트가 그 표를 보고
+    한 줄씩 띄운다(0.5초). 한 덩어리로 솟으면 대화가 아니라 공지처럼 읽힌다.
+    """
+    have = getattr(SC, "BELONGINGS", {}) or {}
+    if not have:
+        return ROOM.get("seized") or []
+    picks = ((ROOM.get("accuse1") or {}).get("picks") or {})
+    tally: dict[str, int] = {}
+    for t in picks.values():
+        tally[t] = tally.get(t, 0) + 1
+    if not tally:
+        return ROOM.get("seized") or []
+    top = max(tally.values())
+    order = list(getattr(SC, "BELONGINGS_ORDER", []) or []) or sorted(have)
+    rank = {r: i for i, r in enumerate(order)}
+    lead = sorted((t for t, v in tally.items() if v == top and t in have),
+                  key=lambda r: (rank.get(r, len(rank)), r))
+    cur = ROOM.setdefault("seized", [])
+    new = [r for r in lead if r not in cur]
+    if not new:
+        return cur
+    cur.extend(new)
+    names = " · ".join(_person_name(r) for r in new)
+    ROOM["table"].append({"kind": "system", "broadcast": True,
+                          "text": f"— 표가 가장 많이 모인 자리에서 소지품을 내놓게 했습니다 — {names}.\n"
+                                  "    압수된 물건은 「내 정보 · 추가 정보」에서 모두가 봅니다."})
+    for rid in new:
+        b = have.get(rid) or {}
+        ti = b.get("title", "")
+        ROOM["table"].append({"kind": "system", "broadcast": True, "drip": True,
+                              "text": f"— {_person_name(rid)}의 {b.get('spot', '품')}에서 "
+                                      f"「{ti}」{_subj(ti)} 나왔습니다."})
+        for ln in b.get("react") or []:
+            say = (ln.get("text") or "").strip()
+            if not say:
+                continue
+            who = ln.get("who") or ""
+            if not who:                         # 말이 아니라 그 자리에서 벌어진 일
+                ROOM["table"].append({"kind": "system", "broadcast": True,
+                                      "drip": True, "text": f"    {say}"})
+                continue
+            ROOM["table"].append({"kind": "ai", "roleId": who, "speaker": _person_name(who),
+                                  "text": say, "auto": True, "drip": True})
+    return cur
+
+
 def _accuse1_public() -> dict | None:
     """그 막에서 던진 표. 판정은 안 한다 — 이 표는 종막까지 그대로 따라간다."""
     ph = SC.phase_by_seq(ROOM["seq"])
@@ -2954,9 +3067,13 @@ def accuse_interim(b: VoteReq):
         nm = (SC.get_character(b.roleId) or {}).get("name", b.roleId)
         # 무엇을 적었는지도, 결과도 그 자리에서는 안 연다. 종막에서 봉투를 뜯는다.
         if first and all(r in a1["picks"] for r in _human_roles()):
+            # 소지품을 쓰는 사건에서는 이 표가 종막까지 잠들어 있지 않다 — 여기서 한 번 값을 한다.
+            tail = ("    표를 가장 많이 받은 사람은 그 자리에서 소지품을 압수당합니다."
+                    if getattr(SC, "BELONGINGS", None) else "    이 표는 종막에서 열립니다.")
             ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": "— 모두 적었습니다. 종이는 접힌 채로 봉투에 들어갔습니다.\n"
-                                          "    이 표는 종막에서 열립니다."})
+                                  "text": "— 모두 적었습니다. 종이는 접힌 채로 봉투에 들어갔습니다.\n" + tail})
+            # 누구를 적었는지는 안 열어도, 제일 많이 불린 이름은 그 자리에서 값을 치른다.
+            _seize_belongings()
         bump()
     return {"ok": True, "accuse1": _accuse1_public()}
 
@@ -3472,6 +3589,10 @@ def _advance():
         # 아직 안 고른 사람은 「안 갔다」로 본다. 그게 안 고른 것의 뜻이다.
         if (ROOM.get("night") or {}).get("open"):
             _night_resolve()
+        # 지목 막을 떠나면 압수는 그 자리에서 끝난다 — 한 사람이 안 적고 넘어가도
+        # 이미 모인 표로 셈한다. 안 그러면 소지품이 영영 안 열린 채로 판이 끝난다.
+        if SC.phase_by_seq(ROOM["seq"]).get("key") == "accuse":
+            _seize_belongings()
         if ROOM["seq"] < len(SC.PHASES):
             ROOM["seq"] += 1
             seq = ROOM["seq"]

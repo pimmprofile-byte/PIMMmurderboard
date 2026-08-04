@@ -984,6 +984,25 @@
   .eye-n{font-size:13px;font-weight:800;color:var(--ec);display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
   .eye-n i{font-style:normal;font-size:10.5px;font-weight:400;color:var(--muted)}
   .eye-t{margin-top:4px;font-size:14.5px;line-height:1.75;color:#dcdbda;word-break:keep-all}
+  /* ── 소지품 한 장 ─────────────────────────────────────────
+     내 것은 판이 열릴 때부터 여기 있다. 남의 것은 압수돼야만 이 자리에 붙는다 —
+     그래서 압수된 장은 테를 붉게 세운다. 「이건 이제 내 것이 아니라 증거다」. */
+  .bigcard.k-belong{border-color:color-mix(in srgb,var(--gold) 30%,var(--line))}
+  .bigcard.k-belong.seized{border-color:color-mix(in srgb,var(--bad) 46%,var(--line))}
+  .bg-spot{margin-top:3px;font-size:12px;color:var(--muted);letter-spacing:.04em}
+  .bg-seized{margin-top:12px;display:flex;align-items:center;gap:7px;padding:9px 12px;
+    border-radius:10px;font-size:13px;line-height:1.6;color:var(--bad);
+    background:color-mix(in srgb,var(--bad) 11%,transparent);
+    border:1px solid color-mix(in srgb,var(--bad) 34%,transparent)}
+  .bg-seized svg{width:15px;height:15px;flex:0 0 auto}
+  .bg-who{margin-top:12px;display:flex;align-items:center;gap:10px}
+  .bg-w{flex:1 1 auto;min-width:0;font-size:13px;font-weight:800;color:var(--rc,var(--gold))}
+  .bg-w i{font-style:normal;font-size:10.5px;font-weight:400;color:var(--muted);margin-left:6px}
+  .bg-s{flex:0 0 auto;font-size:11.5px;color:var(--muted)}
+  .bg-tx{margin-top:13px}
+  .bigcard.k-belong .bg-tx{border-left-color:var(--rc,var(--gold))}
+  .bg-note{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);
+    font-size:12.5px;line-height:1.8;color:var(--muted);white-space:pre-wrap;word-break:keep-all}
   /* 아직 아무것도 안 쌓인 자리. 채워질 자리라는 게 보이되 읽을 것이 있는 척은 안 한다. */
   .bigcard.k-empty{border-style:dashed;background:none}
   .bigcard.k-empty .bc-title{color:var(--muted)}
@@ -2280,7 +2299,8 @@ function paintChatBadge(){
    내가 방금 쓴 말과 첫 폴링은 뺀다(들어오자마자 밀린 말이 우수수 울리면 안 된다). */
 let chatHeard=null;
 function chatChime(){
-  const rows=(STATE&&STATE.table||[]).filter(m=>m.kind==="ai"||m.kind==="human"||m.kind==="gm");
+  // 한 줄씩 흘려보내는 줄(drip)은 여기서 안 센다 — 그 줄의 소리는 풀리는 순간에 하나씩 울린다
+  const rows=(STATE&&STATE.table||[]).filter(m=>!m.drip&&(m.kind==="ai"||m.kind==="human"||m.kind==="gm"));
   const n=rows.length;
   if(chatHeard===null||n<chatHeard){ chatHeard=n; return; }
   if(n<=chatHeard) return;
@@ -3122,11 +3142,15 @@ function buildGMBody(ph,cur,ap,k,checked,used,fresh){
     const a=STATE.accuse1||{picks:{},tally:{}};
     const rows=Object.keys(a.tally||{}).sort((x,y)=>a.tally[y]-a.tally[x])
       .map(t=>`  ${nameOf(t)} — ${a.tally[t]}표`).join("\n");
+    const bl=(STATE&&STATE.belongings)||null;   // 소지품을 쓰는 사건이면 이 표는 여기서 값을 한다
     return gmCinematic("1차 지목 · 비밀투표", (ph.gm||""),
-      a.done?"— 봉투가 닫혔습니다. 이 표는 종막에서 열립니다."
+      a.done?(bl?"— 봉투가 닫혔습니다. 최다 득표자는 소지품을 압수당합니다."
+                :"— 봉투가 닫혔습니다. 이 표는 종막에서 열립니다.")
             :"— 각자 적는 중입니다. 결과는 여기서 안 엽니다.",
       `각자 자기 기기에서 몰래 적습니다. <b>${a.voted}/${a.voters}</b>명 적음.
-       <div style="margin-top:8px">이 표는 <b>지워지지 않고, 여기서는 안 열립니다</b> — 종막에서 열립니다.
+       <div style="margin-top:8px">${bl
+         ?"표를 가장 많이 받은 사람은 그 자리에서 <b>소지품을 압수당합니다</b> — 표가 갈리면 갈린 사람 전부입니다."
+         :"이 표는 <b>지워지지 않고, 여기서는 안 열립니다</b> — 종막에서 열립니다."}
        ${a.done?"<b>다음 페이즈 ›</b>로 넘기세요.":""}</div>`);
   }
   if(k==="decision"){
@@ -4682,6 +4706,11 @@ function renderAccuse(p){
   const can=myRoleValid()&&a.open&&!mineDone;
   if(!can) acSel="";
   const targets=allPersons();
+  // 소지품을 쓰는 사건에서는 이 표가 종막까지 잠들어 있지 않다 — 최다 득표자는 그 자리에서
+  // 품을 털린다. 그걸 안 알려주면 「어차피 안 열리는 표」라고 여기고 아무렇게나 적는다.
+  const bl=(STATE&&STATE.belongings)||null;
+  const seizeNote=bl?"★ 표를 가장 많이 받은 사람은 그 자리에서 <b>소지품을 압수당합니다.</b>"
+                    +" 표가 갈리면 갈린 사람 전부입니다.":"";
   const btns=targets.map(c=>`<button class="ac-opt${acSel===c.id?" on":""}" style="--rc:${c.color}"
       ${can?`onclick="acSel1('${c.id}')"`:"disabled"}><span class="mk"></span><b>${esc(c.name)}</b>
       <span class="jb">${esc(c.job||"")}</span></button>`).join("");
@@ -4689,14 +4718,18 @@ function renderAccuse(p){
     <div class="nt-kick">1차 지목 · 비밀투표</div>
     <h2>${a.done?"봉투에 넣었다":"지금, 한 사람의 이름을 적는다"}</h2>
     <div class="nt-intro">${a.done
-      ? "종이는 접힌 채로 봉투에 들어갔습니다.\n★ 이 표는 지워지지 않습니다 — 종막에서 열립니다."
-      : "각자 몰래 적습니다. 무엇을 적었는지는 아무에게도 안 알립니다.\n★ 이 표는 지워지지 않습니다 — 그리고 여기서는 안 열립니다. 종막에서 열립니다."}</div>
+      ? "종이는 접힌 채로 봉투에 들어갔습니다.\n"
+        +(seizeNote||"★ 이 표는 지워지지 않습니다 — 종막에서 열립니다.")
+      : "각자 몰래 적습니다. 무엇을 적었는지는 아무에게도 안 알립니다.\n"
+        +(seizeNote||"★ 이 표는 지워지지 않습니다 — 그리고 여기서는 안 열립니다. 종막에서 열립니다.")}</div>
     ${(a.open&&!a.done)?(myRoleValid()
       ? (mineDone?`<div class="panel-note" style="margin-top:12px">적었습니다. 나머지를 기다립니다.</div>`:btns)
       : `<div class="panel-note" style="margin-top:12px">관전 중 — 배역을 맡은 사람만 적습니다.</div>`):""}
     ${a.mine?`<div class="ac-tally"><div class="w">내가 적은 이름</div>
       <div class="ac-row"><span>${esc(nameOf(a.mine))}</span><b>봉인됨</b></div>
-      <div class="panel-note" style="margin-top:9px">해당 투표는 종막에서 밝혀집니다.</div></div>`:""}
+      <div class="panel-note" style="margin-top:9px">${bl
+        ?"표가 다 모이면 최다 득표자의 소지품이 이 자리에서 열립니다."
+        :"해당 투표는 종막에서 밝혀집니다."}</div></div>`:""}
     <div class="nt-foot"><span class="tally">${a.voted}/${a.voters} 적음${
       a.done?" · 봉투가 닫혔습니다":""}</span>
       ${can?`<button class="btn primary sm"${acSel?"":" disabled"} onclick="acSend()">이 이름으로 적는다</button>`:""}
@@ -5174,9 +5207,54 @@ function chatRow(m){
   row.innerHTML=`<div class="av">${avaHTML(c,"sm")}</div><div><div class="nm" style="color:${c?c.color:"#999"}">${esc(m.speaker)}${m.kind==="human"?'<span class="tag-me">사람</span>':''}</div><div class="bub">${esc(m.text)}</div>${cardChips(m.text)}</div>`;
   return row;
 }
+/* ── 한 줄씩 흘려보내기 ────────────────────────────────────────────
+   소지품이 열릴 때 사람들이 하는 말은 서버에서 한 덩어리로 도착한다. 그대로 붙이면
+   대여섯 줄이 동시에 솟아서 «누가 누구 말을 받았는지»가 사라진다 — 그건 대화가 아니라
+   공지다. 그래서 drip 표가 붙은 줄은 붙잡아 뒀다가 0.5초 간격으로 하나씩 푼다.
+   푸는 건 대화창을 보고 있을 때뿐이다. 안 보고 있으면 그대로 붙잡아 둔다 —
+   나중에 열었을 때 처음부터 흘러야 그 자리에 있던 것이 된다. 하단바의 안 읽은 숫자는
+   붙잡힌 줄까지 세니까(chatLines 는 원본을 본다) 알림은 도착하는 즉시 뜬다. */
+const DRIP_MS=500;
+let dripUntil=null;                  // 이 번호까지 풀었다. null이면 아직 첫 폴링 전
+const nOf=m=>(m.n==null?0:m.n);
+function dripHeld(){
+  const rows=(STATE&&STATE.table)||[];
+  if(dripUntil===null) return null;
+  return rows.find(m=>m.drip&&nOf(m)>dripUntil)||null;
+}
+/* 붙잡힌 줄이 나오면 그 뒤는 통째로 자른다 — 걸러내면 뒷줄이 먼저 올라와 순서가 깨진다 */
+function chatRows(){
+  const rows=(STATE&&STATE.table)||[];
+  const m=dripHeld(); if(!m) return rows;
+  const i=rows.indexOf(m);
+  return i<0?rows:rows.slice(0,i);
+}
+function chatWatching(){
+  if(document.hidden) return false;
+  const m=$("chatModal"); if(m&&m.classList.contains("on")) return true;
+  const g=$("gmChat"); if(g&&g.offsetParent!==null) return true;
+  return false;
+}
+function dripTick(){
+  const rows=(STATE&&STATE.table)||[];
+  if(dripUntil===null){              // 들어오자마자 밀려 있던 것은 흘리지 않는다
+    if(rows.length) dripUntil=Math.max(...rows.map(nOf));
+    return;
+  }
+  const m=dripHeld(); if(!m||!chatWatching()) return;
+  dripUntil=nOf(m);
+  if(m.roleId!==myRoleId) sfx("chat");
+  if($("chatModal")&&$("chatModal").classList.contains("on")) renderChat("chatFull");
+  if($("gmChat")) renderChat("gmChat");
+  paintChatBadge();
+}
+setInterval(dripTick, DRIP_MS);
+
 function renderChat(boxId){
   const id=boxId||"chatFull", box=$(id); if(!box) return;
-  const rows=STATE.table||[];
+  const rows=chatRows();
+  // 흘리려고 붙잡아 둔 것뿐이면 아직 그릴 게 없는 것이지 창이 빈 게 아니다 — 지우면 안 된다
+  if(!rows.length&&((STATE&&STATE.table)||[]).length) return;
   const near=box.scrollHeight-box.scrollTop-box.clientHeight<120;
   let last=chatDrawn[id];
   const first=rows.length?(rows[0].n||0):0, tail=rows.length?(rows[rows.length-1].n||0):-1;
@@ -5658,6 +5736,31 @@ async function showMySheet(){
           <b>왜 그런지는 안 적혀 있다.</b></div></div>`:""}
     </div>`});
   }
+  // 4-e) 소지품 — 판이 열릴 때부터 품에 있던 것. 조사카드가 아니라 손패에도 안 들어가고
+  //       내려놓을 수도 없다. 1차 지목에서 표가 제일 많이 모이면 그 자리에서 압수되고,
+  //       압수된 것만 남의 화면에 붙는다. 그 전에는 «누가 무엇을 쥐고 있다»조차 안 내려온다.
+  const bl=(STATE&&STATE.belongings)||null;
+  if(bl&&bl.mine){
+    const b=bl.mine;
+    slides.push({tab:"extra", html:`<div class="bigcard role k-belong${bl.mineSeized?" seized":""}" style="--rc:${s.color}">
+      <div class="bc-eyebrow">${esc(bl.kick||"품 안에 있는 것")}</div>
+      <div class="bc-title" style="font-size:18px">${esc(b.title||"")}</div>
+      <div class="bg-spot">${esc(b.spot||"")}</div>
+      ${bl.mineSeized?`<div class="bg-seized">${ICO.warn}<span>압수됐습니다 — 이건 이제 <b>모두가 봅니다.</b></span></div>`:""}
+      <div class="ntx bg-tx">${esc(b.text||"")}</div>
+      ${b.hint?`<div class="knownote" style="margin-top:12px">${esc(b.hint)}</div>`:""}
+      ${bl.note?`<div class="bg-note">${esc(bl.note)}</div>`:""}</div>`});
+  }
+  ((bl&&bl.seized)||[]).forEach(b=>{
+    slides.push({tab:"extra", html:`<div class="bigcard role k-belong seized" style="--rc:${b.color||s.color}">
+      <div class="bc-eyebrow">${esc(bl.seizedLabel||"압수된 소지품")}</div>
+      <div class="bc-title" style="font-size:18px">${esc(b.title||"")}</div>
+      <div class="bg-who"><span class="bg-a">${avaHTML(b,"sm")}</span>
+        <span class="bg-w">${esc(b.name||"")}<i>${esc(b.job||"")}</i></span>
+        <span class="bg-s">${esc(b.spot||"")}</span></div>
+      <div class="ntx bg-tx">${esc(b.text||"")}</div>
+      ${b.hint?`<div class="knownote" style="margin-top:12px">${esc(b.hint)}</div>`:""}</div>`});
+  });
   // 5) 배치도 — 전원이 갖는다. 포드는 아는 사람 지도에만 그려진다.
   if(s.hasMap){
     const svg=await loadMapSVG();
@@ -5754,6 +5857,7 @@ async function showMySheet(){
     const fe=slides.findIndex(x=>x.tab==="extra");
     slides.splice(fe<0?slides.length:fe, 0, ...got);
   };
+  hoist(/k-belong/);           // 소지품 — 늘 있고, 압수되면 판이 뒤집히는 자리
   hoist(/k-night/);            // 그날 밤
   hoist(/k-vault/);            // 그리고 그 앞에 금고 — 오늘 아침 다 같이 본 것이 제일 위다
   // 「추가 정보」는 아직 빈 판에서도 자리를 지킨다. 판이 도는 중에 탭이 생겼다 없어졌다 하면
