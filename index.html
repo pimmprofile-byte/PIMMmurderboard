@@ -5215,6 +5215,7 @@ function chatRow(m){
    나중에 열었을 때 처음부터 흘러야 그 자리에 있던 것이 된다. 하단바의 안 읽은 숫자는
    붙잡힌 줄까지 세니까(chatLines 는 원본을 본다) 알림은 도착하는 즉시 뜬다. */
 const DRIP_MS=500;
+const DRIP_MAX=20;                   // 밀린 줄이 이보다 많으면 앞엣것은 한 번에 푼다
 let dripUntil=null;                  // 이 번호까지 풀었다. null이면 아직 첫 폴링 전
 const nOf=m=>(m.n==null?0:m.n);
 function dripHeld(){
@@ -5241,7 +5242,11 @@ function dripTick(){
     if(rows.length) dripUntil=Math.max(...rows.map(nOf));
     return;
   }
-  const m=dripHeld(); if(!m||!chatWatching()) return;
+  let m=dripHeld(); if(!m||!chatWatching()) return;
+  // 한참 만에 열었으면 밀린 게 스무 줄을 넘을 수 있다. 그걸 다 흘리면 열 몇 초를
+  // 지난 이야기만 보고 앉아 있게 된다 — 앞엣것은 한 번에 풀고 끝자락만 흘린다.
+  const i=rows.indexOf(m);
+  if(i>=0&&rows.length-i>DRIP_MAX){ dripUntil=nOf(rows[rows.length-DRIP_MAX-1]); m=dripHeld(); if(!m) return; }
   dripUntil=nOf(m);
   if(m.roleId!==myRoleId) sfx("chat");
   if($("chatModal")&&$("chatModal").classList.contains("on")) renderChat("chatFull");

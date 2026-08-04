@@ -10,6 +10,7 @@ PIMMmurderboard · 졸업사진(卒業寫眞) — 로컬 멀티플레이 게임 
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import random
@@ -364,6 +365,33 @@ def table_tail(n: int = TABLE_TAIL):
     tail = rows[-n:] if n and len(rows) > n else rows
     base = len(rows) - len(tail)
     return [dict(m, n=base + i) for i, m in enumerate(tail)]
+
+
+@contextlib.contextmanager
+def _drip():
+    """이 블록 안에서 대화창에 붙는 줄은 «한 줄씩» 흘러간다.
+
+    판이 스스로 하는 말은 언제나 여러 줄이 한꺼번에 붙는다 — 알리바이 한 바퀴,
+    막이 열릴 때의 GM과 NPC의 말, 밤이 지나고 나오는 것, 압수된 소지품을 놓고
+    오가는 말. 그대로 올리면 열다섯 줄이 동시에 솟아서 대화창이 아니라 게시판이
+    된다. 누가 누구 말을 받았는지가 거기서 사라진다.
+
+    줄마다 drip 표를 달아두면 클라이언트가 0.5초에 하나씩 푼다. 사람이 친
+    말(kind=human)은 여기서 빠진다 — 그건 원래 한 줄씩 오니까 늦출 이유가 없고,
+    보낸 사람이 제 말을 못 보고 기다리는 건 더 이상하다.
+    """
+    start = len(ROOM["table"])
+    try:
+        yield
+    finally:
+        _drip_from(start)
+
+
+def _drip_from(start: int) -> None:
+    """`with _drip()` 을 감기엔 블록이 긴 자리용 — 그 번호부터 끝까지에 표를 단다."""
+    for m in ROOM["table"][start:]:
+        if m.get("kind") != "human":
+            m.setdefault("drip", True)
 
 
 def _my_notes(role_id: str, card_ids) -> dict:
@@ -1039,22 +1067,24 @@ def _seed_alibi() -> None:
         return
     head = getattr(SC, "ALIBI_HEAD", "") or "각자가 한 말을 그대로 옮긴 것이다 — 참인지는 아무도 모른다."
     PRE = "사건 당시 · 알리바이 대화록 — "
-    ROOM["table"].append({"kind": "system", "broadcast": True, "text": PRE + head})
-    for a in log:
-        # 말이 아니라 «판이 적는 줄». 대화록 중간에 한 번 끊고 무슨 일이 벌어졌는지 적는다.
-        if a.get("note"):
-            ROOM["table"].append({"kind": "system", "broadcast": True, "text": PRE + a["note"]})
-            continue
-        # 배역이 아닌 사람도 이 자리에 선다 — 마부도 왕진의도 그날 아침 어디 있었는지를 말한다.
-        who = a.get("who", "")
-        getnpc = getattr(SC, "get_npc", None)
-        c = SC.get_character(who) or (getnpc(who) if getnpc else None) or {}
-        ROOM["table"].append({"kind": "alibi", "roleId": who,
-                              "speaker": c.get("name", who),
-                              "at": a.get("t", ""), "text": a.get("line") or a.get("say", "")})
-    note = getattr(SC, "ALIBI_NOTE", "")
-    if note:
-        ROOM["table"].append({"kind": "system", "text": note})
+    # 한 사람씩 증언하는 자리다. 열세 줄이 동시에 솟으면 «대화록»이 아니라 벽보가 된다.
+    with _drip():
+        ROOM["table"].append({"kind": "system", "broadcast": True, "text": PRE + head})
+        for a in log:
+            # 말이 아니라 «판이 적는 줄». 대화록 중간에 한 번 끊고 무슨 일이 벌어졌는지 적는다.
+            if a.get("note"):
+                ROOM["table"].append({"kind": "system", "broadcast": True, "text": PRE + a["note"]})
+                continue
+            # 배역이 아닌 사람도 이 자리에 선다 — 마부도 왕진의도 그날 아침 어디 있었는지를 말한다.
+            who = a.get("who", "")
+            getnpc = getattr(SC, "get_npc", None)
+            c = SC.get_character(who) or (getnpc(who) if getnpc else None) or {}
+            ROOM["table"].append({"kind": "alibi", "roleId": who,
+                                  "speaker": c.get("name", who),
+                                  "at": a.get("t", ""), "text": a.get("line") or a.get("say", "")})
+        note = getattr(SC, "ALIBI_NOTE", "")
+        if note:
+            ROOM["table"].append({"kind": "system", "text": note})
 
 
 @app.post("/api/start")
@@ -1067,11 +1097,13 @@ def start_game(b: HostReq):
         if opens:
             return JSONResponse({"error": f"아직 정해지지 않은 배역이 {len(opens)}개 있습니다"}, status_code=409)
         ROOM["started"] = True
-        ROOM["table"].append({"kind": "system", "broadcast": True, "text": "배역이 확정됐습니다. 오프닝을 시작합니다."})
-        _ph0 = SC.phase_by_seq(ROOM["seq"])
-        if _ph0.get("gm"):
-            ROOM["table"].append({"kind": "gm", "broadcast": True, "text": _ph0["gm"]})
-        _seed_alibi()
+        with _drip():
+            ROOM["table"].append({"kind": "system", "broadcast": True,
+                                  "text": "배역이 확정됐습니다. 오프닝을 시작합니다."})
+            _ph0 = SC.phase_by_seq(ROOM["seq"])
+            if _ph0.get("gm"):
+                ROOM["table"].append({"kind": "gm", "broadcast": True, "text": _ph0["gm"]})
+            _seed_alibi()
         bump()
     return {"ok": True, "started": True}
 
@@ -2698,8 +2730,10 @@ def _night_resolve() -> None:
         n["result"] = SC.night_resolve(dict(n.get("picks") or {}))
     except Exception:                                   # noqa: BLE001
         n["result"] = {"killer": "", "order": [], "public": [], "headline": ""}
-    for line in (n["result"].get("public") or []):
-        ROOM["table"].append({"kind": "system", "broadcast": True, "text": line})
+    # 밤이 남긴 것은 여러 줄이다. 아침에 한꺼번에 붙이면 무엇이 먼저 벌어진 일인지 안 보인다.
+    with _drip():
+        for line in (n["result"].get("public") or []):
+            ROOM["table"].append({"kind": "system", "broadcast": True, "text": line})
     _fire_cut("night:done")
     _ev("night", state="done", killer=n["result"].get("killer", ""))
     bump()
@@ -3070,10 +3104,11 @@ def accuse_interim(b: VoteReq):
             # 소지품을 쓰는 사건에서는 이 표가 종막까지 잠들어 있지 않다 — 여기서 한 번 값을 한다.
             tail = ("    표를 가장 많이 받은 사람은 그 자리에서 소지품을 압수당합니다."
                     if getattr(SC, "BELONGINGS", None) else "    이 표는 종막에서 열립니다.")
-            ROOM["table"].append({"kind": "system", "broadcast": True,
-                                  "text": "— 모두 적었습니다. 종이는 접힌 채로 봉투에 들어갔습니다.\n" + tail})
-            # 누구를 적었는지는 안 열어도, 제일 많이 불린 이름은 그 자리에서 값을 치른다.
-            _seize_belongings()
+            with _drip():
+                ROOM["table"].append({"kind": "system", "broadcast": True,
+                                      "text": "— 모두 적었습니다. 종이는 접힌 채로 봉투에 들어갔습니다.\n" + tail})
+                # 누구를 적었는지는 안 열어도, 제일 많이 불린 이름은 그 자리에서 값을 치른다.
+                _seize_belongings()
         bump()
     return {"ok": True, "accuse1": _accuse1_public()}
 
@@ -3584,6 +3619,9 @@ def _advance():
     _ev("phase_leaving", name=SC.phase_by_seq(ROOM["seq"])["name"])
     with LOCK:
         ROOM["ready"] = []          # 준비 표시는 막마다 새로 받는다
+        # 막이 넘어갈 때 붙는 줄은 전부 판이 스스로 하는 말이다 — 밤의 결과, 압수,
+        # 막 머리, GM, NPC가 꺼내는 말. 한 덩어리로 솟지 않게 표를 달아 내보낸다.
+        _drip0 = len(ROOM["table"])
         # 밤을 안 닫고 넘어가면 «아침이 안 온다». 밤 결과가 없으면 그날 밤의 자국도
         # 안 생겨서 마지막 조사에 열 카드가 모자란다 — 조사턴이 통째로 빈다.
         # 아직 안 고른 사람은 「안 갔다」로 본다. 그게 안 고른 것의 뜻이다.
@@ -3631,7 +3669,10 @@ def _advance():
             if ph.get("key") == "ask":
                 _ask_open()
             ROOM["flood"] = _flood_for(seq)
+            _drip_from(_drip0)
             bump()
+        else:
+            _drip_from(_drip0)
         return {"seq": ROOM["seq"]}
 
 
