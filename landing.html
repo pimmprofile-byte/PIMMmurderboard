@@ -219,6 +219,12 @@
   .adcards{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))}
   .adc{background:#0c0910;border:1px solid var(--line2);border-radius:11px;padding:13px 14px}
   .adc.bait{border-color:color-mix(in srgb,var(--blood) 45%,var(--line2))}
+  /* 2차 조사에서 새로 나오는 카드 — 몇 장인지 세는 자리라 눈으로 갈라져야 한다 */
+  .adc.fresh{background:linear-gradient(180deg,rgba(96,150,190,.12),#0c0910 70%);
+    border-color:color-mix(in srgb,#6096be 42%,var(--line2))}
+  .adc .cfr{font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;font-weight:700;
+    color:#9cc6e0;border:1px solid rgba(156,198,224,.45);background:rgba(96,150,190,.16);
+    border-radius:20px;padding:1px 6px}
   .adc.rulecard{border-color:var(--brass)}
   .adc .ch{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin-bottom:3px}
   .adc .cid{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;color:var(--faint)}
@@ -765,12 +771,15 @@ async function admLoad(sid){
   const zones=(d.map||[]).map(z=>{
     const cs=(byLoc[z.loc]||[]).slice().sort((x,y)=>(x.round-y.round)||x.id.localeCompare(y.id));
     if(!cs.length) return "";
-    return `<div class="adzone"><h4>${ADM_ESC(z.name||z.loc)}<span class="n">${cs.length}장</span></h4>
+    const n3=cs.filter(x=>x.round===3).length;
+    return `<div class="adzone"><h4>${ADM_ESC(z.name||z.loc)}<span class="n">${cs.length}장${n3?` · 2차 ${n3}`:""}</span></h4>
       <div class="adcards">${cs.map(admCard).join("")}</div></div>`;
   }).join("");
   const loose=(d.cards||[]).filter(c=>!(d.map||[]).some(z=>z.loc===c.loc));
   const pairs=(d.pairs||[]).map(p=>`<div class="adpair"><b>${ADM_ESC(p.key)}</b> — ${(p.cards||[]).join(" + ")} → ${ADM_ESC(p.conclusion||"")}</div>`).join("");
-  b.innerHTML=`<div class="adsub">${ADM_ESC(d.title)} · 조사카드 ${(d.cards||[]).length}장</div>
+  const cnt=(r)=>(d.cards||[]).filter(c=>c.round===r).length;
+  b.innerHTML=`<div class="adsub">${ADM_ESC(d.title)} · 조사카드 ${(d.cards||[]).length}장 (1차 ${cnt(1)} · 2차 ${cnt(3)}${
+      cnt(9)?` · 잠든 카드 ${cnt(9)}`:""}${cnt(4)?` · 판이 여는 카드 ${cnt(4)}`:""})</div>
     ${zones}${loose.length?`<div class="adzone"><h4>구역 밖<span class="n">${loose.length}장</span></h4><div class="adcards">${loose.map(admCard).join("")}</div></div>`:""}
     ${pairs?`<div class="adzone"><h4>두 장이 만나야 나는 결론<span class="n">${(d.pairs||[]).length}쌍</span></h4>${pairs}</div>`:""}`;
 }
@@ -783,8 +792,10 @@ function admCard(c){
     c.unlocks?`<i class="r">해금 ${ADM_ESC(c.unlocks)}</i>`:"",
     (c.knownBy||[]).length?`<i>미리 앎 ${c.knownBy.map(ADM_ESC).join("·")}</i>`:"",
   ].filter(Boolean).join("");
-  return `<div class="adc ${c.bait?"bait":""} ${c.unlocks?"rulecard":""}">
-    <div class="ch"><span class="cid">${ADM_ESC(c.id)}</span><span class="cti">${ADM_ESC(c.title)}</span></div>
+  // 2차(마지막) 조사에서 새로 생기는 자리는 갈라 보인다 — 1차 덱과 섞이면 세기가 어렵다.
+  const fresh=(c.round===3);
+  return `<div class="adc ${fresh?"fresh":""} ${c.bait?"bait":""} ${c.unlocks?"rulecard":""}">
+    <div class="ch"><span class="cid">${ADM_ESC(c.id)}</span><span class="cti">${ADM_ESC(c.title)}</span>${fresh?'<span class="cfr">2차</span>':""}</div>
     <div class="cwhere">${ADM_ESC(c.locName||"")}${c.spot?" · "+ADM_ESC(c.spot):""}</div>
     <div class="ctx">${ADM_ESC(c.text)}</div>
     ${c.hint?`<div class="chint">${ADM_ESC(c.hint)}</div>`:""}
