@@ -1382,6 +1382,15 @@
   /* 아직 아무도 안 본 카드 — 판에 있다는 것만 알린다 */
   .dc.none{background:var(--bg2);border-style:dashed}
   .dc.none .sp{color:var(--sub);font-weight:400}
+  /* 아직 안 뒤진 자리는 «엎어놓은 카드»다. 시나리오가 뒷면 그림을 주면 왼쪽에 그 카드를 세운다.
+     뒷면이 없는 판은 hasback 이 안 붙어서 지금까지처럼 점선 칸으로 남는다. */
+  body.hasback .dc.none{position:relative;padding-left:68px;min-height:74px;justify-content:center}
+  body.hasback .dc.none::before{content:"";position:absolute;left:12px;top:50%;
+    width:44px;height:59px;transform:translateY(-50%);
+    background:var(--cardback) center/contain no-repeat;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+  /* 아직 열 수 없는 자리는 뒷면도 같이 잠긴다 — 색이 빠지면 못 뒤진다는 게 한눈에 읽힌다 */
+  body.hasback .dc.none.lock::before{filter:grayscale(.75) brightness(.5)}
   /* 여기서 바로 조사할 수 있다는 표시 — 잠긴 자리에는 붙이지 않는다 */
   /* 전원이 아는 소문 — 시트가 아니라 인물정보에 붙는다. 여기 적힌 건 전부 밖에서 온 말이다. */
   .wknown{margin-top:6px;padding:7px 10px;border-radius:4px;font-size:12px;line-height:1.65;
@@ -3778,7 +3787,21 @@ async function openDashFilter(){
     options:DASH_FILTERS.map(([v,t,d])=>({v,t,d,n:n[v]}))});
   if(v!=null) setDashFilter(v);
 }
+/* 조사 전 카드의 뒷면 그림. 시나리오마다 한 장이고, 있으면 조사 현황판이 그걸 깐다.
+   한 번 찾으면 CSS 변수로 넘겨두고 다시 안 찾는다 — 현황판은 폴링마다 다시 그려진다. */
+let backSid=null;
+function ensureCardBack(){
+  const sid=(STATE&&STATE.scenarioId)||""; if(!sid||sid===backSid) return;
+  backSid=sid;
+  document.body.classList.remove("hasback");
+  findAsset(`/assets/${sid}_cardback`, url=>{
+    if(!url||backSid!==sid) return;
+    document.documentElement.style.setProperty("--cardback",`url("${url}")`);
+    document.body.classList.add("hasback");
+  });
+}
 function dashHTML(){
+  ensureCardBack();
   const blocks=((SCEN.map)||[]).map(z=>{
     const cards=zoneCards(z.loc); if(!cards.length) return "";
     const done=cards.filter(c=>{ const k=cardState(c).k; return k!=="open"&&k!=="lock"; }).length;

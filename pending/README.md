@@ -71,10 +71,15 @@ pending/
 | 카드 그림 | `{시나리오id}_card_{카드ID}.webp` | `snooze_card_A2.webp` |
 | 인물별 카드 | `{시나리오id}_card_{카드ID}_{배역id}.webp` | `shelter_card_G2_riminhui.webp` |
 | 금고 서류 | `{시나리오id}_doc_{키}.webp` | `snooze_doc_will.webp` |
+| 카드 뒷면 | `{시나리오id}_cardback.webp` | `snooze_cardback.webp` |
 
 시나리오 id는 화면에 뜨는 제목이 아니라 **코드상의 id**입니다.
 「자명종」은 `snooze`, 「심연의 정원」은 `submarine` 입니다. (모듈 파일이
 `abyss_garden.py`인데 에셋 접두사는 `submarine`입니다. 헷갈리기 쉬운 자리입니다.)
+
+**카드 뒷면**은 시나리오당 한 장입니다. 조사 현황판에서 아직 안 뒤진 자리마다
+엎어놓은 카드로 깔립니다 — 3:4 세로, 모서리 바깥이 투명한 webp(알파)로 주세요.
+없으면 지금까지처럼 점선 칸으로 남습니다.
 
 없는 파일은 자동으로 폴백됩니다 — **일부만 넣어도 화면이 안 깨집니다.**
 
