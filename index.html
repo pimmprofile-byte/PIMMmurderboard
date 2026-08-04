@@ -1312,8 +1312,8 @@
   .dc .tx{font-size:12px;color:var(--sub);line-height:1.65;word-break:keep-all;
     display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden}
   .dc .st{font-size:11.5px;color:var(--muted)}
-  /* 마지막 조사에서 새로 생긴 자리 — 1차에 없던 것이라 한눈에 갈라져야 한다.
-     칸을 차게 틴팅하고 이름 옆에 「2차」를 붙인다. */
+  /* 이튿날 새로 생긴 자리 — 첫날에 없던 것이라 한눈에 갈라져야 한다.
+     칸을 차게 틴팅하고 이름 옆에 「이튿날」을 붙인다. */
   .dc.fresh{--wc:var(--cold);background:linear-gradient(180deg,rgba(60,110,150,.14),rgba(60,110,150,.04))}
   .fr{display:inline-block;margin-left:6px;padding:0 5px;border-radius:20px;vertical-align:1px;
     font-size:9.5px;font-weight:800;letter-spacing:.06em;
@@ -2757,7 +2757,7 @@ function openZoneList(loc){
     // 제목은 카탈로그가 아니라 실제로 열린 판본에서 가져온다 — 카탈로그에는 제목이 없어서
     // 여태 내 손패·전체공개 카드의 이름 자리가 빈 채로 떴다.
     return `<div class="zcard ${st.k}${isFresh(c)?" fresh":""}"${st.who?` style="--tc:${st.who.color}"`:""}>
-      <div class="zc-spot">${esc(c.spot||z.name||"")}${isFresh(c)?`<span class="fr">2차</span>`:""}</div>
+      <div class="zc-spot">${esc(c.spot||z.name||"")}${isFresh(c)?`<span class="fr">이튿날</span>`:""}</div>
       <div class="zc-body">${full?`<b>${esc(full.title)}</b>`:`<span class="zc-q">아직 보지 않은 곳</span>`}</div>
       ${st.act?`<button class="btn ${st.k==="open"?"primary":"quiet"} sm" onclick="${st.act}">${st.label}</button>`
               :`<span class="zc-off">${esc(st.label)}</span>`}</div>`; }).join("");
@@ -3635,12 +3635,12 @@ function wireZones(svg){
 function cardOpen(id){ return (STATE.revealed||[]).find(c=>c.id===id)||myHand.find(c=>c.id===id)||null; }
 /* 카드 한 장의 현황판 칸 — 상태는 셋이다.
    아직 아무도 안 봄 / 누가 쥐고 있음(임자만) / 전체공개(제목·본문). */
-/* 2차(마지막) 조사에서 새로 생긴 자리인가. 1차에는 없던 카드라 눈에 띄어야 한다 —
+/* 이튿날(마지막 조사)에 새로 생긴 자리인가. 첫날에는 없던 카드라 눈에 띄어야 한다 —
    밤이 지나고 집에 남은 자국도 여기에 들어온다. */
 function isFresh(c){ return (c&&c.round)===3; }
 function dashCard(c){
   const st=cardState(c), full=cardOpen(c.id);
-  const spot=esc(c.spot||c.locName||"")+(isFresh(c)?`<span class="fr">2차</span>`:"");
+  const spot=esc(c.spot||c.locName||"")+(isFresh(c)?`<span class="fr">이튿날</span>`:"");
   const fr=isFresh(c)?" fresh":"";
   if(st.k==="pub") return `<button class="dc pub act${fr}" onclick="openCard('${c.id}')">
     <span class="sp">${spot}</span><span class="ti">${esc((full&&full.title)||"")}${comboBadge(c.id)}</span>
