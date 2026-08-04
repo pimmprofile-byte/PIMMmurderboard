@@ -336,6 +336,9 @@
   .msg .bub{background:var(--panel);border:1px solid var(--line);border-radius:4px 12px 12px 12px;padding:8px 12px;font-size:14px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
   .msg.own .bub{background:linear-gradient(135deg,#8a7038,var(--gold));color:#1a1509;border-radius:12px 4px 12px 12px}
   .tag-me{font-size:9px;color:var(--gold);border:1px solid var(--gold);border-radius:5px;padding:0 4px;margin-left:4px}
+  /* 결말이 모두에게 얹어주는 몫 — 맞히고 틀린 것과는 다른 축이라 색을 가른다 */
+  .pill.bonus{color:var(--gold-b);border-color:color-mix(in srgb,var(--gold) 55%,transparent);
+    background:rgba(140,110,50,.16)}
   /* 심층심문(취조) — 채팅 로그 안의 결과 카드 */
   .itg-badge{margin-left:6px;font-size:10.5px;font-weight:800;letter-spacing:.04em;
     border:1px solid var(--line);border-radius:20px;padding:1px 7px;color:var(--muted);vertical-align:1px}
@@ -911,6 +914,52 @@
   .story p.lede{font-size:17px;line-height:1.8;color:#fff;font-weight:700}
   #sheetModal .story p{font-size:16.5px;line-height:2.0;max-width:34em}
   #sheetModal .story p.lede{font-size:18.5px}
+  /* 밤 판 아래에 붙는 안내 — 다 읽었는지가 여기서 세어진다 */
+  .vgate{margin-top:14px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--gold) 40%,var(--line));
+    border-radius:12px;background:linear-gradient(180deg,rgba(140,110,50,.13),transparent)}
+  .vgate.done{border-color:color-mix(in srgb,var(--good) 45%,var(--line));
+    background:linear-gradient(180deg,rgba(70,150,110,.12),transparent)}
+  .vgate .vg-h{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:800;color:var(--gold-b)}
+  .vgate.done .vg-h{color:var(--good)}
+  .vgate .vg-h svg{width:16px;height:16px}
+  .vgate .vg-t{margin-top:6px;font-size:13px;line-height:1.75;color:var(--sub);word-break:keep-all}
+  .vgate .vg-c{margin-top:8px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .vgate .btn{margin-top:11px;width:100%;justify-content:center}
+  /* ── 금고에서 나온 서류 ─────────────────────────────────────
+     조사카드가 아니라 다 함께 들여다보는 종이다. 카드 결이 아니라 «문서» 결로 세운다. */
+  .bigcard.k-vault{border-color:color-mix(in srgb,var(--gold) 42%,var(--line))}
+  .vl-lede{margin-top:13px;font-size:13.5px;line-height:1.85;color:var(--sub);white-space:pre-line;word-break:keep-all}
+  .vdoc{margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg2)}
+  .vd-h{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(140,110,50,.14),transparent)}
+  .vd-no{flex:0 0 28px;height:28px;display:grid;place-items:center;border-radius:8px;
+    border:1px solid color-mix(in srgb,var(--gold) 50%,transparent);color:var(--gold-b);
+    font-family:"PIMM Myeongjo","Nanum Myeongjo",serif;font-size:15px}
+  .vd-w{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .vd-w b{font-size:15px;font-weight:800;color:var(--gold-b);word-break:keep-all}
+  .vd-w i{font-style:normal;font-size:11.5px;color:var(--muted);word-break:keep-all}
+  .vd-n{flex:0 0 auto;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  /* 그림이 실제로 있을 때만 자리를 차지한다 — 없으면 JS가 이 칸을 지운다 */
+  .vd-art{display:none;aspect-ratio:16/10;background-size:cover;background-position:center;
+    border-bottom:1px solid var(--line)}
+  .vd-art.on{display:block}
+  .vd-q{margin:14px 14px 0;padding:12px 14px;border-left:2px solid var(--gold);
+    background:rgba(140,110,50,.08);border-radius:2px 10px 10px 2px;
+    font-family:"PIMM Myeongjo","Nanum Myeongjo",serif;font-size:16px;line-height:1.9;
+    color:#efe6d4;white-space:pre-line;word-break:keep-all}
+  .vd-notes{margin:12px 14px 14px;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+  .vd-notes li{position:relative;padding-left:15px;font-size:14px;line-height:1.8;
+    color:#dcdbda;word-break:keep-all}
+  .vd-notes li::before{content:"";position:absolute;left:1px;top:.72em;width:5px;height:5px;
+    border-radius:50%;background:var(--gold);opacity:.7}
+  .vd-more{margin-top:14px;text-align:right;font-size:12px;color:var(--muted)}
+  .vd-foot{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+  .vd-why{font-size:12.5px;line-height:1.7;color:var(--sub);word-break:keep-all}
+  .vd-act{margin-top:11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .vd-act .btn{flex:1 1 auto;justify-content:center}
+  .vd-act.done{color:var(--good);font-size:13.5px;font-weight:700}
+  .vd-act.done svg{width:16px;height:16px;vertical-align:-3px}
+  .vd-cnt{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
   /* ── 그날 밤 한 장 ─────────────────────────────────────────
      내가 한 일이 위, 남들에게서 눈에 걸린 것이 아래. 둘은 성격이 다르다 —
      위는 «내가 아는 것»이고 아래는 «본 것»뿐이라 결을 갈라놓는다. */
@@ -4560,7 +4609,7 @@ function renderNight(p){
       <h2>${esc(n.headline||"")}</h2>
       ${(n.outcome||[]).map(t=>`<div class="nt-out">${esc(t)}</div>`).join("")}
       ${n.mineOutcome?`<div class="nt-mine"><div class="w">그날 밤 · 내가 한 일</div>${esc(n.mineOutcome)}</div>`:""}
-      <div class="panel-note" style="margin-top:12px">아침입니다.</div>
+      ${vaultGateHTML()}
     </div>${nextPhaseBlock()}`;
     return;
   }
@@ -4824,7 +4873,12 @@ function gradeRow(id,g){ const c=roleById(id)||{color:"#999",avatar:"",name:id};
   }else{ // 졸업사진 폴백
     pills=`<span class="pill ${g.selfAccused?'':'bad'}">자기지목 ${g.selfAccused?ICO.check:ICO.cross}</span><span class="pill">죄 ${g.sinsAcknowledged}</span>${g.osewonIdentified?'<span class="pill">오세원 간파 '+ICO.check+'</span>':''}`;
   }
-  return `<div class="grade"><span style="color:${c.color};font-weight:700">${avaHTML(c,"xs")} ${esc(c.name)}</span>${pills}<span class="pill">${g.score}점</span>${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
+  // 결말이 모두에게 얹어주는 몫(히든 엔딩의 유산 같은 것). 점수와 따로 보여준다.
+  const e=(STATE&&STATE.ending)||{};
+  const bon=(e.bonus&&(!e.bonusWho||e.bonusWho.indexOf(id)>=0))
+    ? `<span class="pill bonus">${esc(e.bonusLabel||"덤")} +${e.bonus}</span>` : "";
+  const tot=e.bonus&&(!e.bonusWho||e.bonusWho.indexOf(id)>=0)?(Number(g.score)||0)+e.bonus:null;
+  return `<div class="grade"><span style="color:${c.color};font-weight:700">${avaHTML(c,"xs")} ${esc(c.name)}</span>${pills}${bon}<span class="pill">${tot==null?g.score:`${tot}점 (${g.score}+${e.bonus})`}${tot==null?"점":""}</span>${g.verdict?`<span class="v">“${esc(g.verdict)}”</span>`:''}</div>`; }
 async function submitFinal(){ if(gradeBusy)return; const answers=SCEN.finalQuestions.map((q,i)=>($("qa"+i)?$("qa"+i).value.trim():"")); if(answers.every(a=>!a)){ await say({title:"답이 비어 있습니다",body:"한 문항 이상 적어주세요.",ok:"알겠습니다"}); return; } gradeBusy=true; banner("제출 중…"); const r=await post("/api/final-answers",{roleId:myRoleId,clientId,answers}); gradeBusy=false; if(r&&r.error){banner("제출 오류: "+r.error); return;} localStorage.setItem("pmb.final."+myRoleId,JSON.stringify(answers));
   // 낼 곳이 없는데 '제출 완료'라고 하지 않는다 — 어디로 갔는지를 그대로 말한다
   banner(!(r&&r.pending)?"":((gmOn||(STATE&&STATE.hasGM))?"제출 완료 — 진행석(GM)이 채점합니다":"답안을 적어뒀습니다 — 아래 글을 클로드에 붙여넣으세요"));
@@ -5166,6 +5220,13 @@ function toP(w){ const ch=(w||"").slice(-1).charCodeAt(0);
   if(isNaN(ch)||ch<0xAC00||ch>0xD7A3) return "로";
   const t=(ch-0xAC00)%28; return (t===0||t===8)?"로":"으로"; }
 async function advance(){
+  const vg=(STATE&&STATE.vault)||null;
+  if(vg&&vg.open&&!vg.done){
+    await say({title:"아직 다 안 읽었습니다",
+      body:"금고에서 나온 서류 두 장을 전원이 읽어야 당주의 방으로 갑니다.\n\n"
+          +`지금 ${(vg.read||[]).length}/${vg.need||0} 명이 표시했습니다.`, tone:"cold"});
+    return;
+  }
   const cur=STATE.phase||{}, nx=(SCEN.phases||[]).find(p=>p.seq===(STATE.seq||0)+1);
   if(!nx){ if(!await ask({title:"여기가 마지막입니다",body:"더 넘길 막이 없습니다.",ok:"알겠습니다",tone:"gold"})) return; return; }
   const left=(k=>k==="invest"?overLimitRoles():[])(cur.key);
@@ -5434,6 +5495,49 @@ function markSheetSeen(){
   try{ localStorage.setItem("pmb.sheetseen."+(myRoleId||""),String(s)); }catch(e){}
 
 }
+/* 밤이 지난 판의 아래칸 — 금고 서류를 다 읽었는지가 여기 뜬다.
+   당주의 방을 여는 건 그 다음이다. */
+function vaultGateHTML(){
+  const v=(STATE&&STATE.vault)||null;
+  if(!v||!v.open) return `<div class="panel-note" style="margin-top:12px">아침입니다.</div>`;
+  const nm=id=>esc((roleById(id)||{}).name||id);
+  // 기다리는 대상은 사람이 앉은 배역뿐이다
+  const yet=Object.keys(STATE.roles||{})
+    .filter(id=>((STATE.roles[id]||{}).mode==="human")&&!(v.read||[]).includes(id));
+  return `<div class="vgate${v.done?" done":""}">
+    <div class="vg-h">${ICO.doc} 금고에서 서류 두 장이 나왔습니다</div>
+    <div class="vg-t">「내 정보 · 추가 정보」 맨 앞에 들어갔습니다. 다 읽고 표시해 주세요.</div>
+    <div class="vg-c">${(v.read||[]).length}/${v.need||0} 읽음${
+      yet.length?` · 아직 ${yet.map(nm).join(", ")}`:" · 전원 확인"}</div>
+    ${v.done?"":`<button class="btn primary" onclick="sheetTab='extra';showMySheet()">서류 보러 가기</button>`}
+  </div>`;
+}
+/* 「다 읽었습니다」 — 전원이 누르면 다음 막으로 갈 수 있다 */
+function vaultBtn(v){
+  if(!myRoleValid()) return `<div class="vd-cnt">관전 중 — 배역을 맡은 사람이 표시합니다</div>`;
+  const cnt=`<span class="vd-cnt">${(v.read||[]).length}/${v.need||0} 읽음</span>`;
+  if(v.mine) return `<div class="vd-act done">${ICO.check} 표시했습니다 ${cnt}</div>`;
+  return `<div class="vd-act"><button class="btn primary" onclick="vaultRead()">${esc(v.readLabel||"다 읽었습니다")}</button>${cnt}</div>`;
+}
+async function vaultRead(){
+  const r=await post("/api/vault/read",{roleId:myRoleId,clientId});
+  if(r&&r.error){ banner(r.error); return; }
+  sfx("go"); await poll(); renderSheetTabs();
+}
+/* 서류 그림 — /assets/{사건}_doc_{key} 를 찾는다. 없으면 빈 자리를 접는다. */
+function paintVaultArt(){
+  const sid=(STATE&&STATE.scenarioId)||""; if(!sid) return;
+  document.querySelectorAll(".vd-art[data-doc]").forEach(el=>{
+    if(el.dataset.done) return;
+    const k=el.dataset.doc; if(!k){ el.remove(); return; }
+    findAsset(`/assets/${sid}_doc_${k}`, url=>{
+      if(!url){ el.remove(); return; }
+      el.dataset.done="1";
+      el.style.backgroundImage=`url("${url}")`;
+      el.classList.add("on");
+    });
+  });
+}
 async function showMySheet(){
   if(!myRoleValid())return;
   markSheetSeen();
@@ -5587,14 +5691,42 @@ async function showMySheet(){
       <div class="bc-eyebrow">한눈에</div><div class="bc-title" style="font-size:18px">이 배역, 이렇게 굴린다</div>
       <div class="tiplist">${s.tips.map(t=>`<div class="tipitem">${esc(t)}</div>`).join("")}</div></div>`});
   }
+  // 4-d) 금고에서 나온 서류. 조사로 여는 카드가 아니라 «다 함께 읽는» 종이다.
+  //       한 장에 둘을 밀어넣으면 글이 뭉개져서, 서류마다 한 장씩 세운다.
+  const vd=(STATE&&STATE.vault)||null;
+  if(vd&&(vd.docs||[]).length){
+    const n=vd.docs.length;
+    vd.docs.forEach((doc,i)=>{
+      const last=(i===n-1);
+      slides.push({tab:"extra", html:`<div class="bigcard role k-vault" style="--rc:${s.color}">
+        <div class="bc-eyebrow">${esc(vd.kick||"금고 앞")}</div>
+        <div class="bc-title" style="font-size:18px">${esc(vd.title||"")}</div>
+        ${i===0&&vd.lede?`<div class="vl-lede">${esc(vd.lede)}</div>`:""}
+        <div class="vdoc">
+          <div class="vd-h"><span class="vd-no">${esc(doc.no||String(i+1))}</span>
+            <span class="vd-w"><b>${esc(doc.name||"")}</b><i>${esc(doc.meta||"")}</i></span>
+            <span class="vd-n">${i+1}/${n}</span></div>
+          <div class="vd-art" data-doc="${esc(doc.key||"")}"></div>
+          ${doc.quote?`<div class="vd-q">${esc(doc.quote)}</div>`:""}
+          ${(doc.notes||[]).length?`<ul class="vd-notes">${doc.notes.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:""}
+        </div>
+        ${last?`<div class="vd-foot">
+          <div class="vd-why">${esc(vd.foot||"")}</div>
+          ${vaultBtn(vd)}</div>`:`<div class="vd-more">옆으로 넘기면 다음 장 ›</div>`}
+      </div>`});
+    });
+  }
   // 「그날 밤」은 추가 정보에서 맨 앞이다 — 제일 나중에 생겼고 제일 무겁다.
   // 뒤에 두면 조각을 넘겨야 닿는데, 판에서 제일 자주 다시 펴보는 장이 그거다.
-  const ni=slides.findIndex(x=>x.tab==="extra"&&/k-night/.test(x.html));
-  if(ni>=0){
-    const nsl=slides.splice(ni,1)[0];
+  const hoist=re=>{
+    const got=[]; for(let i=slides.length-1;i>=0;i--)
+      if(slides[i].tab==="extra"&&re.test(slides[i].html)) got.unshift(slides.splice(i,1)[0]);
+    if(!got.length) return;
     const fe=slides.findIndex(x=>x.tab==="extra");
-    slides.splice(fe<0?slides.length:fe, 0, nsl);
-  }
+    slides.splice(fe<0?slides.length:fe, 0, ...got);
+  };
+  hoist(/k-night/);            // 그날 밤
+  hoist(/k-vault/);            // 그리고 그 앞에 금고 — 오늘 아침 다 같이 본 것이 제일 위다
   // 「추가 정보」는 아직 빈 판에서도 자리를 지킨다. 판이 도는 중에 탭이 생겼다 없어졌다 하면
   // 탭 줄의 모양이 바뀌고, 어제까지 한 번이면 닿던 자리가 오늘은 두 번이 된다.
   if(!slides.some(x=>x.tab==="extra")){
@@ -5670,6 +5802,7 @@ function renderSheetTabs(){
     <div class="mbody">${buildSwipe(cur, true)}</div>`;
   const start=sheetStart; sheetStart=0;
   wireSwipe($("sheetBox"), {start, onEdge:sheetEdge, hasEdge:sheetHasEdge});
+  paintVaultArt();
 }
 /* 내 단서(손패) — 어느 페이즈에서든 다시 확인. 조사한 카드는 사라지지 않는다. 큼지막하게 스와이프. */
 /* 「소지품」으로 따로 빼는 구역들. 시나리오가 정한다(쉘터는 G·P).

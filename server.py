@@ -182,7 +182,7 @@ def fresh_room() -> dict:
         "accuse": {},             # roleId -> 지목한 사람. 종막의 범인 지목, 사람 표만
         # 중간 지목 — 판이 끝나기 전에 한 번 이름을 부르는 사건이 있다. 그 표는 사라지지
         # 않고 종막까지 따라간다. seq 를 같이 적어두는 건 그 막에서만 고칠 수 있게 하려고다.
-        "accuse1": {"seq": None, "picks": {}},
+        "vaultRead": [], "accuse1": {"seq": None, "picks": {}},
         # 밤 — 각자 몰래 한 가지를 고르고, 그 조합이 그날 밤에 실제로 일어난 일을 정한다.
         "night": {"open": False, "picks": {}, "result": None},
         # 질문지 — 순서대로 하나씩 묻는다. 안 물어진 것이 남는 게 이 막의 요점이다.
@@ -439,6 +439,7 @@ def public_state() -> dict:
                              and (ROOM["roles"].get(ROOM["turn"]) or {}).get("mode") == "ai") else None),
             "keepGoals": _keep_goal_results() if ph.get("key") in ("final", "reveal") else [],
             "overLimit": {rid: max(0, len(cs) - _hand_limit()) for rid, cs in ROOM["hands"].items() if len(cs) > _hand_limit()},
+            "vault": _vault_public(),
             "turn": ROOM.get("turn") if ap > 0 else None,
             "turnOrder": _turn_order() if ap > 0 else [],
             # 이 라운드에 아직 «누구든» 열 수 있는 자리가 남았는가.
@@ -875,6 +876,8 @@ def state(clientId: str = "", gm: int = 0):
         if st["myRole"]:
             seen = list(ROOM["revealed"]) + list(ROOM["hands"].get(st["myRole"], []))
             st["myNotes"] = _my_notes(st["myRole"], seen)
+            if st.get("vault"):
+                st["vault"] = dict(st["vault"], mine=st["myRole"] in (ROOM.get("vaultRead") or []))
         # 포드 — 내 지도에 자리가 찍혔는가, 그리고 내가 코드를 맞췄는가.
         # 남이 맞췄는지는 내보내지 않는다. 그게 새면 표가 그리로만 쏠린다.
         if st.get("myRole"):
@@ -2467,6 +2470,49 @@ def _arrest_state():
 # ── 밤 — 각자 하나를 고르고, 그 조합이 그날 밤을 정한다 ──────────────
 # 이 기믹이 있는 사건은 «누가 범인인가»가 판 시작 시점에 안 정해져 있다.
 # 사건 모듈이 NIGHT_ACTS(선택지)와 night_resolve(조합→결과)를 갖고 있으면 열린다.
+# ── 금고 서류 — 다 함께 읽고 넘어가는 자리 ──────────────────────
+def _vault_conf():
+    v = getattr(SC, "VAULT_DOCS", None)
+    return v if (v and v.get("docs")) else None
+
+
+def _vault_open() -> bool:
+    """지금 이 서류를 읽는 막인가. 밤이 판정된 뒤부터, 그 막이 끝날 때까지."""
+    v = _vault_conf()
+    if not v or ROOM["seq"] != int(v.get("seq", 0)):
+        return False
+    return bool((ROOM.get("night") or {}).get("result"))
+
+
+def _vault_public(role_id: str = "") -> dict | None:
+    v = _vault_conf()
+    if not v or ROOM["seq"] < int(v.get("seq", 0)):
+        return None
+    read = list(ROOM.get("vaultRead") or [])
+    # 읽는 건 사람이다. AI 배역은 기다릴 대상이 아니다 — 안 그러면 영영 안 끝난다.
+    seats = [rid for rid, r in ROOM["roles"].items() if r.get("clientId")]
+    out = {k: v[k] for k in ("kick", "title", "lede", "docs", "foot", "readLabel") if k in v}
+    out.update({"open": _vault_open(), "read": read,
+                "need": len(seats), "done": all(r in read for r in seats),
+                "mine": bool(role_id and role_id in read)})
+    return out
+
+
+@app.post("/api/vault/read")
+def vault_read(b: RoleReq):
+    with LOCK:
+        if not _vault_open():
+            return JSONResponse({"error": "지금 읽을 서류가 없습니다"}, status_code=409)
+        r = ROOM["roles"].get(b.roleId)
+        if not r or r["clientId"] != b.clientId:
+            return JSONResponse({"error": "그 배역이 아닙니다"}, status_code=403)
+        q = ROOM.setdefault("vaultRead", [])
+        if b.roleId not in q:
+            q.append(b.roleId)
+            bump()
+        return {"ok": True, "vault": _vault_public(b.roleId)}
+
+
 def _night_conf():
     return getattr(SC, "NIGHT_ACTS", None)
 
