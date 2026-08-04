@@ -915,9 +915,13 @@
      내가 한 일이 위, 남들에게서 눈에 걸린 것이 아래. 둘은 성격이 다르다 —
      위는 «내가 아는 것»이고 아래는 «본 것»뿐이라 결을 갈라놓는다. */
   .bigcard.k-night{border-color:color-mix(in srgb,var(--cold) 40%,var(--line))}
-  .ntx{margin-top:14px;padding:13px 15px;border-radius:11px;background:var(--bg2);
-    border-left:2px solid var(--rc,var(--gold));
+  .ntb{margin-top:16px}
+  .ntb-h{font-size:11.5px;font-weight:800;letter-spacing:.06em;color:var(--muted);margin-bottom:7px}
+  .ntb.post .ntb-h{color:var(--rc,var(--gold))}
+  .ntx{padding:13px 15px;border-radius:11px;background:var(--bg2);
+    border-left:2px solid var(--line);
     font-size:15.5px;line-height:1.85;color:#e1e0df;white-space:pre-wrap;word-break:keep-all}
+  .ntb.post .ntx{border-left-color:var(--rc,var(--gold))}
   .eyes{margin-top:18px;padding-top:15px;border-top:1px solid var(--line)}
   .eyes-h{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;
     letter-spacing:.06em;color:var(--cold);margin-bottom:11px}
@@ -1214,7 +1218,10 @@
   #vn .vn-tool:hover{color:#fff;border-color:var(--ember-b)}
 
   /* 극 진행 연출 — 컷의 fx 값이 무대에 클래스로 붙는다 */
-  #vn .vn-flash{position:absolute;inset:0;pointer-events:none;opacity:0}
+  /* 화면을 통째로 덮는 칸이라 그림이 매번 다시 구워지면 곧바로 프레임이 떨어진다.
+     한 번 구워 레이어로 올려두고 투명도만 건드린다. */
+  #vn .vn-flash{position:absolute;inset:0;pointer-events:none;opacity:0;
+    will-change:opacity;transform:translateZ(0)}
   #vn .vn-stage.fx-alarm .vn-flash{background:radial-gradient(120% 90% at 50% 40%,rgba(224,60,42,.55),transparent 70%);
     animation:vnAlarm 1.15s ease-out 3}
   #vn .vn-stage.fx-thud  .vn-flash{background:#000;animation:vnBlack .5s ease-out 1}
@@ -1228,29 +1235,30 @@
   /* .show 가 붙은 스프라이트만 꺼진다. 화자 없는 컷에도 걸어놨더니
      앞 컷 사람이 opacity:1 로 되살아났다가 사라졌다 — 깜빡이는 것처럼 보였다. */
   #vn .vn-stage.fx-nightfall .vn-sprite.show{animation:vnFadeOut 3.4s cubic-bezier(.35,0,.5,1) forwards}
-  #vn .vn-stage.fx-nightfall .vn-bg{animation:vnCool 3.4s ease-out forwards}
+  /* 배경에 filter 를 걸어 식히던 연출은 뺐다. 화면 가득한 사진에 filter 를 «애니메이션»
+     하면 매 프레임 다시 굽는다 — 폰에서 눈에 띄게 버벅였다. 위의 어둠막(.vn-flash)이
+     94% 를 덮으므로 색을 죽인 것과 보이는 결과가 거의 같다. */
   /* 이미 어두워진 다음 컷 — 애니메이션 없이 그 자리에 머문다 */
   #vn .vn-stage.fx-night .vn-flash{background:#04060b;opacity:.94}
-  #vn .vn-stage.fx-night .vn-bg{filter:saturate(.25) brightness(.55)}
   @keyframes vnNightfall{0%{opacity:0}14%{opacity:.12}55%{opacity:.62}100%{opacity:.94}}
   @keyframes vnFadeOut{0%{opacity:1}100%{opacity:0}}
-  @keyframes vnCool{0%{filter:none}100%{filter:saturate(.25) brightness(.55)}}
   @media(prefers-reduced-motion:reduce){
     #vn .vn-stage.fx-nightfall .vn-flash{animation:none;opacity:.94}
     #vn .vn-stage.fx-nightfall .vn-sprite.show{animation:none;opacity:0}
-    #vn .vn-stage.fx-nightfall .vn-bg{animation:none;filter:saturate(.25) brightness(.55)}
   }
   @keyframes vnAlarm{0%,100%{opacity:0}45%{opacity:1}}
   @keyframes vnBlack{0%{opacity:1}100%{opacity:0}}
   @keyframes vnStatic{0%,100%{opacity:0}50%{opacity:.85}}
   @keyframes vnRise{0%{opacity:0;transform:translateY(30%)}60%{opacity:1}100%{opacity:.35;transform:none}}
+  /* 흔들림은 cqw 대신 px 로, translate3d 로 적는다 — 합성 레이어에 올라가서 매 프레임
+     다시 굽지 않는다. cqw 로 두면 컨테이너 질의 값을 프레임마다 되풀이해 잰다. */
   #vn .vn-stage.fx-alarm,#vn .vn-stage.fx-thud{animation:vnShake .5s cubic-bezier(.36,.07,.19,.97) 1}
   #vn .vn-stage.fx-rumble{animation:vnRumble 2.4s ease-in-out 1}
-  @keyframes vnShake{10%,90%{transform:translateX(-.35cqw)}30%,70%{transform:translateX(.6cqw)}
-    50%{transform:translateX(-.6cqw)}100%{transform:none}}
-  @keyframes vnRumble{0%,100%{transform:none}
-    20%{transform:translate(.18cqw,-.12cqw)}40%{transform:translate(-.16cqw,.14cqw)}
-    60%{transform:translate(.14cqw,.1cqw)}80%{transform:translate(-.1cqw,-.08cqw)}}
+  @keyframes vnShake{10%,90%{transform:translate3d(-3px,0,0)}30%,70%{transform:translate3d(5px,0,0)}
+    50%{transform:translate3d(-5px,0,0)}100%{transform:translate3d(0,0,0)}}
+  @keyframes vnRumble{0%,100%{transform:translate3d(0,0,0)}
+    20%{transform:translate3d(2px,-1px,0)}40%{transform:translate3d(-2px,1px,0)}
+    60%{transform:translate3d(2px,1px,0)}80%{transform:translate3d(-1px,-1px,0)}}
 
   /* 세로로 든 폰 — GM 화면이 아닌 경우다. 16:9로 가두면 글자가 10px 밑으로 떨어지므로
      레터박스를 풀고 화면을 채운 뒤 치수만 키운다. */
@@ -5466,11 +5474,14 @@ async function showMySheet(){
   //       조각에 줄글로 섞여 있던 것을 제 자리로 뺐다. 밤은 이 판에서 제일 무거운 하루라
   //       다른 기록에 묻히면 안 된다. 늘어나는 것들 뒤, 늘 있는 것(배치도) 앞이다.
   const nr=s.nightReport;
-  if(nr&&(nr.mine||(nr.eyes||[]).length)){
+  if(nr&&(nr.before||nr.mine||(nr.eyes||[]).length)){
+    const blk=(lb,tx,k)=>tx?`<div class="ntb ${k}"><div class="ntb-h">${esc(lb)}</div>
+      <div class="ntx">${esc(tx)}</div></div>`:"";
     slides.push({tab:"extra", html:`<div class="bigcard role k-night" style="--rc:${s.color}">
       <div class="bc-eyebrow">${esc(nr.kick||"밤이 지나고")}</div>
       <div class="bc-title" style="font-size:18px">${esc(nr.title||"그날 밤, 나는")}</div>
-      ${nr.mine?`<div class="ntx">${esc(nr.mine)}</div>`:""}
+      ${blk(nr.beforeLabel||"밤이 오기 전 · 나만 아는 것", nr.before, "pre")}
+      ${blk(nr.mineLabel||"그날 밤 · 내가 한 일", nr.mine, "post")}
       ${(nr.eyes||[]).length?`<div class="eyes">
         <div class="eyes-h">${ICO.eye} ${esc(nr.eyesLabel||"아침에 눈에 걸린 것")}</div>
         ${nr.eyes.map(e=>`<div class="eye" style="--ec:${e.color||"var(--line)"}">
@@ -5542,6 +5553,14 @@ async function showMySheet(){
     slides.push({tab:"sum", html:`<div class="bigcard role k-tips" style="--rc:${s.color}">
       <div class="bc-eyebrow">한눈에</div><div class="bc-title" style="font-size:18px">이 배역, 이렇게 굴린다</div>
       <div class="tiplist">${s.tips.map(t=>`<div class="tipitem">${esc(t)}</div>`).join("")}</div></div>`});
+  }
+  // 「그날 밤」은 추가 정보에서 맨 앞이다 — 제일 나중에 생겼고 제일 무겁다.
+  // 뒤에 두면 조각을 넘겨야 닿는데, 판에서 제일 자주 다시 펴보는 장이 그거다.
+  const ni=slides.findIndex(x=>x.tab==="extra"&&/k-night/.test(x.html));
+  if(ni>=0){
+    const nsl=slides.splice(ni,1)[0];
+    const fe=slides.findIndex(x=>x.tab==="extra");
+    slides.splice(fe<0?slides.length:fe, 0, nsl);
   }
   // 「추가 정보」는 아직 빈 판에서도 자리를 지킨다. 판이 도는 중에 탭이 생겼다 없어졌다 하면
   // 탭 줄의 모양이 바뀌고, 어제까지 한 번이면 닿던 자리가 오늘은 두 번이 된다.

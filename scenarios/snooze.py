@@ -1652,7 +1652,7 @@ MEMORY = {
                  "…그리고 그 뒷모습은 열쇠를 안 꺼냈다. 문으로 갈 수 있는 사람이 창으로 갔다는 뜻이다."},
         # ── 밤 ─────────────────────────────────────────────────────
         # 이 사건에서 「범인」은 여기서 정해진다. 셋 다 여기서 같은 결론에 도달한다.
-        {"seq": 6, "when": "밤 · 나만 아는 것",
+        {"seq": 6, "when": "밤 · 나만 아는 것", "slot": "night",
          "text": "「…내 유서를… 가져오게.」\n\n"
                  "그 말을 듣고 내가 제일 먼저 한 생각은 «금고»가 아니었다. «내 외투»였다.\n\n"
                  "저 노인네는 내일 아침에 금고를 열게 할 것이다.\n"
@@ -1675,7 +1675,7 @@ MEMORY = {
         {"seq": 5, "when": "당주 앞에서",
          "text": "넬이 나를 한 번도 안 쳐다본다. 그런데 나를 의심해서 그러는 게 아닌 것 같다.\n"
                  "저 아이가 저 도둑을 미는 데는 이유가 있다. 그게 무엇이든 나한테는 좋은 일이다."},
-        {"seq": 6, "when": "밤 · 나만 아는 것",
+        {"seq": 6, "when": "밤 · 나만 아는 것", "slot": "night",
          "text": "어찌 된 영문일까.\n\n"
                  "분명히 눌렀다. 팔 힘이 빠질 때까지 눌렀고, 그다음에 맥을 짚었다.\n"
                  "짚어봤단 말이다. 그러고 창으로 나왔다.\n\n"
@@ -1701,7 +1701,7 @@ MEMORY = {
                  "…그리고 저 도둑을 미는 게 생각보다 잘 먹힌다. 그게 좀 무섭다."},
         # ── 여기서 이 배역이 다른 사람이 된다 ───────────────────────
         # 넬은 1·2막을 정말로 무고하게 산다. 밤은 2막이 끝난 뒤에 온다.
-        {"seq": 6, "when": "밤 · 나만 아는 것",
+        {"seq": 6, "when": "밤 · 나만 아는 것", "slot": "night",
          "text": "선생님이 밤 물약을 나한테 맡기고 가셨다. 두 시간마다 한 숟갈씩.\n"
                  "밤새 지켜야 한다고. 다른 사람은 안 된다고, 꼭 자네가 하라고 하셨다.\n\n"
                  "…어제 아침에 나는 끝난 줄 알았다.\n"
@@ -2251,9 +2251,10 @@ def night_report(role_id: str, night: dict) -> dict | None:
     조각(알게 된 것)에 줄글로 섞으면 밤 이야기가 다른 기록에 묻힌다 —
     이건 자기 자리를 갖는다.
     """
+    if int(_ROOM_STATE.get("seq") or 0) < NIGHT_ACTS["seq"]:
+        return None                                   # 밤이 오기 전에는 이 장이 없다
     res = (night or {}).get("result") or {}
-    if not res:
-        return None
+    before = _night_before(role_id)
     mine = (res.get("private") or {}).get(role_id) or ""
     went = {x["role"] for x in (res.get("order") or [])}
     eyes = []
@@ -2267,9 +2268,12 @@ def night_report(role_id: str, night: dict) -> dict | None:
         eyes.append({"id": cid, "name": c["name"], "job": c.get("job", ""),
                      "color": c.get("color", ""), "avatar": c.get("avatar", ""),
                      "text": look["go"] if cid in went else look["skip"]})
-    if not mine and not eyes:
+    if not before and not mine and not eyes:
         return None
-    return {"kick": "밤이 지나고", "title": "그날 밤, 나는", "mine": mine,
+    return {"kick": "밤" if not mine else "밤이 지나고",
+            "title": "그날 밤, 나는",
+            "before": before, "beforeLabel": "밤이 오기 전 · 나만 아는 것",
+            "mine": mine, "mineLabel": "그날 밤 · 내가 한 일",
             "eyesLabel": "아침에 눈에 걸린 것", "eyes": eyes}
 
 
@@ -2420,7 +2424,16 @@ def interlude_for(seq: int):
 
 
 def memory_up_to(cid: str, current_seq: int, crisis_solved=None) -> list:
-    return [m for m in MEMORY.get(cid, []) if m["seq"] <= current_seq]
+    # slot 이 붙은 것은 제 자리가 따로 있다 — 「알게 된 것」에 섞지 않는다.
+    return [m for m in MEMORY.get(cid, []) if m["seq"] <= current_seq and not m.get("slot")]
+
+
+def _night_before(cid: str) -> str:
+    """밤이 오기 전, 이 사람이 혼자 굴린 생각. 「그날 밤」 한 장의 앞쪽이다."""
+    for m in MEMORY.get(cid, []):
+        if m.get("slot") == "night":
+            return m["text"]
+    return ""
 
 
 def private_sheet(cid: str):
