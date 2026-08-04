@@ -1133,7 +1133,7 @@ CARDS = [
     {"id": "C1", "loc": "J", "locName": "온실", "round": 1, "reveal": "private", "bait": False,
      "spot": "걸리지 않은 문과 유리지붕",
      "insight": {"basil": "…내가 밟고 올라간 자리다. 살이 휜 건 몰랐다.\n"
-                          "그 문이 왜 안 걸려 있었는지는 나도 모른다. 덕분에 편하긴 했다."},
+                          "그 문이 왜 안 걸려 있었는지는 나도 모른다. 덕분에 편하긴 했다."}, "gone": 3,
      "title": "밟힌 유리지붕",
      "text": "우물 옆 온실. 문 하나가 걸려 있지 않다.\n"
              "안쪽 통로는 성채의 지하실로 그대로 이어진다.\n"
@@ -1145,6 +1145,11 @@ CARDS = [
      "spot": "마당 자갈",
      "insight": {"nell": "여기서 그 사람이 창을 올려다보고 있었다. 저 꽁초.\n"
                          "이건 아무도 안 봤으면 좋겠는데."},
+     "day2": {"text": "성채 앞 자갈밭. 당주의 방 창과 외벽이 정면으로 보이는 자리다.\n"
+                      "★ 여기 서서 담배를 여러 대 피운 사람이 있다. "
+                      "다만 그건 «어제» 아침 여덟 시경의 일이다.\n"
+                      "오늘 새벽에 새로 떨어진 재는 없다.",
+              "hint": "어제 아침 이 자리에 오래 서 있던 사람이 있다. 어젯밤과는 별개다."},
      "title": "마당의 꽁초",
      "text": "성채 앞 자갈밭. 당주의 방 창과 외벽이 정면으로 보이는 자리다.\n"
              "담배꽁초가 수도 없이 떨어져 있다. 며칠 치가 섞였는데 가장 최근의 꽁초가 유난히 짧고 여러 대가 보인다.\n"
@@ -1170,6 +1175,11 @@ CARDS = [
 
     {"id": "H1", "loc": "H", "locName": "마굿간", "round": 1, "reveal": "private", "bait": False,
      "spot": "일지 걸이",
+     "day2": {"text": "매일 적는 일지. 글씨가 거칠고 크다.\n"
+                      "「목요일 — 05:30 기상(호출). 05:50 선생님 모심. 06:15 지하.」\n"
+                      "★ 뒷장의 메모 — 「어떤 놈인지 가만 안 둔다. «내 돈»이 대체 어디로 간 거지?」\n"
+                      "★ «어제» 새벽에 적힌 것이다. 오늘 자리는 비어 있다.",
+              "hint": "어제 새벽에 무언가를 잃은 사람이 있다. 어젯밤과는 별개다."},
      "title": "마굿간 일지",
      "text": "매일 적는 일지. 글씨가 거칠고 크다.\n"
              "「목요일 — 05:30 기상(호출). 05:50 선생님 모심. 06:15 지하.」\n"
@@ -1184,6 +1194,12 @@ CARDS = [
      "spot": "창 옆 배관",
      "insight": {"kieran": "…내가 오르내린 자리다. 위로 한 번, 아래로 한 번. 그것도 급하게.\n"
                            "지우고 싶은데 지울 방법이 없다."},
+     "day2": {"title": "성채 외벽 동선",
+              "text": "당주의 방으로 향하는 성채 외벽 동선. "
+                      "온실 유리지붕과 창 옆 배관, 두 길이 다 밟혀 있다.\n"
+                      "★ 하지만 이건 «어제» 일이다. "
+                      "오늘 벌어진 사건과는 큰 관련이 없어 보인다.",
+              "hint": "어제 이 벽으로 붙은 사람이 있었다. 어젯밤 이야기는 아니다."},
      "title": "흐트러진 배관",
      "text": "당주의 방 창문 옆 배관이 위, 아래 모든 방향이 누군가 밟았던 듯이 흐트러져 있다.\n"
              "흙먼지도 눈에 띈다.\n"
@@ -2385,6 +2401,14 @@ _NIGHT_TRACE = {
 _TRACE_IDS = {c for t in _NIGHT_TRACE.values() for c in t.values()}
 
 
+def _cur_round() -> int:
+    """지금 몇 라운드인가. 카드가 어제 것을 접을지 정할 때 쓴다."""
+    try:
+        return int(phase_by_seq(int(_ROOM_STATE.get("seq") or 1)).get("round") or 1)
+    except Exception:                                   # noqa: BLE001
+        return 1
+
+
 def _sync_night_cards() -> None:
     res = ((_ROOM_STATE.get("night") or {}).get("result")) or {}
     want = set()
@@ -2459,12 +2483,17 @@ def get_card(cid: str):
     c = next((c for c in CARDS if c["id"] == cid), None)
     if not c:
         return None
+    d = None
+    # 하루가 지나면 어제 것은 요약본으로 접힌다. 어제 자국을 오늘 사건으로 읽게
+    # 두면 판이 흐려진다 — 무엇이 어제 것인지를 카드가 스스로 말하게 한다.
+    if c.get("day2") and _cur_round() >= 3:
+        d = dict(c)
+        d.update(c["day2"])
     ov = (_night_result().get("cards") or {}).get(cid)
-    if not ov:
-        return c
-    d = dict(c)
-    d.update(ov)
-    return d
+    if ov:
+        d = dict(d or c)
+        d.update(ov)
+    return d or c
 
 
 def obligatory_cards_upto_round(rnd: int) -> list:

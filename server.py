@@ -659,6 +659,7 @@ def admin_cards(key: str = "", scenarioId: str = ""):
             "spot": c.get("spot", ""), "round": c.get("round", 0),
             "reveal": c.get("reveal", ""), "bait": bool(c.get("bait")),
             "auto": bool(c.get("auto")), "hot": bool(c.get("hot")),
+            "gone": c.get("gone", 0), "day2": c.get("day2") or None,
             "requires": c.get("requires", ""), "unlocks": c.get("unlocks", ""),
             "title": c.get("title", ""), "text": c.get("text", ""), "hint": c.get("hint", ""),
         })

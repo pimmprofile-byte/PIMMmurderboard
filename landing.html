@@ -245,6 +245,14 @@
   .adc .ctx{font-size:.83rem;line-height:1.75;color:var(--bone-dim);word-break:keep-all}
   .adc .chint{font-size:.75rem;line-height:1.6;color:var(--faint);margin-top:8px;
     border-left:2px solid var(--line2);padding-left:9px;word-break:keep-all}
+  /* 하루가 지나면 접히는 카드 — 어제 판본 아래에 오늘 판본을 붙여 같이 검수한다 */
+  .adc .cday2{margin-top:11px;padding:10px 12px;border-radius:9px;
+    border:1px dashed color-mix(in srgb,#6096be 45%,var(--line2));background:rgba(96,150,190,.07)}
+  .adc .cday2>b{display:block;font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;
+    color:#9cc6e0;margin-bottom:6px}
+  .adc .cday2 .ctx{font-size:.8rem}
+  .adc .cgone{margin-top:9px;font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;
+    color:#8e8798;border-left:2px solid rgba(142,135,152,.5);padding-left:8px}
   .adc .ctags{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
   .adc .ctags i{font-style:normal;font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;
     border:1px solid var(--line2);color:var(--faint);border-radius:5px;padding:2px 6px}
@@ -824,6 +832,10 @@ function admCard(c){
     <div class="cwhere">${ADM_ESC(c.locName||"")}${c.spot?" · "+ADM_ESC(c.spot):""}</div>
     <div class="ctx">${ADM_ESC(c.text)}</div>
     ${c.hint?`<div class="chint">${ADM_ESC(c.hint)}</div>`:""}
+    ${c.day2?`<div class="cday2"><b>이튿날 판본</b>
+      <div class="ctx">${ADM_ESC(c.day2.text||c.text)}</div>
+      ${c.day2.hint?`<div class="chint">${ADM_ESC(c.day2.hint)}</div>`:""}</div>`:""}
+    ${c.gone?`<div class="cgone">이튿날에는 이 자리가 없다</div>`:""}
     ${tags?`<div class="ctags">${tags}</div>`:""}</div>`;
 }
 function admSetKey(toRoles){
